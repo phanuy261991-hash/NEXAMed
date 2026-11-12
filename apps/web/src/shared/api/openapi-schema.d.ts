@@ -27847,6 +27847,8 @@ export interface paths {
                                     averageWaitMinutes: number | null;
                                     followUpArrivalPercent: number | null;
                                     drugMargin: number;
+                                    serviceMargin: number;
+                                    totalMargin: number;
                                 }[];
                                 totals: {
                                     visits: number;
@@ -27858,6 +27860,8 @@ export interface paths {
                                     averageWaitMinutes: number | null;
                                     followUpArrivalPercent: number | null;
                                     drugMargin: number;
+                                    serviceMargin: number;
+                                    totalMargin: number;
                                 };
                                 daily: {
                                     dates: string[];
@@ -28093,6 +28097,14 @@ export interface paths {
                                     total: number;
                                     byBranch: number[];
                                 }[];
+                                serviceMargins: {
+                                    key: string;
+                                    name: string;
+                                    subtitle: string;
+                                    quantity: number;
+                                    total: number;
+                                    byBranch: number[];
+                                }[];
                             };
                             meta: Record<string, never>;
                         };
@@ -28310,6 +28322,20 @@ export interface paths {
                                         /** @enum {string} */
                                         direction: "up" | "down" | "flat";
                                     };
+                                    serviceMargin: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    totalMargin: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
                                 };
                                 rows: {
                                     /** Format: uuid */
@@ -28321,6 +28347,8 @@ export interface paths {
                                         recognized: number;
                                         collected: number;
                                         drugMargin: number;
+                                        serviceMargin: number;
+                                        totalMargin: number;
                                     };
                                     previous: {
                                         visits: number;
@@ -28328,6 +28356,8 @@ export interface paths {
                                         recognized: number;
                                         collected: number;
                                         drugMargin: number;
+                                        serviceMargin: number;
+                                        totalMargin: number;
                                     };
                                 }[];
                                 groups: {
@@ -29357,6 +29387,9 @@ export interface paths {
                                 totalCost: number;
                                 visitCount: number;
                                 averageCost: number | null;
+                                totalRevenue: number;
+                                totalMargin: number;
+                                marginPercent: number | null;
                                 serviceOptions: {
                                     key: string;
                                     name: string;
@@ -29368,6 +29401,9 @@ export interface paths {
                                     visitCount: number;
                                     cost: number;
                                     averageCost: number | null;
+                                    revenue: number;
+                                    margin: number;
+                                    marginPercent: number | null;
                                     topItems: string[];
                                 }[];
                             };
@@ -29557,6 +29593,9 @@ export interface paths {
                                 totalCost: number;
                                 visitCount: number;
                                 averageCost: number | null;
+                                totalRevenue: number;
+                                totalMargin: number;
+                                marginPercent: number | null;
                                 serviceOptions: {
                                     key: string;
                                     name: string;
@@ -29571,6 +29610,9 @@ export interface paths {
                                     doctorName: string | null;
                                     performerName: string | null;
                                     cost: number;
+                                    revenue: number;
+                                    margin: number;
+                                    refunded: boolean;
                                     branchName: string;
                                 }[];
                             };
@@ -29656,6 +29698,419 @@ export interface paths {
             cookie?: never;
         };
         /** Xuất Excel Chi phí vật tư theo khách (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    serviceKey?: string;
+                    doctorId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.report hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/service-consumption/by-item": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi phí vốn theo từng mặt hàng đã dùng — số lượng, giá vốn trung bình, tỷ trọng, dịch vụ dùng; lọc theo Dịch vụ và Bác sĩ (quyền service_consumption.report, #297; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    serviceKey?: string;
+                    doctorId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                totalCost: number;
+                                itemCount: number;
+                                medicineCount: number;
+                                supplyCount: number;
+                                topItem: {
+                                    name: string;
+                                    sharePercent: number | null;
+                                } | null;
+                                serviceOptions: {
+                                    key: string;
+                                    name: string;
+                                }[];
+                                rows: {
+                                    key: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    itemType: "MEDICINE" | "SUPPLY";
+                                    serviceNames: string[];
+                                    serviceCount: number;
+                                    quantity: number;
+                                    unitName: string;
+                                    averageUnitCost: number | null;
+                                    cost: number;
+                                    sharePercent: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.report hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/service-consumption/by-item/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Chi phí vật tư theo vật tư (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    serviceKey?: string;
+                    doctorId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.report hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/service-consumption/by-branch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số lượt, doanh thu, chi phí vốn và lãi gộp dịch vụ của từng chi nhánh trong phạm vi; gộp từ hai chi nhánh cần quyền xem báo cáo toàn công ty (quyền service_consumption.report, #297; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    serviceKey?: string;
+                    doctorId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                totalCost: number;
+                                visitCount: number;
+                                averageCost: number | null;
+                                totalRevenue: number;
+                                totalMargin: number;
+                                marginPercent: number | null;
+                                serviceOptions: {
+                                    key: string;
+                                    name: string;
+                                }[];
+                                rows: {
+                                    branchId: string;
+                                    branchName: string;
+                                    visitCount: number;
+                                    revenue: number;
+                                    cost: number;
+                                    averageCost: number | null;
+                                    margin: number;
+                                    marginPercent: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.report hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/service-consumption/by-branch/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Chi phí vật tư theo chi nhánh (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
         get: {
             parameters: {
                 query: {

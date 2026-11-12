@@ -16,10 +16,10 @@ describe('bản in Toàn hệ thống', () => {
       previousTo: '2026-09-30',
       kpis: { recognized: kpi(842_600_000, 777_300_000, 8.4), collected: kpi(791_350_000, 740_000_000, 6.9), visits: kpi(1284, 1220, 5.2), newPatients: kpi(312, 319, -2.1), unpaidAmount: 48_200_000, unpaidCount: 18 },
       rows: [
-        { branchId: a, branchName: 'Quận 1', visits: 612, newPatients: 148, recognized: 410_200_000, collected: 388_600_000, unpaidAmount: 18_400_000, unpaidCount: 9, averageWaitMinutes: 14, followUpArrivalPercent: 74, drugMargin: 51_300_000 },
-        { branchId: b, branchName: 'Quận 7', visits: 431, newPatients: 104, recognized: 276_900_000, collected: 259_300_000, unpaidAmount: 17_600_000, unpaidCount: 9, averageWaitMinutes: null, followUpArrivalPercent: null, drugMargin: 31_900_000 },
+        { branchId: a, branchName: 'Quận 1', visits: 612, newPatients: 148, recognized: 410_200_000, collected: 388_600_000, unpaidAmount: 18_400_000, unpaidCount: 9, averageWaitMinutes: 14, followUpArrivalPercent: 74, drugMargin: 51_300_000, serviceMargin: 120_000_000, totalMargin: 171_300_000 },
+        { branchId: b, branchName: 'Quận 7', visits: 431, newPatients: 104, recognized: 276_900_000, collected: 259_300_000, unpaidAmount: 17_600_000, unpaidCount: 9, averageWaitMinutes: null, followUpArrivalPercent: null, drugMargin: 31_900_000, serviceMargin: -2_000_000, totalMargin: 29_900_000 },
       ],
-      totals: { visits: 1043, newPatients: 252, recognized: 687_100_000, collected: 647_900_000, unpaidAmount: 36_000_000, unpaidCount: 18, averageWaitMinutes: 14, followUpArrivalPercent: 74, drugMargin: 83_200_000 },
+      totals: { visits: 1043, newPatients: 252, recognized: 687_100_000, collected: 647_900_000, unpaidAmount: 36_000_000, unpaidCount: 18, averageWaitMinutes: 14, followUpArrivalPercent: 74, drugMargin: 83_200_000, serviceMargin: 118_000_000, totalMargin: 201_200_000 },
       daily: { dates: ['2026-10-01'], series: [] },
       groups: [
         { group: 'EXAM', amount: 400, sharePercent: 40 },
@@ -34,8 +34,11 @@ describe('bản in Toàn hệ thống', () => {
     expect(spec.infoLines![0]).toContain('Ghi nhận: 842.600.000 (+8,4%)');
     expect(spec.infoLines![0]).toContain('Bệnh nhân mới: 312 (-2,1%)');
     const table = spec.sections[0]!;
-    expect(table.columns.map((c) => c.header)).toEqual(['Chi nhánh', 'Lượt khám', 'BN mới', 'Ghi nhận', 'Thực thu', 'Chờ thu', 'Chờ TB (phút)', 'Tái khám đã đến', 'Lãi gộp thuốc']);
-    expect(table.rows[0]).toEqual(['Quận 1', '612', '148', '410.200.000', '388.600.000', '18.400.000', '14', '74%', '51.300.000']);
+    expect(table.columns.map((c) => c.header)).toEqual(['Chi nhánh', 'Lượt khám', 'BN mới', 'Ghi nhận', 'Thực thu', 'Chờ thu', 'Chờ TB (phút)', 'Tái khám đã đến', 'Lãi gộp thuốc', 'Lãi gộp dịch vụ', 'Lãi gộp tổng']);
+    expect(table.rows[0]).toEqual(['Quận 1', '612', '148', '410.200.000', '388.600.000', '18.400.000', '14', '74%', '51.300.000', '120.000.000', '171.300.000']);
+    // Lãi gộp dịch vụ âm giữ dấu trừ; dòng Cộng lấy tổng toàn phạm vi.
+    expect(table.rows[1]!.slice(-3)).toEqual(['31.900.000', '-2.000.000', '29.900.000']);
+    expect(table.totalRows![0]!.slice(-3)).toEqual(['83.200.000', '118.000.000', '201.200.000']);
     expect(table.rows[1]![6]).toBe('—');
     expect(table.rows[1]![7]).toBe('—');
     expect(table.totalRows![0]![0]).toBe('Cộng 2 chi nhánh');
@@ -43,11 +46,13 @@ describe('bản in Toàn hệ thống', () => {
     expect(spec.sections[2]!.rows[0]).toEqual(['Quận 1', '2 ca thu ngân chưa chốt từ hôm qua']);
   });
 
-  it('Xếp hạng: ba bảng, cột từng chi nhánh chỉ có khi gộp nhiều chi nhánh', () => {
+  it('Xếp hạng: bốn bảng (có Lãi gộp dịch vụ), cột từng chi nhánh chỉ có khi gộp nhiều chi nhánh', () => {
     const rank = [{ key: 'k', name: 'Khám nội', subtitle: 'Khám bệnh', quantity: 5, total: 500, byBranch: [300, 200] }];
-    const report: SystemRankingReport = { ...header, branches: [{ branchId: a, branchName: 'Quận 1' }, { branchId: b, branchName: 'Quận 7' }], services: rank, doctors: [], drugs: [] };
+    const report: SystemRankingReport = { ...header, branches: [{ branchId: a, branchName: 'Quận 1' }, { branchId: b, branchName: 'Quận 7' }], services: rank, doctors: [], drugs: [], serviceMargins: [{ key: 'EXAM_TYPE:KT', name: 'Khám nội', subtitle: 'Khám bệnh', quantity: 4, total: -120, byBranch: [-120, 0] }] };
     const multi = buildSystemRankingPrintSpec(report, ctx);
-    expect(multi.sections.map((s) => s.title)).toEqual(['Dịch vụ', 'Bác sĩ', 'Thuốc và vật tư']);
+    expect(multi.sections.map((s) => s.title)).toEqual(['Dịch vụ', 'Bác sĩ', 'Thuốc và vật tư', 'Lãi gộp dịch vụ']);
+    expect(multi.sections[3]!.columns.map((c) => c.header).slice(0, 5)).toEqual(['Hạng', 'Tên', 'Nhóm', 'Số lượt', 'Lãi gộp dịch vụ']);
+    expect(multi.sections[3]!.rows[0]).toEqual(['1', 'Khám nội', 'Khám bệnh', '4', '-120', '-120', '0']);
     expect(multi.sections[0]!.columns.map((c) => c.header)).toEqual(['Hạng', 'Tên', 'Nhóm', 'Số lượng', 'Ghi nhận', 'Quận 1', 'Quận 7']);
     expect(multi.sections[0]!.rows[0]).toEqual(['1', 'Khám nội', 'Khám bệnh', '5', '500', '300', '200']);
     expect(multi.sections[1]!.emptyText).toBe('Chưa có bác sĩ nào khám trong kỳ');
@@ -57,12 +62,12 @@ describe('bản in Toàn hệ thống', () => {
   });
 
   it('Tổng hợp tháng: tiêu đề theo tháng, so với tháng trước, ba ô ký, xu hướng', () => {
-    const m = (visits: number, collected: number) => ({ visits, newPatients: 1, recognized: collected, collected, drugMargin: 10 });
+    const m = (visits: number, collected: number) => ({ visits, newPatients: 1, recognized: collected, collected, drugMargin: 10, serviceMargin: 100, totalMargin: 110 });
     const report: SystemMonthlyReport = {
       ...header,
       month: '2026-10',
       previousMonth: '2026-09',
-      kpis: { recognized: kpi(200, 100, 100), collected: kpi(200, 100, 100), visits: kpi(20, 10, 100), newPatients: kpi(2, 1, 100), drugMargin: kpi(20, 10, 100) },
+      kpis: { recognized: kpi(200, 100, 100), collected: kpi(200, 100, 100), visits: kpi(20, 10, 100), newPatients: kpi(2, 1, 100), drugMargin: kpi(20, 10, 100), serviceMargin: kpi(200, 100, 100), totalMargin: kpi(220, 110, 100) },
       rows: [{ branchId: a, branchName: 'Quận 1', current: m(10, 100), previous: m(5, 50) }, { branchId: b, branchName: 'Quận 7', current: m(10, 100), previous: m(5, 50) }],
       groups: [{ group: 'EXAM', amount: 200, sharePercent: 100 }],
       groupTotal: 200,
@@ -73,8 +78,9 @@ describe('bản in Toàn hệ thống', () => {
     expect(spec.subtitleLines).toContain('So với tháng 09/2026');
     expect(spec.signatures).toEqual(['Người lập', 'Quản lý', 'Chủ phòng khám']);
     const table = spec.sections[0]!;
-    expect(table.rows[0]).toEqual(['Quận 1', '10', '1', '100', '100', '50', '+100%', '10']);
-    expect(table.totalRows![0]).toEqual(['Cộng 2 chi nhánh', '20', '2', '200', '200', '100', '+100%', '20']);
+    expect(table.rows[0]).toEqual(['Quận 1', '10', '1', '100', '100', '50', '+100%', '10', '100', '110']);
+    expect(table.totalRows![0]).toEqual(['Cộng 2 chi nhánh', '20', '2', '200', '200', '100', '+100%', '20', '200', '220']);
+    expect(spec.infoLines!.join(' ')).toContain('Lãi gộp tổng: 220');
     expect(spec.sections[2]!.title).toBe('Xu hướng 2 tháng gần nhất');
     expect(spec.sections[2]!.rows[1]).toEqual(['10/2026', '20', '2', '200', '200']);
   });

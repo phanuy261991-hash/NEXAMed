@@ -229,6 +229,65 @@ function check(name, ok, detail) {
     check('màn 9: tab Theo khách liệt kê khách thử với vật tư đã dùng', new RegExp(`Gel siêu âm kiểm ${stamp} ×20`).test(cust));
     await shot('05-bao-cao-theo-khach.png');
 
+    // ── Doanh thu + lãi gộp dịch vụ, hai tab mới, So sánh chi nhánh (#297 bổ sung 4) ──
+    await page.getByRole('tab', { name: 'Theo dịch vụ' }).click();
+    const byServiceTable = page.getByRole('table', { name: 'Chi phí vật tư theo dịch vụ' });
+    await byServiceTable.waitFor({ timeout: 20000 });
+    const kpiText = await page.getByLabel('Số liệu chi phí vật tư theo dịch vụ').innerText();
+    check('bổ sung 4: dải số có Doanh thu dịch vụ, Lãi gộp dịch vụ, biên lãi gộp và 5 ô', /Doanh thu dịch vụ/.test(kpiText) && /Lãi gộp dịch vụ/.test(kpiText) && /Biên lãi gộp/.test(kpiText) && /Chi phí trung bình mỗi lượt/.test(kpiText));
+    const serviceTableText = await byServiceTable.innerText();
+    check('bổ sung 4: bảng Theo dịch vụ có cột Doanh thu, Lãi gộp, Biên', /doanh thu/i.test(serviceTableText) && /lãi gộp/i.test(serviceTableText) && /\bbiên\b/i.test(serviceTableText));
+    check('bổ sung 4: dịch vụ thử có doanh thu 420.000 (giá dịch vụ) cạnh chi phí vốn', new RegExp(`KIEM297 Siêu âm ${stamp}[\\s\\S]{0,160}420\\.000`).test(serviceTableText), serviceTableText.slice(0, 300));
+    await shot('07-bao-cao-lai-gop-dich-vu.png');
+
+    await page.getByRole('tab', { name: 'Theo khách' }).click();
+    const byCustomerTable = page.getByRole('table', { name: 'Chi phí vật tư theo khách' });
+    await byCustomerTable.waitFor({ timeout: 20000 });
+    const customerTableText = await byCustomerTable.innerText();
+    check('bổ sung 4: bảng Theo khách có cột Doanh thu và Lãi gộp', /doanh thu/i.test(customerTableText) && /lãi gộp/i.test(customerTableText));
+
+    await page.getByRole('tab', { name: 'Theo vật tư' }).click();
+    const byItemTable = page.getByRole('table', { name: 'Chi phí vật tư theo vật tư' });
+    await byItemTable.waitFor({ timeout: 20000 });
+    const itemTableText = await byItemTable.innerText();
+    const itemKpi = await page.getByLabel('Số liệu chi phí vật tư theo vật tư').innerText();
+    check('bổ sung 4: tab Theo vật tư liệt kê vật tư thử kèm số lượng, loại và tỷ trọng', new RegExp(`Gel siêu âm kiểm ${stamp}`).test(itemTableText) && /Vật tư/.test(itemTableText) && /%/.test(itemTableText), itemTableText.slice(0, 300));
+    check('bổ sung 4: tab Theo vật tư có 3 ô tổng (Tổng chi phí vốn, Số mặt hàng đã dùng, Mặt hàng tốn nhất)', /Tổng chi phí vốn/.test(itemKpi) && /Số mặt hàng đã dùng/.test(itemKpi) && /Mặt hàng tốn nhất/.test(itemKpi));
+    const [itemDownload] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }), page.getByRole('button', { name: /Xuất Excel/ }).click()]);
+    check('bổ sung 4: tab Theo vật tư xuất được Excel', /chi-phi-vat-tu-theo-vat-tu.*\.xlsx$/.test(itemDownload.suggestedFilename()), itemDownload.suggestedFilename());
+    check('bổ sung 4: tab Theo vật tư có nút In', (await page.getByRole('button', { name: /^In/ }).count()) > 0);
+    await shot('08-bao-cao-theo-vat-tu.png');
+
+    // Trạng thái lỗi của tab mới: máy chủ trả 503 khi bấm Làm mới → thông báo tiếng Việt kèm "Thử lại", không lộ mã; gỡ chặn rồi Thử lại hiện lại bảng.
+    await page.route('**/api/v1/reports/service-consumption/by-item**', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Service Unavailable' } }) }));
+    await page.getByRole('button', { name: /Làm mới/ }).click();
+    await page.getByRole('button', { name: /Thử lại/ }).waitFor({ timeout: 20000 });
+    const errText = await bodyText();
+    check('bổ sung 4: tab Theo vật tư gặp lỗi máy chủ → thông báo tiếng Việt có "Thử lại", không lộ mã/lỗi thô', /Hệ thống đang khởi động hoặc tạm thời không truy cập được|Không tải được báo cáo chi phí vật tư theo vật tư/.test(errText) && !FORBIDDEN.test(errText), errText.slice(0, 200));
+    await shot('09b-loi-theo-vat-tu.png');
+    await page.unroute('**/api/v1/reports/service-consumption/by-item**');
+    await page.getByRole('button', { name: /Thử lại/ }).click();
+    await byItemTable.waitFor({ timeout: 20000 });
+    check('bổ sung 4: bấm Thử lại sau khi máy chủ ổn → bảng hiện lại', (await byItemTable.count()) > 0);
+
+    const branchTab = page.getByRole('tab', { name: 'Theo chi nhánh' });
+    check('bổ sung 4: công ty nhiều chi nhánh + quyền xem toàn công ty → có tab "Theo chi nhánh"', (await branchTab.count()) > 0);
+    if ((await branchTab.count()) > 0) {
+      await branchTab.click();
+      const byBranchTable = page.getByRole('table', { name: 'Chi phí vật tư theo chi nhánh' });
+      await byBranchTable.waitFor({ timeout: 20000 });
+      const branchText = await byBranchTable.innerText();
+      check('bổ sung 4: tab Theo chi nhánh có cột Doanh thu, Lãi gộp, Biên và dòng Cộng', /doanh thu/i.test(branchText) && /lãi gộp/i.test(branchText) && /Cộng \d+ chi nhánh/.test(branchText), branchText.slice(0, 300));
+      await shot('10-bao-cao-theo-chi-nhanh.png');
+    }
+
+    await page.goto(`${WEB}/reports/system`);
+    const sysTable = page.getByRole('table', { name: 'So sánh chi nhánh' });
+    await sysTable.waitFor({ timeout: 25000 });
+    const sysText = await sysTable.innerText();
+    check('bổ sung 4: So sánh chi nhánh có thêm cột Lãi gộp dịch vụ và Lãi gộp tổng cạnh Lãi gộp thuốc', /lãi gộp thuốc/i.test(sysText) && /lãi gộp dịch vụ/i.test(sysText) && /lãi gộp tổng/i.test(sysText), sysText.slice(0, 200));
+    await shot('11-so-sanh-chi-nhanh.png');
+
     // ── Màn 10: hộp "Khách không làm dịch vụ" ──
     await page.goto(`${WEB}/billing/${encounter2Id}`);
     await page.getByRole('button', { name: /Khách không làm dịch vụ/ }).first().click();

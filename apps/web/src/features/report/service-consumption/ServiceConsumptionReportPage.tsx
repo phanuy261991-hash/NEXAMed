@@ -6,22 +6,23 @@ import { TabBar, type TabBarItem } from '../../../shared/ui/TabBar';
 import { useDoctorsQuery } from '../../appointment/appointment.queries';
 import { useReportScope } from '../../branch/useReportScope';
 import { useReportPeriod } from '../useReportPeriod';
-import { SERVICE_CONSUMPTION_DEFAULT_TAB, SERVICE_CONSUMPTION_TABS, parseServiceConsumptionTab } from './service-consumption-report-model';
+import { SERVICE_CONSUMPTION_DEFAULT_TAB, SERVICE_CONSUMPTION_TABS, parseServiceConsumptionTab, visibleServiceConsumptionTabs } from './service-consumption-report-model';
 import { useServiceConsumptionByServiceQuery } from './service-consumption-report.queries';
-import { ServiceConsumptionByCustomerTab, ServiceConsumptionByServiceTab, type ServiceConsumptionFilter } from './ServiceConsumptionTabs';
+import { ServiceConsumptionByBranchTab, ServiceConsumptionByCustomerTab, ServiceConsumptionByItemTab, ServiceConsumptionByServiceTab, type ServiceConsumptionFilter } from './ServiceConsumptionTabs';
 
 const ALL_SERVICES = '';
 
 /**
- * Trang "Chi phí vật tư theo dịch vụ" (docs/DECISIONS.md #297 GĐ4, mockup màn 9): 2 tab — Theo dịch vụ, Theo khách (nhớ trong `?tab=`). Kỳ, phạm vi chi nhánh, Dịch vụ và Bác sĩ giữ chung giữa các tab.
+ * Trang "Chi phí vật tư theo dịch vụ" (docs/DECISIONS.md #297 GĐ4, mockup màn 9; #297 bổ sung 4): 4 tab — Theo dịch vụ, Theo khách, Theo vật tư, Theo chi nhánh (nhớ trong `?tab=`). Tab "Theo chi nhánh" chỉ có
+ * khi tài khoản chọn được phạm vi nhiều chi nhánh. Kỳ, phạm vi chi nhánh, Dịch vụ và Bác sĩ giữ chung giữa các tab.
  * Quyền: `service_consumption.report` (mặc định chỉ quản lý phòng khám vì có giá vốn). Danh sách "Dịch vụ" lấy từ chính báo cáo (các dịch vụ có ghi tiêu hao trong kỳ, không thu hẹp theo bộ lọc).
- * KHÔNG phải báo cáo lãi lỗ: chi phí này không trừ vào lãi gộp.
+ * Lãi gộp dịch vụ = doanh thu ghi nhận trừ chi phí tiêu hao (các lượt đã ghi); KHÔNG phải báo cáo lãi lỗ toàn diện.
  */
 export function ServiceConsumptionReportPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = parseServiceConsumptionTab(searchParams.get('tab'));
-  useBreadcrumb([{ label: 'Báo cáo' }, { label: 'Chi phí vật tư theo dịch vụ' }, { label: SERVICE_CONSUMPTION_TABS.find((t) => t.id === tab)?.label ?? '' }]);
   const scope = useReportScope();
+  const tab = parseServiceConsumptionTab(searchParams.get('tab'), scope.canChoose);
+  useBreadcrumb([{ label: 'Báo cáo' }, { label: 'Chi phí vật tư theo dịch vụ' }, { label: SERVICE_CONSUMPTION_TABS.find((t) => t.id === tab)?.label ?? '' }]);
   const period = useReportPeriod('thisMonth');
   const [serviceKey, setServiceKey] = useState(ALL_SERVICES);
   const [doctorId, setDoctorId] = useState('');
@@ -59,7 +60,7 @@ export function ServiceConsumptionReportPage() {
     [serviceKey, doctorId, serviceOptions, doctorOptions],
   );
 
-  const tabs: TabBarItem<string>[] = SERVICE_CONSUMPTION_TABS.map((t) => ({ id: t.id, label: t.label }));
+  const tabs: TabBarItem<string>[] = visibleServiceConsumptionTabs(scope.canChoose).map((t) => ({ id: t.id, label: t.label }));
   const onChangeTab = (next: string) => setSearchParams(next === SERVICE_CONSUMPTION_DEFAULT_TAB ? {} : { tab: next }, { replace: true });
 
   return (
@@ -68,6 +69,8 @@ export function ServiceConsumptionReportPage() {
       <TabBar tabs={tabs} active={tab} onChange={onChangeTab} variant="underline" className="flex-shrink-0" />
       {tab === 'by-service' && <ServiceConsumptionByServiceTab period={period} scope={scope} filter={filter} />}
       {tab === 'by-customer' && <ServiceConsumptionByCustomerTab period={period} scope={scope} filter={filter} />}
+      {tab === 'by-item' && <ServiceConsumptionByItemTab period={period} scope={scope} filter={filter} />}
+      {tab === 'by-branch' && <ServiceConsumptionByBranchTab period={period} scope={scope} filter={filter} />}
     </div>
   );
 }

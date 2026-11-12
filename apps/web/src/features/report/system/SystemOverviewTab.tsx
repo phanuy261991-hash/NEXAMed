@@ -50,7 +50,7 @@ function Body({ report, scope }: { report: SystemOverviewReport; scope: ReportSc
       <ReportCard title="So sánh chi nhánh" hint={multi && scope.canChoose ? 'Bấm tên chi nhánh để xem riêng' : undefined}>
         <ReportGridTable
           ariaLabel="So sánh chi nhánh"
-          minWidth={1000}
+          minWidth={1280}
           columns={[
             { header: 'Chi nhánh', width: 'minmax(150px, 1.3fr)' },
             { header: 'Lượt khám', align: 'right', width: 'minmax(80px, 1fr)' },
@@ -61,6 +61,8 @@ function Body({ report, scope }: { report: SystemOverviewReport; scope: ReportSc
             { header: 'Chờ TB (phút)', align: 'right', width: 'minmax(90px, 1fr)' },
             { header: 'Tái khám đã đến', align: 'right', width: 'minmax(100px, 1fr)' },
             { header: 'Lãi gộp thuốc', align: 'right', width: 'minmax(110px, 1fr)' },
+            { header: 'Lãi gộp dịch vụ', align: 'right', width: 'minmax(120px, 1fr)' },
+            { header: 'Lãi gộp tổng', align: 'right', width: 'minmax(120px, 1fr)' },
           ]}
           rows={report.rows.map((r) => [
             multi && scope.canChoose ? (
@@ -78,6 +80,8 @@ function Body({ report, scope }: { report: SystemOverviewReport; scope: ReportSc
             r.averageWaitMinutes === null ? '—' : String(r.averageWaitMinutes),
             formatPercent(r.followUpArrivalPercent),
             <span key="dm" className="font-semibold text-teal-700">{formatVndPlain(r.drugMargin)}</span>,
+            <span key="sm" className={`font-semibold ${r.serviceMargin < 0 ? 'text-rose-700' : 'text-teal-700'}`}>{formatVndPlain(r.serviceMargin)}</span>,
+            <span key="tm" className={`font-semibold ${r.totalMargin < 0 ? 'text-rose-700' : 'text-slate-900'}`}>{formatVndPlain(r.totalMargin)}</span>,
           ])}
           footer={[
             `Cộng ${report.rows.length} chi nhánh`,
@@ -89,6 +93,8 @@ function Body({ report, scope }: { report: SystemOverviewReport; scope: ReportSc
             t.averageWaitMinutes === null ? '—' : String(t.averageWaitMinutes),
             formatPercent(t.followUpArrivalPercent),
             formatVndPlain(t.drugMargin),
+            formatVndPlain(t.serviceMargin),
+            formatVndPlain(t.totalMargin),
           ]}
         />
       </ReportCard>

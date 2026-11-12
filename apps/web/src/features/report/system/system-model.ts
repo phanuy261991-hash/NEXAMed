@@ -161,12 +161,13 @@ export function axisLabelIndexes(pointCount: number, maxLabels: number): number[
 
 // ---- Xếp hạng ----
 
-export type RankingKind = 'services' | 'doctors' | 'drugs';
+export type RankingKind = 'services' | 'doctors' | 'drugs' | 'serviceMargins';
 
 export const RANKING_KIND_ITEMS: ReadonlyArray<{ id: RankingKind; label: string }> = [
   { id: 'services', label: 'Dịch vụ' },
   { id: 'doctors', label: 'Bác sĩ' },
   { id: 'drugs', label: 'Thuốc và vật tư' },
+  { id: 'serviceMargins', label: 'Lãi gộp dịch vụ' },
 ];
 
 /** Nhãn cột của từng bảng xếp hạng: tên cột phụ, số lượng và số dùng để xếp. */
@@ -174,6 +175,7 @@ export const RANKING_COLUMNS: Record<RankingKind, { subtitle: string; quantity: 
   services: { subtitle: 'Nhóm', quantity: 'Số lượng', total: 'Ghi nhận', empty: 'Chưa có dịch vụ nào được dùng trong kỳ' },
   doctors: { subtitle: 'Khoa', quantity: 'Lượt khám', total: 'Doanh thu sinh ra', empty: 'Chưa có bác sĩ nào khám trong kỳ' },
   drugs: { subtitle: 'Loại', quantity: 'Số lượng', total: 'Lãi gộp', empty: 'Chưa bán thuốc hay vật tư trong kỳ' },
+  serviceMargins: { subtitle: 'Nhóm', quantity: 'Số lượt', total: 'Lãi gộp dịch vụ', empty: 'Chưa có lượt dịch vụ nào ghi tiêu hao trong kỳ' },
 };
 
 export function rankingRows(report: SystemRankingReport, kind: RankingKind): SystemRankingReport['services'] {

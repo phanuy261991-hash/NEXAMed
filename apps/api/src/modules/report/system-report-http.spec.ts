@@ -34,6 +34,7 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
   let branchA: string;
   let branchB: string;
   let warehouseA: string;
+  let warehouseB: string;
   let drugPara: string;
   let adminId: string;
   const patients: Record<string, string> = {};
@@ -65,7 +66,7 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
     waitMinutes?: number;
     invoice?: { total: number; status: 'UNPAID' | 'PAID' | 'CANCELLED'; discountPercent?: number; payments?: Array<{ amount: number; paidAt: Date; type?: 'PAYMENT' | 'REFUND' }> };
     status?: 'COMPLETED' | 'CANCELLED';
-  }): Promise<{ encounterId: string; invoiceId: string | null }> {
+  }): Promise<{ encounterId: string; invoiceId: string | null; serviceItemId: string | null }> {
     const when = at(opts.date, opts.time ?? '09:00');
     const department = await privileged.department.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, isDefault: true } });
     const e = await privileged.encounter.create({
@@ -84,7 +85,7 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
         updatedBy: SYSTEM_TEST_ACTOR,
       },
     });
-    if (!opts.invoice) return { encounterId: e.id, invoiceId: null };
+    if (!opts.invoice) return { encounterId: e.id, invoiceId: null, serviceItemId: null };
     const invoice = await privileged.invoice.create({
       data: {
         tenantId: fixture.tenantA.id,
@@ -109,7 +110,30 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
         data: { tenantId: fixture.tenantA.id, invoiceId: invoice.id, method: 'CASH', type: p.type ?? 'PAYMENT', amount: BigInt(p.amount), paidAt: p.paidAt, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
       });
     }
-    return { encounterId: e.id, invoiceId: invoice.id };
+    return { encounterId: e.id, invoiceId: invoice.id, serviceItemId: item.id };
+  }
+
+  /** Ghi vật tư tiêu hao cho dịch vụ khám của một lượt (phiếu xuất SERVICE_CONSUMPTION đang hiệu lực) — #297 bổ sung 4. */
+  async function consume(opts: { encounterId: string; serviceItemId: string; warehouseId: string; date: string; quantity: number; unitCost: number }) {
+    const issue = await privileged.stockIssue.create({
+      data: {
+        tenantId: fixture.tenantA.id,
+        issueNo: `PX-TH-${randomUUID().slice(0, 10)}`,
+        warehouseId: opts.warehouseId,
+        issueType: 'SERVICE_CONSUMPTION',
+        status: 'POSTED',
+        occurredAt: at(opts.date, '09:40'),
+        totalAmount: 0n,
+        encounterId: opts.encounterId,
+        encounterServiceItemId: opts.serviceItemId,
+        performedBy: adminId,
+        createdBy: SYSTEM_TEST_ACTOR,
+        updatedBy: SYSTEM_TEST_ACTOR,
+      },
+    });
+    await privileged.stockIssueLine.create({
+      data: { tenantId: fixture.tenantA.id, issueId: issue.id, drugId: drugPara, quantity: opts.quantity, unitCost: BigInt(opts.unitCost), sellPrice: 0n, lineAmount: 0n, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
   }
 
   /** Bán thuốc cho một lượt khám: đơn thuốc + phiếu xuất bán theo đơn + dòng thuốc trong hoá đơn. */
@@ -156,6 +180,7 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
     branchA = await getDefaultBranchId(privileged, fixture.tenantA.id);
     branchB = (await privileged.branch.create({ data: { tenantId: fixture.tenantA.id, code: 'ZZSY2', name: 'Chi nhánh B hệ thống', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } })).id;
     warehouseA = (await privileged.warehouse.create({ data: { tenantId: fixture.tenantA.id, branchId: branchA, code: 'ZZSYA', name: 'Kho A hệ thống', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } })).id;
+    warehouseB = (await privileged.warehouse.create({ data: { tenantId: fixture.tenantA.id, branchId: branchB, code: 'ZZSYB', name: 'Kho B hệ thống', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } })).id;
     drugPara = (await privileged.drug.create({ data: { tenantId: fixture.tenantA.id, code: 'SY-PARA', name: 'Paracetamol 500mg', baseUnitCode: 'VIEN', isBatchManaged: false, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } })).id;
 
     const admin = await h.createUser(fixture.tenantA.id, { name: 'clinic_admin' }, 'sy-admin', [branchA]);
@@ -175,7 +200,9 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
 
     // ── Tháng 09/2026, chi nhánh A ──
     // A1: 10/09, bệnh nhân p1 (LẦN ĐẦU), chờ 20 phút, phiếu 500.000 ĐÃ THU 500.000 ngày 11/09 (thực thu tính theo ngày thu, ghi nhận theo ngày khám).
-    await visit({ patientKey: 'p1', branchId: branchA, date: '2026-09-10', waitMinutes: 20, invoice: { total: 500_000, status: 'PAID', payments: [{ amount: 500_000, paidAt: at('2026-09-11', '09:00') }] } });
+    const a1 = await visit({ patientKey: 'p1', branchId: branchA, date: '2026-09-10', waitMinutes: 20, invoice: { total: 500_000, status: 'PAID', payments: [{ amount: 500_000, paidAt: at('2026-09-11', '09:00') }] } });
+    // Lượt A1 ghi tiêu hao 3 × 100 = 300 đ → lãi gộp dịch vụ chi nhánh A = 500.000 − 300 = 499.700 (#297 bổ sung 4).
+    await consume({ encounterId: a1.encounterId, serviceItemId: a1.serviceItemId!, warehouseId: warehouseA, date: '2026-09-10', quantity: 3, unitCost: 100 });
     // A2: 12/09, bệnh nhân p2 (lần đầu), chờ 10 phút, phiếu 300.000 CHƯA THU.
     await visit({ patientKey: 'p2', branchId: branchA, date: '2026-09-12', waitMinutes: 10, invoice: { total: 300_000, status: 'UNPAID' } });
     // A3: 20/09, bệnh nhân p1 quay lại (KHÔNG phải bệnh nhân mới), phiếu 200.000 đã thu cùng ngày; hoàn 50.000 hôm sau.
@@ -201,7 +228,9 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
     // B1: 14/09, bệnh nhân p1 khám thêm ở chi nhánh B (KHÁM CHÉO; không phải bệnh nhân mới), chờ 30 phút, phiếu 400.000 đã thu cùng ngày.
     await visit({ patientKey: 'p1', branchId: branchB, date: '2026-09-14', waitMinutes: 30, invoice: { total: 400_000, status: 'PAID', payments: [{ amount: 400_000, paidAt: at('2026-09-14', '10:30') }] } });
     // B2: 16/09, bệnh nhân p6 (lần đầu), phiếu 150.000 CHƯA THU.
-    await visit({ patientKey: 'p6', branchId: branchB, date: '2026-09-16', invoice: { total: 150_000, status: 'UNPAID' } });
+    const b2 = await visit({ patientKey: 'p6', branchId: branchB, date: '2026-09-16', invoice: { total: 150_000, status: 'UNPAID' } });
+    // Lượt B2 (phiếu CHƯA THU vẫn là doanh thu ghi nhận) ghi tiêu hao 1 × 50 → lãi gộp dịch vụ chi nhánh B = 150.000 − 50 = 149.950.
+    await consume({ encounterId: b2.encounterId, serviceItemId: b2.serviceItemId!, warehouseId: warehouseB, date: '2026-09-16', quantity: 1, unitCost: 50 });
   });
 
   afterAll(async () => {
@@ -242,10 +271,10 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
       const d = res.body.data;
       expect(d.branchCount).toBeGreaterThanOrEqual(2);
       // Chi nhánh A: 4 lượt tiếp nhận (lượt huỷ không tính); bệnh nhân mới = p1, p2, p3 (A3 là p1 quay lại).
-      expect(rowOf(d.rows, branchA)).toMatchObject({ visits: 4, newPatients: 3, recognized: 500_000 + 300_000 + 200_000 + 10_000, collected: 500_000 + 200_000 - 50_000 + 10_000, unpaidAmount: 300_000, unpaidCount: 1, averageWaitMinutes: 15, followUpArrivalPercent: null, drugMargin: 6_000 });
+      expect(rowOf(d.rows, branchA)).toMatchObject({ visits: 4, newPatients: 3, recognized: 500_000 + 300_000 + 200_000 + 10_000, collected: 500_000 + 200_000 - 50_000 + 10_000, unpaidAmount: 300_000, unpaidCount: 1, averageWaitMinutes: 15, followUpArrivalPercent: null, drugMargin: 6_000, serviceMargin: 499_700, totalMargin: 505_700 });
       // Chi nhánh B: p1 đã khám ở A trước đó nên KHÔNG là bệnh nhân mới ở B; p6 là mới.
-      expect(rowOf(d.rows, branchB)).toMatchObject({ visits: 2, newPatients: 1, recognized: 550_000, collected: 400_000, unpaidAmount: 150_000, unpaidCount: 1, averageWaitMinutes: 30, drugMargin: 0 });
-      expect(d.totals).toMatchObject({ visits: 6, newPatients: 4, recognized: 1_560_000, collected: 1_060_000, unpaidAmount: 450_000, unpaidCount: 2, averageWaitMinutes: 20, drugMargin: 6_000 });
+      expect(rowOf(d.rows, branchB)).toMatchObject({ visits: 2, newPatients: 1, recognized: 550_000, collected: 400_000, unpaidAmount: 150_000, unpaidCount: 1, averageWaitMinutes: 30, drugMargin: 0, serviceMargin: 149_950, totalMargin: 149_950 });
+      expect(d.totals).toMatchObject({ visits: 6, newPatients: 4, recognized: 1_560_000, collected: 1_060_000, unpaidAmount: 450_000, unpaidCount: 2, averageWaitMinutes: 20, drugMargin: 6_000, serviceMargin: 649_650, totalMargin: 655_650 });
     });
 
     it('kỳ so sánh là tháng liền trước (tháng tròn) và các KPI kèm % thay đổi', async () => {
@@ -331,6 +360,11 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
       expect(drug.byBranch[indexA]).toBe(6_000);
       expect(drug.byBranch[indexB]).toBe(0);
       expect(d.doctors).toEqual([]); // dữ liệu thử không gán bác sĩ cho lượt khám nào
+      // Lãi gộp dịch vụ (#297 bổ sung 4): chỉ các lượt có ghi tiêu hao — A1 (500.000 − 300) và B2 (150.000 − 50); phiếu chưa thu vẫn là doanh thu ghi nhận.
+      expect(d.serviceMargins).toHaveLength(1);
+      expect(d.serviceMargins[0]).toMatchObject({ name: 'Khám nội', subtitle: 'Khám bệnh', quantity: 2, total: 649_650 });
+      expect(d.serviceMargins[0].byBranch[indexA]).toBe(499_700);
+      expect(d.serviceMargins[0].byBranch[indexB]).toBe(149_950);
     });
   });
 
@@ -342,8 +376,11 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
       expect(d).toMatchObject({ month: '2026-09', previousMonth: '2026-08', from: '2026-09-01', to: '2026-09-30' });
       expect(d.kpis.collected).toMatchObject({ value: 1_060_000, previous: 100_000, direction: 'up' });
       expect(d.kpis.drugMargin).toMatchObject({ value: 6_000, previous: 0 });
+      expect(d.kpis.serviceMargin).toMatchObject({ value: 649_650, previous: 0 });
+      expect(d.kpis.totalMargin).toMatchObject({ value: 655_650, previous: 0 });
       const a = rowOf<{ branchId: string; current: Record<string, number>; previous: Record<string, number> }>(d.rows, branchA)!;
-      expect(a.current).toMatchObject({ visits: 4, newPatients: 3, recognized: 1_010_000, collected: 660_000, drugMargin: 6_000 });
+      expect(a.current).toMatchObject({ visits: 4, newPatients: 3, recognized: 1_010_000, collected: 660_000, drugMargin: 6_000, serviceMargin: 499_700, totalMargin: 505_700 });
+      expect(rowOf<{ current: Record<string, number> }>(d.rows, branchB)!.current).toMatchObject({ serviceMargin: 149_950, totalMargin: 149_950 });
       expect(a.previous).toMatchObject({ visits: 1, newPatients: 1, recognized: 100_000, collected: 100_000 });
       expect(d.groupTotal).toBe(1_060_000);
       expect(d.trend.map((m: { month: string }) => m.month)).toEqual(['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']);

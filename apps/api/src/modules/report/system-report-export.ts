@@ -46,9 +46,11 @@ export function buildSystemOverviewExcel(report: SystemOverviewReport, ctx: Syst
             { header: 'Chờ TB (phút)', width: 14 },
             { header: 'Tái khám đã đến', width: 16 },
             { header: 'Lãi gộp thuốc', width: 18, numeric: true },
+            { header: 'Lãi gộp dịch vụ', width: 18, numeric: true },
+            { header: 'Lãi gộp tổng', width: 18, numeric: true },
           ],
-          rows: report.rows.map((r) => [r.branchName, r.visits, r.newPatients, r.recognized, r.collected, r.unpaidAmount, minutes(r.averageWaitMinutes), pct(r.followUpArrivalPercent), r.drugMargin]),
-          totalRows: [[`Cộng ${report.rows.length} chi nhánh`, t.visits, t.newPatients, t.recognized, t.collected, t.unpaidAmount, minutes(t.averageWaitMinutes), pct(t.followUpArrivalPercent), t.drugMargin]],
+          rows: report.rows.map((r) => [r.branchName, r.visits, r.newPatients, r.recognized, r.collected, r.unpaidAmount, minutes(r.averageWaitMinutes), pct(r.followUpArrivalPercent), r.drugMargin, r.serviceMargin, r.totalMargin]),
+          totalRows: [[`Cộng ${report.rows.length} chi nhánh`, t.visits, t.newPatients, t.recognized, t.collected, t.unpaidAmount, minutes(t.averageWaitMinutes), pct(t.followUpArrivalPercent), t.drugMargin, t.serviceMargin, t.totalMargin]],
           emptyText: 'Không có chi nhánh nào trong phạm vi đã chọn.',
         },
         {
@@ -86,11 +88,12 @@ export function buildSystemRankingExcel(report: SystemRankingReport, ctx: System
     {
       name: 'Xếp hạng',
       header: header(ctx, 'Toàn hệ thống — Xếp hạng', report.from, report.to),
-      infoLines: ['Mỗi bảng lấy 20 mục đầu của toàn phạm vi, kèm giá trị từng chi nhánh. Dịch vụ: doanh thu ghi nhận sau chiết khấu. Bác sĩ: doanh thu sinh ra. Thuốc và vật tư: lãi gộp.'],
+      infoLines: ['Mỗi bảng lấy 20 mục đầu của toàn phạm vi, kèm giá trị từng chi nhánh. Dịch vụ: doanh thu ghi nhận sau chiết khấu. Bác sĩ: doanh thu sinh ra. Thuốc và vật tư: lãi gộp. Lãi gộp dịch vụ: doanh thu ghi nhận trừ chi phí vật tư tiêu hao của các lượt đã ghi tiêu hao.'],
       sections: [
         section('Dịch vụ', 'Số lượng', 'Ghi nhận', report.services, 'Không có dịch vụ nào trong kỳ đã chọn.'),
         section('Bác sĩ', 'Lượt khám', 'Doanh thu sinh ra', report.doctors, 'Không có bác sĩ nào khám trong kỳ đã chọn.'),
         section('Thuốc và vật tư', 'Số lượng', 'Lãi gộp', report.drugs, 'Không có thuốc hay vật tư nào được bán trong kỳ đã chọn.'),
+        section('Lãi gộp dịch vụ', 'Số lượt', 'Lãi gộp dịch vụ', report.serviceMargins, 'Chưa có lượt dịch vụ nào ghi tiêu hao trong kỳ đã chọn.'),
       ],
     },
   ]);
@@ -99,7 +102,7 @@ export function buildSystemRankingExcel(report: SystemRankingReport, ctx: System
 export function buildSystemMonthlyExcel(report: SystemMonthlyReport, ctx: SystemExcelContext): Promise<Buffer> {
   const k = report.kpis;
   const monthLabel = (month: string) => `${month.slice(5)}/${month.slice(0, 4)}`;
-  const sum = (key: 'visits' | 'newPatients' | 'recognized' | 'collected' | 'drugMargin', which: 'current' | 'previous') => report.rows.reduce((s, r) => s + r[which][key], 0);
+  const sum = (key: 'visits' | 'newPatients' | 'recognized' | 'collected' | 'drugMargin' | 'serviceMargin' | 'totalMargin', which: 'current' | 'previous') => report.rows.reduce((s, r) => s + r[which][key], 0);
   const changeOf = (current: number, previous: number): string => (previous === 0 ? '—' : delta(Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10));
   return buildTableReportExcel([
     {
@@ -107,7 +110,7 @@ export function buildSystemMonthlyExcel(report: SystemMonthlyReport, ctx: System
       header: header(ctx, `Toàn hệ thống — Tổng hợp tháng ${monthLabel(report.month)}`, report.from, report.to),
       infoLines: [
         `So với tháng ${monthLabel(report.previousMonth)}`,
-        `Ghi nhận: ${money(k.recognized.value)} (${delta(k.recognized.percent)}) · Thực thu: ${money(k.collected.value)} (${delta(k.collected.percent)}) · Lượt khám: ${money(k.visits.value)} (${delta(k.visits.percent)}) · Bệnh nhân mới: ${money(k.newPatients.value)} (${delta(k.newPatients.percent)}) · Lãi gộp thuốc: ${money(k.drugMargin.value)} (${delta(k.drugMargin.percent)})`,
+        `Ghi nhận: ${money(k.recognized.value)} (${delta(k.recognized.percent)}) · Thực thu: ${money(k.collected.value)} (${delta(k.collected.percent)}) · Lượt khám: ${money(k.visits.value)} (${delta(k.visits.percent)}) · Bệnh nhân mới: ${money(k.newPatients.value)} (${delta(k.newPatients.percent)}) · Lãi gộp thuốc: ${money(k.drugMargin.value)} (${delta(k.drugMargin.percent)}) · Lãi gộp dịch vụ: ${money(k.serviceMargin.value)} (${delta(k.serviceMargin.percent)}) · Lãi gộp tổng: ${money(k.totalMargin.value)} (${delta(k.totalMargin.percent)})`,
       ],
       sections: [
         {
@@ -121,9 +124,11 @@ export function buildSystemMonthlyExcel(report: SystemMonthlyReport, ctx: System
             { header: `Thực thu T${monthLabel(report.previousMonth)}`, width: 20, numeric: true },
             { header: 'So tháng trước', width: 14 },
             { header: 'Lãi gộp thuốc', width: 18, numeric: true },
+            { header: 'Lãi gộp dịch vụ', width: 18, numeric: true },
+            { header: 'Lãi gộp tổng', width: 18, numeric: true },
           ],
-          rows: report.rows.map((r) => [r.branchName, r.current.visits, r.current.newPatients, r.current.recognized, r.current.collected, r.previous.collected, changeOf(r.current.collected, r.previous.collected), r.current.drugMargin]),
-          totalRows: [[`Cộng ${report.rows.length} chi nhánh`, sum('visits', 'current'), sum('newPatients', 'current'), sum('recognized', 'current'), sum('collected', 'current'), sum('collected', 'previous'), changeOf(sum('collected', 'current'), sum('collected', 'previous')), sum('drugMargin', 'current')]],
+          rows: report.rows.map((r) => [r.branchName, r.current.visits, r.current.newPatients, r.current.recognized, r.current.collected, r.previous.collected, changeOf(r.current.collected, r.previous.collected), r.current.drugMargin, r.current.serviceMargin, r.current.totalMargin]),
+          totalRows: [[`Cộng ${report.rows.length} chi nhánh`, sum('visits', 'current'), sum('newPatients', 'current'), sum('recognized', 'current'), sum('collected', 'current'), sum('collected', 'previous'), changeOf(sum('collected', 'current'), sum('collected', 'previous')), sum('drugMargin', 'current'), sum('serviceMargin', 'current'), sum('totalMargin', 'current')]],
           emptyText: 'Không có chi nhánh nào trong phạm vi đã chọn.',
         },
         {

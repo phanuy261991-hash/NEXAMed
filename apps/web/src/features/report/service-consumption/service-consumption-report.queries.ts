@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAppConfig } from '../../../app/AppConfigProvider';
 import { queryKey } from '../../../shared/api/query-keys';
-import { getServiceConsumptionByCustomer, getServiceConsumptionByService, type ServiceConsumptionPeriodParams } from './service-consumption-report.api';
+import { getServiceConsumptionByBranch, getServiceConsumptionByCustomer, getServiceConsumptionByItem, getServiceConsumptionByService, type ServiceConsumptionPeriodParams } from './service-consumption-report.api';
 
 function periodKey(p: ServiceConsumptionPeriodParams): string {
   return JSON.stringify([p.from, p.to, p.scope, p.branchIds, p.serviceKey ?? '', p.doctorId ?? '']);
@@ -20,4 +20,14 @@ export function useServiceConsumptionByServiceQuery(p: ServiceConsumptionPeriodP
 export function useServiceConsumptionByCustomerQuery(p: ServiceConsumptionPeriodParams, enabled: boolean) {
   const { tenantId } = useAppConfig();
   return useQuery({ queryKey: queryKey(tenantId, 'report', 'service-consumption', 'by-customer', periodKey(p)), queryFn: () => getServiceConsumptionByCustomer(p), ...reportOptions(enabled) });
+}
+
+export function useServiceConsumptionByItemQuery(p: ServiceConsumptionPeriodParams, enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({ queryKey: queryKey(tenantId, 'report', 'service-consumption', 'by-item', periodKey(p)), queryFn: () => getServiceConsumptionByItem(p), ...reportOptions(enabled) });
+}
+
+export function useServiceConsumptionByBranchQuery(p: ServiceConsumptionPeriodParams, enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({ queryKey: queryKey(tenantId, 'report', 'service-consumption', 'by-branch', periodKey(p)), queryFn: () => getServiceConsumptionByBranch(p), ...reportOptions(enabled) });
 }

@@ -28,12 +28,14 @@ function kpis(report: SystemMonthlyReport): ReportKpiItem[] {
     item('Lượt khám', k.visits, 'default', formatCount),
     item('Bệnh nhân mới', k.newPatients, 'blue', formatCount),
     item('Lãi gộp thuốc', k.drugMargin, 'teal', formatVndPlain),
+    item('Lãi gộp dịch vụ', k.serviceMargin, 'teal', formatVndPlain),
+    item('Lãi gộp tổng', k.totalMargin, 'default', formatVndPlain),
   ];
 }
 
 function Body({ report }: { report: SystemMonthlyReport }) {
   if (report.rows.length === 0) return <EmptyState icon={CalendarBlank} title="Không có chi nhánh nào trong phạm vi" description="Chọn lại phạm vi chi nhánh." />;
-  const sum = (key: 'visits' | 'newPatients' | 'recognized' | 'collected' | 'drugMargin', which: 'current' | 'previous') => report.rows.reduce((s, r) => s + r[which][key], 0);
+  const sum = (key: 'visits' | 'newPatients' | 'recognized' | 'collected' | 'drugMargin' | 'serviceMargin' | 'totalMargin', which: 'current' | 'previous') => report.rows.reduce((s, r) => s + r[which][key], 0);
   const maxGroup = Math.max(0, ...report.groups.map((g) => g.amount));
   const maxTrend = Math.max(0, ...report.trend.map((m) => m.collected));
   const totalChange = changePercent(sum('collected', 'current'), sum('collected', 'previous'));
@@ -46,7 +48,7 @@ function Body({ report }: { report: SystemMonthlyReport }) {
       <ReportCard title={`Theo chi nhánh, ${monthLabel(report.month).toLowerCase()}`}>
         <ReportGridTable
           ariaLabel="Tổng hợp tháng theo chi nhánh"
-          minWidth={1000}
+          minWidth={1240}
           columns={[
             { header: 'Chi nhánh', width: 'minmax(150px, 1.3fr)' },
             { header: 'Lượt khám', align: 'right', width: 'minmax(80px, 1fr)' },
@@ -56,6 +58,8 @@ function Body({ report }: { report: SystemMonthlyReport }) {
             { header: `Thực thu ${monthShort(report.previousMonth)}`, align: 'right', width: 'minmax(120px, 1fr)' },
             { header: 'So tháng trước', align: 'right', width: 'minmax(100px, 1fr)' },
             { header: 'Lãi gộp thuốc', align: 'right', width: 'minmax(110px, 1fr)' },
+            { header: 'Lãi gộp dịch vụ', align: 'right', width: 'minmax(120px, 1fr)' },
+            { header: 'Lãi gộp tổng', align: 'right', width: 'minmax(120px, 1fr)' },
           ]}
           rows={report.rows.map((r) => {
             const change = changePercent(r.current.collected, r.previous.collected);
@@ -68,6 +72,8 @@ function Body({ report }: { report: SystemMonthlyReport }) {
               <span key="pv" className="text-slate-600">{formatVndPlain(r.previous.collected)}</span>,
               <span key="ch" className={`font-semibold ${changeToneClass(change)}`}>{formatSignedPercent(change)}</span>,
               <span key="dm" className="font-semibold text-teal-700">{formatVndPlain(r.current.drugMargin)}</span>,
+              <span key="sm" className={`font-semibold ${r.current.serviceMargin < 0 ? 'text-rose-700' : 'text-teal-700'}`}>{formatVndPlain(r.current.serviceMargin)}</span>,
+              <span key="tm" className={`font-semibold ${r.current.totalMargin < 0 ? 'text-rose-700' : 'text-slate-900'}`}>{formatVndPlain(r.current.totalMargin)}</span>,
             ];
           })}
           footer={[
@@ -79,6 +85,8 @@ function Body({ report }: { report: SystemMonthlyReport }) {
             formatVndPlain(sum('collected', 'previous')),
             formatSignedPercent(totalChange),
             formatVndPlain(sum('drugMargin', 'current')),
+            formatVndPlain(sum('serviceMargin', 'current')),
+            formatVndPlain(sum('totalMargin', 'current')),
           ]}
         />
       </ReportCard>

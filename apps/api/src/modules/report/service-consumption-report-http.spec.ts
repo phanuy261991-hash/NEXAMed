@@ -118,10 +118,14 @@ describe('HTTP e2e — /api/v1/reports/service-consumption (Chi phí vật tư t
   const record = (encounterId: string, target: { kind: string; id: string }, drugId: string, quantity: number) =>
     http().post('/api/v1/service-consumption/records').set(authed(adminToken)).send({ encounterId, target, lines: [{ drugId, quantity }] });
 
-  type ByService = { totalCost: number; visitCount: number; averageCost: number | null; branchCount: number; serviceCount: number; serviceOptions: { key: string; name: string }[]; rows: { key: string; name: string; visitCount: number; cost: number; averageCost: number | null; topItems: string[] }[] };
-  type ByCustomer = { totalCost: number; visitCount: number; entryCount: number; entries: { patientName: string; serviceName: string; itemsText: string; doctorName: string | null; performerName: string | null; cost: number; branchName: string }[] };
+  type ByService = { totalCost: number; totalRevenue: number; totalMargin: number; marginPercent: number | null; visitCount: number; averageCost: number | null; branchCount: number; serviceCount: number; serviceOptions: { key: string; name: string }[]; rows: { key: string; name: string; visitCount: number; cost: number; averageCost: number | null; revenue: number; margin: number; marginPercent: number | null; topItems: string[] }[] };
+  type ByCustomer = { totalCost: number; visitCount: number; entryCount: number; entries: { patientName: string; serviceName: string; itemsText: string; doctorName: string | null; performerName: string | null; cost: number; revenue: number; margin: number; refunded: boolean; branchName: string }[] };
+  type ByItem = { totalCost: number; itemCount: number; medicineCount: number; supplyCount: number; topItem: { name: string; sharePercent: number | null } | null; rows: { key: string; name: string; itemType: string; serviceNames: string[]; serviceCount: number; quantity: number; unitName: string; averageUnitCost: number | null; cost: number; sharePercent: number | null }[] };
+  type ByBranch = { totalCost: number; totalRevenue: number; totalMargin: number; visitCount: number; branchCount: number; rows: { branchId: string; branchName: string; visitCount: number; revenue: number; cost: number; margin: number; marginPercent: number | null }[] };
   const byService = async (token: string, query: Record<string, unknown> = {}) => http().get(`${base}/by-service`).set(authed(token)).query({ ...range, ...query });
   const byCustomer = async (token: string, query: Record<string, unknown> = {}) => http().get(`${base}/by-customer`).set(authed(token)).query({ ...range, ...query });
+  const byItem = async (token: string, query: Record<string, unknown> = {}) => http().get(`${base}/by-item`).set(authed(token)).query({ ...range, ...query });
+  const byBranch = async (token: string, query: Record<string, unknown> = {}) => http().get(`${base}/by-branch`).set(authed(token)).query({ ...range, ...query });
 
   let labServiceId: string;
   let drugA: string;
@@ -198,8 +202,8 @@ describe('HTTP e2e — /api/v1/reports/service-consumption (Chi phí vật tư t
   });
 
   describe('phân quyền', () => {
-    it('không token → 401; bác sĩ, điều dưỡng, lễ tân KHÔNG có quyền xem giá vốn → 403 (cả 4 route); quản lý xem được', async () => {
-      for (const path of ['by-service', 'by-customer', 'by-service/export', 'by-customer/export']) {
+    it('không token → 401; bác sĩ, điều dưỡng, lễ tân KHÔNG có quyền xem giá vốn → 403 (cả 4 route); quản lý xem được (cả 8 route)', async () => {
+      for (const path of ['by-service', 'by-customer', 'by-item', 'by-branch', 'by-service/export', 'by-customer/export', 'by-item/export', 'by-branch/export']) {
         expect((await http().get(`${base}/${path}`).query(range)).status, path).toBe(401);
         for (const token of [doctorToken, nurseToken, receptionistToken]) {
           expect((await http().get(`${base}/${path}`).set(authed(token)).query(range)).status, path).toBe(403);
@@ -249,6 +253,47 @@ describe('HTTP e2e — /api/v1/reports/service-consumption (Chi phí vật tư t
       expect(myDoctor.visitCount).toBe(3);
     });
 
+    it('doanh thu và lãi gộp: doanh thu ghi nhận của dòng hoá đơn trừ chi phí vốn; biên một chữ số thập phân; tổng khớp từng dòng', async () => {
+      const r = (await byService(adminToken)).body.data as ByService;
+      // Khám thường: 2 lượt × 150.000; xét nghiệm 1 lượt × 100.000. Chi phí 400 và 500.
+      const exam = r.rows.find((x) => x.name === 'Khám thường')!;
+      const lab = r.rows.find((x) => x.name.includes('XN báo cáo'))!;
+      expect([exam.revenue, exam.cost, exam.margin]).toEqual([300_000, 400, 299_600]);
+      expect([lab.revenue, lab.cost, lab.margin]).toEqual([100_000, 500, 99_500]);
+      expect(exam.marginPercent).toBe(99.9);
+      expect(r).toMatchObject({ totalRevenue: 400_000, totalMargin: 399_100, marginPercent: 99.8 });
+      expect(r.rows.reduce((s, x) => s + x.revenue, 0)).toBe(r.totalRevenue);
+      expect(r.rows.reduce((s, x) => s + x.margin, 0)).toBe(r.totalMargin);
+      const c = (await byCustomer(adminToken)).body.data as ByCustomer;
+      expect(c.entries.reduce((s, e) => s + e.revenue, 0)).toBe(400_000);
+      expect(c.entries.every((e) => e.refunded === false && e.margin === e.revenue - e.cost)).toBe(true);
+      expect(c).toMatchObject({ totalRevenue: 400_000, totalMargin: 399_100 });
+    });
+
+    it('theo vật tư: số lượng, giá vốn trung bình, tỷ trọng, dịch vụ dùng; xếp theo chi phí giảm dần; phiếu đã đảo không tính', async () => {
+      const r = (await byItem(adminToken)).body.data as ByItem;
+      expect(r).toMatchObject({ totalCost: 900, itemCount: 2, supplyCount: 2, medicineCount: 0 });
+      expect(r.rows.map((x) => [x.name, x.quantity, x.cost, x.averageUnitCost, x.sharePercent, x.serviceCount])).toEqual([
+        ['Kim mẫu báo cáo', 2, 500, 250, 55.6, 1],
+        ['Ống mẫu báo cáo', 4, 400, 100, 44.4, 1],
+      ]);
+      expect(r.rows[0]!.serviceNames[0]).toContain('XN báo cáo');
+      expect(r.rows[1]!.serviceNames).toEqual(['Khám thường']);
+      expect(r.topItem).toMatchObject({ name: 'Kim mẫu báo cáo', sharePercent: 55.6 });
+      // Lọc theo dịch vụ chỉ còn mặt hàng của dịch vụ đó.
+      const key = ((await byService(adminToken)).body.data as ByService).rows.find((x) => x.name === 'Khám thường')!.key;
+      const filtered = (await byItem(adminToken, { serviceKey: key })).body.data as ByItem;
+      expect(filtered.rows.map((x) => x.name)).toEqual(['Ống mẫu báo cáo']);
+      expect(filtered.totalCost).toBe(400);
+    });
+
+    it('theo chi nhánh (một chi nhánh): một dòng, cộng khớp với tab Theo dịch vụ', async () => {
+      const r = (await byBranch(adminToken)).body.data as ByBranch;
+      expect(r.rows).toHaveLength(1);
+      expect(r.rows[0]).toMatchObject({ visitCount: 3, cost: 900, revenue: 400_000, margin: 399_100 });
+      expect(r).toMatchObject({ totalCost: 900, totalRevenue: 400_000, totalMargin: 399_100 });
+    });
+
     it('kỳ không có dữ liệu → toàn 0, trung bình null (không chia cho 0)', async () => {
       const r = (await byService(adminToken, { from: '2020-01-01', to: '2020-01-31' })).body.data as ByService;
       expect(r).toMatchObject({ totalCost: 0, visitCount: 0, averageCost: null, serviceCount: 0, rows: [] });
@@ -270,7 +315,13 @@ describe('HTTP e2e — /api/v1/reports/service-consumption (Chi phí vật tư t
       expect(c).toMatchObject({ totalCost: 0, visitCount: 0, entryCount: 0, entries: [] });
       // Bác sĩ của A truyền sang B vẫn không ra gì.
       expect(((await byCustomer(tenantBAdminToken, { doctorId: doctorUserId })).body.data as ByCustomer).entries).toEqual([]);
-      for (const path of ['by-service/export', 'by-customer/export']) {
+      const bi = (await byItem(tenantBAdminToken)).body.data as ByItem;
+      expect(bi).toMatchObject({ totalCost: 0, itemCount: 0, rows: [], topItem: null });
+      // Tab Theo chi nhánh chỉ liệt kê chi nhánh của chính công ty B (không lộ chi nhánh công ty A) và toàn 0.
+      const bb = (await byBranch(tenantBAdminToken)).body.data as ByBranch;
+      expect(bb).toMatchObject({ totalCost: 0, totalRevenue: 0, totalMargin: 0, visitCount: 0 });
+      expect(bb.rows.every((r) => r.cost === 0 && r.revenue === 0 && r.visitCount === 0)).toBe(true);
+      for (const path of ['by-service/export', 'by-customer/export', 'by-item/export', 'by-branch/export']) {
         expect((await http().get(`${base}/${path}`).set(authed(tenantBAdminToken)).query(range)).status).toBe(200);
       }
     });
@@ -280,6 +331,10 @@ describe('HTTP e2e — /api/v1/reports/service-consumption (Chi phí vật tư t
       expect(s).toMatchObject({ totalCost: 0, visitCount: 0, serviceCount: 0, rows: [] });
       const c = (await byCustomer(branchBAdminToken)).body.data as ByCustomer;
       expect(c.entries).toEqual([]);
+      expect(((await byItem(branchBAdminToken)).body.data as ByItem).rows).toEqual([]);
+      const bb = (await byBranch(branchBAdminToken)).body.data as ByBranch;
+      expect(bb).toMatchObject({ branchCount: 1, totalCost: 0, totalRevenue: 0, visitCount: 0 });
+      expect(bb.rows).toHaveLength(1);
     });
 
     it('gộp chi nhánh (scope=all / pick) cần THÊM quyền xem báo cáo toàn công ty: có quyền thì thấy đủ và có tên chi nhánh; vai trò chỉ có quyền xem chi phí vật tư → 403 dù tự gửi tham số', async () => {
@@ -290,6 +345,14 @@ describe('HTTP e2e — /api/v1/reports/service-consumption (Chi phí vật tư t
       expect(customers.entries.every((e) => e.branchName !== '')).toBe(true);
       // Quản lý chi nhánh B gộp cả công ty (có company_report.read) thì thấy dữ liệu chi nhánh A — đúng thiết kế.
       expect(((await byService(branchBAdminToken, { scope: 'all' })).body.data as ByService).totalCost).toBe(900);
+      expect(((await byItem(adminToken, { scope: 'all' })).body.data as ByItem).totalCost).toBe(900);
+      // Theo chi nhánh: đủ 2 chi nhánh, chi nhánh B chưa có lượt nào vẫn hiện một dòng 0; cộng các dòng = tổng.
+      const branches = (await byBranch(adminToken, { scope: 'all' })).body.data as ByBranch;
+      expect(branches).toMatchObject({ branchCount: 2, totalCost: 900, visitCount: 3 });
+      expect(branches.rows).toHaveLength(2);
+      expect(branches.rows.reduce((s, r) => s + r.cost, 0)).toBe(900);
+      expect(branches.rows.reduce((s, r) => s + r.revenue, 0)).toBe(branches.totalRevenue);
+      expect(branches.rows.filter((r) => r.visitCount === 0)).toHaveLength(1);
 
       const perm = await privileged.permission.findFirstOrThrow({ where: { module: 'service_consumption', action: 'report' } });
       const role = await privileged.role.create({ data: { tenantId: fixture.tenantA.id, name: `chi-xem-chi-phi-${randomUUID().slice(0, 6)}`, isSystemDefault: false, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
@@ -301,13 +364,15 @@ describe('HTTP e2e — /api/v1/reports/service-consumption (Chi phí vật tư t
       for (const extra of [{ scope: 'all' }, { scope: 'pick', branchIds: randomUUID() }]) {
         expect((await byService(limited, extra)).status, JSON.stringify(extra)).toBe(403);
         expect((await byCustomer(limited, extra)).status, JSON.stringify(extra)).toBe(403);
+        expect((await byItem(limited, extra)).status, JSON.stringify(extra)).toBe(403);
+        expect((await byBranch(limited, extra)).status, JSON.stringify(extra)).toBe(403);
       }
     });
   });
 
   describe('Excel + nhật ký xuất', () => {
-    it('xuất được Excel cho cả hai tab (đúng kiểu tệp, có tên tệp theo kỳ) và ghi nhật ký người xuất', async () => {
-      for (const path of ['by-service/export', 'by-customer/export']) {
+    it('xuất được Excel cho cả bốn tab (đúng kiểu tệp, có tên tệp theo kỳ) và ghi nhật ký người xuất', async () => {
+      for (const path of ['by-service/export', 'by-customer/export', 'by-item/export', 'by-branch/export']) {
         const res = await http().get(`${base}/${path}`).set(authed(adminToken)).query(range).buffer(true).parse((r, cb) => {
           const chunks: Buffer[] = [];
           r.on('data', (c: Buffer) => chunks.push(c));
@@ -319,7 +384,33 @@ describe('HTTP e2e — /api/v1/reports/service-consumption (Chi phí vật tư t
         expect((res.body as Buffer).subarray(0, 2).toString()).toBe('PK'); // tệp xlsx là zip
       }
       const logs = await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, action: 'service_consumption.exported' } });
-      expect(logs).toBeGreaterThanOrEqual(2);
+      expect(logs).toBeGreaterThanOrEqual(4);
+    });
+  });
+
+  // Đặt CUỐI file vì ca này thêm một lượt vào dữ liệu chung (các ca trên kiểm tổng cố định).
+  describe('lượt khách bị hoàn tiền (giữ nguyên vật tư đã hao)', () => {
+    it('doanh thu 0, lãi gộp ÂM, có cờ "Đã hoàn tiền"; vẫn tính chi phí; biên null (không chia cho 0)', async () => {
+      const e4 = await newEncounter(null);
+      const exam4 = (await overview(e4.encounterId)).services[0]!;
+      expect((await record(e4.encounterId, exam4.target, drugA, 2)).status).toBe(200); // 200 đ chi phí
+      const before = ((await byService(adminToken)).body.data as ByService);
+      expect(before).toMatchObject({ totalRevenue: 550_000, totalCost: 1100 });
+
+      // Phiếu thu của lượt này bị hoàn tiền toàn phần → không còn là doanh thu ghi nhận.
+      const updated = await privileged.invoice.updateMany({ where: { tenantId: fixture.tenantA.id, encounterId: e4.encounterId }, data: { status: 'REFUNDED' } });
+      expect(updated.count).toBe(1);
+
+      const s = (await byService(adminToken)).body.data as ByService;
+      expect(s).toMatchObject({ totalCost: 1100, totalRevenue: 400_000, totalMargin: 398_900, visitCount: 4 });
+      const exam = s.rows.find((x) => x.name === 'Khám thường')!;
+      expect([exam.visitCount, exam.revenue, exam.cost, exam.margin]).toEqual([3, 300_000, 600, 299_400]);
+
+      const c = (await byCustomer(adminToken)).body.data as ByCustomer;
+      const refunded = c.entries.filter((e) => e.refunded);
+      expect(refunded).toHaveLength(1);
+      expect(refunded[0]).toMatchObject({ revenue: 0, cost: 200, margin: -200 });
+      expect(c.entries.filter((e) => !e.refunded).every((e) => e.revenue > 0)).toBe(true);
     });
   });
 });

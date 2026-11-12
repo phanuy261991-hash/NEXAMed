@@ -3,7 +3,7 @@ import { drugItemTypeSchema } from './drug';
 
 /**
  * "Chi phí vật tư theo dịch vụ" (docs/DECISIONS.md #297, giai đoạn 4): ĐỊNH MỨC vật tư/thuốc tiêu hao của một dịch vụ + GHI tiêu hao thật cho từng lượt dịch vụ đã làm.
- * Định mức là dữ liệu CHUNG cả công ty; phiếu tiêu hao theo chi nhánh (kho/lượt khám). Không thu thêm tiền khách, không vào lãi gộp.
+ * Định mức là dữ liệu CHUNG cả công ty; phiếu tiêu hao theo chi nhánh (kho/lượt khám). Không thu thêm tiền khách; không vào Lãi gộp thuốc, chỉ vào Lãi gộp dịch vụ của báo cáo chi phí vật tư (#297 bổ sung 4).
  */
 
 /** Dịch vụ có định mức: dịch vụ khám (mã danh mục) hoặc dịch vụ kỹ thuật (id). */

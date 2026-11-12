@@ -63,6 +63,8 @@ import {
   serviceConsumptionReportQuerySchema,
   serviceConsumptionByServiceReportSchema,
   serviceConsumptionByCustomerReportSchema,
+  serviceConsumptionByItemReportSchema,
+  serviceConsumptionByBranchReportSchema,
   doctorPerformanceReportSchema,
   doctorOrderMixReportSchema,
   doctorHoursReportSchema,
@@ -4246,6 +4248,8 @@ const SERVICE_CONSUMPTION_REPORT_FORBIDDEN = 'Không có quyền service_consump
 const serviceConsumptionReports: Array<{ path: string; label: string; summary: string; schema: Parameters<typeof envelope>[0] }> = [
   { path: 'by-service', label: 'Chi phí vật tư theo dịch vụ', summary: 'Chi phí vốn vật tư và thuốc tiêu hao theo dịch vụ — số lượt, chi phí vốn, trung bình mỗi lượt, mặt hàng dùng nhiều nhất; lọc theo Dịch vụ và Bác sĩ', schema: serviceConsumptionByServiceReportSchema },
   { path: 'by-customer', label: 'Chi phí vật tư theo khách', summary: 'Chi phí vốn vật tư và thuốc tiêu hao theo từng lượt dịch vụ của từng khách; lọc theo Dịch vụ và Bác sĩ', schema: serviceConsumptionByCustomerReportSchema },
+  { path: 'by-item', label: 'Chi phí vật tư theo vật tư', summary: 'Chi phí vốn theo từng mặt hàng đã dùng — số lượng, giá vốn trung bình, tỷ trọng, dịch vụ dùng; lọc theo Dịch vụ và Bác sĩ', schema: serviceConsumptionByItemReportSchema },
+  { path: 'by-branch', label: 'Chi phí vật tư theo chi nhánh', summary: 'Số lượt, doanh thu, chi phí vốn và lãi gộp dịch vụ của từng chi nhánh trong phạm vi; gộp từ hai chi nhánh cần quyền xem báo cáo toàn công ty', schema: serviceConsumptionByBranchReportSchema },
 ];
 for (const r of serviceConsumptionReports) {
   registry.registerPath({

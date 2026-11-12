@@ -58,6 +58,7 @@ import { DoctorReportRepository } from './doctor-report.repository';
 import { OperationsReportRepository } from './operations-report.repository';
 import { PharmacyReportRepository } from './pharmacy-report.repository';
 import { RevenueReportRepository } from './revenue-report.repository';
+import { ServiceConsumptionReportService } from './service-consumption-report.service';
 import { SystemReportRepository } from './system-report.repository';
 
 interface Actor {
@@ -95,6 +96,7 @@ export class SystemReportService {
     private readonly operations: OperationsReportRepository,
     private readonly pharmacy: PharmacyReportRepository,
     private readonly doctors: DoctorReportRepository,
+    private readonly serviceConsumption: ServiceConsumptionReportService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
@@ -151,6 +153,11 @@ export class SystemReportService {
     return acc.finish().totals.margin;
   }
 
+  /** Lãi gộp dịch vụ của một chi nhánh (#297 bổ sung 4): doanh thu ghi nhận trừ chi phí vật tư tiêu hao của các lượt đã ghi tiêu hao. */
+  private async collectServiceMargin(tx: Prisma.TransactionClient, tenantId: string, branchId: string, from: string, to: string): Promise<number> {
+    return this.serviceConsumption.sumServiceMargin(tx, this.rangeOf(tenantId, branchId, from, to));
+  }
+
   private async collectGroups(tx: Prisma.TransactionClient, tenantId: string, branchId: string, from: string, to: string): Promise<Record<RevenueGroup, number>> {
     const w = vietnamDateRangeHalfOpenUtc(from, to);
     return collectedByGroup(await this.dashboard.listCollectedWithLines(tx, tenantId, branchId, w.startUtc, w.endUtc));
@@ -192,6 +199,7 @@ export class SystemReportService {
         const arrived = followUps.filter((f) => !f.notReturning && f.returned).reduce((s, f) => s + f.count, 0);
         const overdue = followUps.filter((f) => !f.notReturning && !f.returned && f.past).reduce((s, f) => s + f.count, 0);
         const drugMargin = await this.collectMargin(tx, actor.tenantId, branchId, query.from, query.to);
+        const serviceMargin = await this.collectServiceMargin(tx, actor.tenantId, branchId, query.from, query.to);
         const groups = await this.collectGroups(tx, actor.tenantId, branchId, query.from, query.to);
         const openShifts = await this.dashboard.listOpenCashierShifts(tx, actor.tenantId, branchId);
         const expiring = await this.dashboard.countExpiringBatches(tx, actor.tenantId, branchId, today, untilDate);
@@ -209,6 +217,8 @@ export class SystemReportService {
             averageWaitMinutes: waitCount > 0 ? Math.round(waitSum / waitCount) : null,
             followUpArrivalPercent: roundPercent(arrived, arrived + overdue),
             drugMargin,
+            serviceMargin,
+            totalMargin: drugMargin + serviceMargin,
           },
           lite,
           previous: prev,
@@ -260,6 +270,8 @@ export class SystemReportService {
         averageWaitMinutes: totalWaitCount > 0 ? Math.round(perBranch.reduce((s, b) => s + b.waitSum, 0) / totalWaitCount) : null,
         followUpArrivalPercent: roundPercent(totalArrived, totalArrived + totalOverdue),
         drugMargin: rows.reduce((s, r) => s + r.drugMargin, 0),
+        serviceMargin: rows.reduce((s, r) => s + r.serviceMargin, 0),
+        totalMargin: rows.reduce((s, r) => s + r.totalMargin, 0),
       },
       daily: {
         dates,
@@ -280,7 +292,7 @@ export class SystemReportService {
     const scope = await this.resolveScope(actor, query);
 
     const perBranch = await this.unitOfWork.runInTenantScope(actor.tenantId, async (tx) => {
-      const result: Array<{ services: RankInput[]; doctors: RankInput[]; drugs: RankInput[] }> = [];
+      const result: Array<{ services: RankInput[]; doctors: RankInput[]; drugs: RankInput[]; serviceMargins: RankInput[] }> = [];
       for (const branchId of scope.branchIds) {
         const services = createServiceBreakdownAccumulator();
         const margin = createMarginAccumulator('ALL');
@@ -294,6 +306,7 @@ export class SystemReportService {
         }
         const whole = this.rangeOf(actor.tenantId, branchId, query.from, query.to);
         const stats = await this.doctors.statsByDoctor(tx, { ...whole, departmentId: null });
+        const serviceMargins = await this.serviceConsumption.sumServiceMarginByService(tx, whole);
         result.push({
           services: services
             .finish()
@@ -301,6 +314,7 @@ export class SystemReportService {
             .map((r) => ({ key: `${r.group}|${r.code}|${r.name}`, name: r.name, subtitle: SYSTEM_GROUP_LABEL[r.group], quantity: r.quantity, amount: r.amount })),
           doctors: summarizeDoctorPerformance(stats, revenueByDoctor).rows.map((r) => ({ key: r.doctorId, name: r.doctorName, subtitle: r.departmentName, quantity: r.visits, amount: r.revenue })),
           drugs: margin.finish().rows.map((r) => ({ key: r.drugId, name: r.name, subtitle: PHARMACY_ITEM_TYPE_LABEL[r.itemType], quantity: r.quantity, amount: r.margin })),
+          serviceMargins: serviceMargins.map((r) => ({ key: r.key, name: r.name, subtitle: r.key.startsWith('TECHNICAL_SERVICE:') ? SYSTEM_GROUP_LABEL.PARACLINICAL : SYSTEM_GROUP_LABEL.EXAM, quantity: r.visitCount, amount: r.margin })),
         });
       }
       return result;
@@ -312,6 +326,7 @@ export class SystemReportService {
       services: mergeBranchRankings(perBranch.map((b) => b.services), SYSTEM_RANKING_LIMIT),
       doctors: mergeBranchRankings(perBranch.map((b) => b.doctors), SYSTEM_RANKING_LIMIT),
       drugs: mergeBranchRankings(perBranch.map((b) => b.drugs), SYSTEM_RANKING_LIMIT),
+      serviceMargins: mergeBranchRankings(perBranch.map((b) => b.serviceMargins), SYSTEM_RANKING_LIMIT),
     };
     return { report, scope };
   }
@@ -326,7 +341,7 @@ export class SystemReportService {
     const prevMonth = previousMonth(query.month);
 
     const perBranch = await this.unitOfWork.runInTenantScope(actor.tenantId, async (tx) => {
-      const result: Array<{ branchId: string; byMonth: Map<string, LiteMetrics>; margin: Map<string, number>; groups: Record<RevenueGroup, number> }> = [];
+      const result: Array<{ branchId: string; byMonth: Map<string, LiteMetrics>; margin: Map<string, number>; serviceMargin: Map<string, number>; groups: Record<RevenueGroup, number> }> = [];
       for (const branchId of scope.branchIds) {
         const byMonth = new Map<string, LiteMetrics>();
         for (const month of months) {
@@ -334,21 +349,25 @@ export class SystemReportService {
           byMonth.set(month, await this.collectLite(tx, actor.tenantId, branchId, r.from, r.to));
         }
         const margin = new Map<string, number>();
+        const serviceMargin = new Map<string, number>();
         for (const month of [query.month, prevMonth]) {
           const r = monthRange(month)!;
           margin.set(month, await this.collectMargin(tx, actor.tenantId, branchId, r.from, r.to));
+          serviceMargin.set(month, await this.collectServiceMargin(tx, actor.tenantId, branchId, r.from, r.to));
         }
-        result.push({ branchId, byMonth, margin, groups: await this.collectGroups(tx, actor.tenantId, branchId, range.from, range.to) });
+        result.push({ branchId, byMonth, margin, serviceMargin, groups: await this.collectGroups(tx, actor.tenantId, branchId, range.from, range.to) });
       }
       return result;
     });
 
     const metrics = (b: (typeof perBranch)[number], month: string) => {
       const m = b.byMonth.get(month)!;
-      return { visits: m.visits, newPatients: m.newPatients, recognized: m.recognized, collected: m.collected, drugMargin: b.margin.get(month) ?? 0 };
+      const drugMargin = b.margin.get(month) ?? 0;
+      const serviceMargin = b.serviceMargin.get(month) ?? 0;
+      return { visits: m.visits, newPatients: m.newPatients, recognized: m.recognized, collected: m.collected, drugMargin, serviceMargin, totalMargin: drugMargin + serviceMargin };
     };
     const rows = perBranch.map((b) => ({ branchId: b.branchId, branchName: scope.names.get(b.branchId) ?? '', current: metrics(b, query.month), previous: metrics(b, prevMonth) }));
-    const total = (key: 'visits' | 'newPatients' | 'recognized' | 'collected' | 'drugMargin', which: 'current' | 'previous') => rows.reduce((s, r) => s + r[which][key], 0);
+    const total = (key: 'visits' | 'newPatients' | 'recognized' | 'collected' | 'drugMargin' | 'serviceMargin' | 'totalMargin', which: 'current' | 'previous') => rows.reduce((s, r) => s + r[which][key], 0);
     const groupTotals: Record<RevenueGroup, number> = { EXAM: 0, PARACLINICAL: 0, DRUG: 0, PACKAGE: 0 };
     for (const b of perBranch) for (const g of GROUPS) groupTotals[g] += b.groups[g];
 
@@ -362,6 +381,8 @@ export class SystemReportService {
         visits: kpiWithPrevious(total('visits', 'current'), total('visits', 'previous')),
         newPatients: kpiWithPrevious(total('newPatients', 'current'), total('newPatients', 'previous')),
         drugMargin: kpiWithPrevious(total('drugMargin', 'current'), total('drugMargin', 'previous')),
+        serviceMargin: kpiWithPrevious(total('serviceMargin', 'current'), total('serviceMargin', 'previous')),
+        totalMargin: kpiWithPrevious(total('totalMargin', 'current'), total('totalMargin', 'previous')),
       },
       rows,
       ...this.groupRows(groupTotals),

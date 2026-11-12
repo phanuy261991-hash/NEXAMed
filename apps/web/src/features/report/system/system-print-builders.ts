@@ -47,9 +47,11 @@ export function buildSystemOverviewPrintSpec(report: SystemOverviewReport, ctx: 
           { header: 'Chờ TB (phút)', align: 'right' },
           { header: 'Tái khám đã đến', align: 'right' },
           { header: 'Lãi gộp thuốc', align: 'right' },
+          { header: 'Lãi gộp dịch vụ', align: 'right' },
+          { header: 'Lãi gộp tổng', align: 'right' },
         ],
-        rows: report.rows.map((r) => [r.branchName, n(r.visits), n(r.newPatients), n(r.recognized), n(r.collected), n(r.unpaidAmount), dash(r.averageWaitMinutes), formatPercent(r.followUpArrivalPercent), n(r.drugMargin)]),
-        totalRows: [[`Cộng ${report.rows.length} chi nhánh`, n(t.visits), n(t.newPatients), n(t.recognized), n(t.collected), n(t.unpaidAmount), dash(t.averageWaitMinutes), formatPercent(t.followUpArrivalPercent), n(t.drugMargin)]],
+        rows: report.rows.map((r) => [r.branchName, n(r.visits), n(r.newPatients), n(r.recognized), n(r.collected), n(r.unpaidAmount), dash(r.averageWaitMinutes), formatPercent(r.followUpArrivalPercent), n(r.drugMargin), n(r.serviceMargin), n(r.totalMargin)]),
+        totalRows: [[`Cộng ${report.rows.length} chi nhánh`, n(t.visits), n(t.newPatients), n(t.recognized), n(t.collected), n(t.unpaidAmount), dash(t.averageWaitMinutes), formatPercent(t.followUpArrivalPercent), n(t.drugMargin), n(t.serviceMargin), n(t.totalMargin)]],
         emptyText: 'Không có chi nhánh nào trong phạm vi đã chọn.',
       },
       {
@@ -82,19 +84,19 @@ export function buildSystemRankingPrintSpec(report: SystemRankingReport, ctx: Sy
   return {
     title: 'Toàn hệ thống — Xếp hạng',
     subtitleLines: subtitle(ctx),
-    infoLines: ['Mỗi bảng lấy 20 mục đầu của toàn phạm vi. Dịch vụ: doanh thu ghi nhận sau chiết khấu. Bác sĩ: doanh thu sinh ra. Thuốc và vật tư: lãi gộp.'],
-    sections: [section('services', 'Dịch vụ'), section('doctors', 'Bác sĩ'), section('drugs', 'Thuốc và vật tư')],
+    infoLines: ['Mỗi bảng lấy 20 mục đầu của toàn phạm vi. Dịch vụ: doanh thu ghi nhận sau chiết khấu. Bác sĩ: doanh thu sinh ra. Thuốc và vật tư: lãi gộp. Lãi gộp dịch vụ: doanh thu ghi nhận trừ chi phí vật tư tiêu hao của các lượt đã ghi tiêu hao.'],
+    sections: [section('services', 'Dịch vụ'), section('doctors', 'Bác sĩ'), section('drugs', 'Thuốc và vật tư'), section('serviceMargins', 'Lãi gộp dịch vụ')],
   };
 }
 
 export function buildSystemMonthlyPrintSpec(report: SystemMonthlyReport, ctx: SystemPrintContext): ReportPrintSpec {
   const k = report.kpis;
-  const sum = (key: 'visits' | 'newPatients' | 'recognized' | 'collected' | 'drugMargin', which: 'current' | 'previous') => report.rows.reduce((s, r) => s + r[which][key], 0);
+  const sum = (key: 'visits' | 'newPatients' | 'recognized' | 'collected' | 'drugMargin' | 'serviceMargin' | 'totalMargin', which: 'current' | 'previous') => report.rows.reduce((s, r) => s + r[which][key], 0);
   return {
     title: `Toàn hệ thống — Tổng hợp ${monthLabel(report.month).toLowerCase()}`,
     subtitleLines: subtitle(ctx, [`So với ${monthLabel(report.previousMonth).toLowerCase()}`]),
     infoLines: [
-      `Ghi nhận: ${n(k.recognized.value)} (${formatSignedPercent(k.recognized.percent)}) · Thực thu: ${n(k.collected.value)} (${formatSignedPercent(k.collected.percent)}) · Lượt khám: ${n(k.visits.value)} (${formatSignedPercent(k.visits.percent)}) · Bệnh nhân mới: ${n(k.newPatients.value)} (${formatSignedPercent(k.newPatients.percent)}) · Lãi gộp thuốc: ${n(k.drugMargin.value)} (${formatSignedPercent(k.drugMargin.percent)})`,
+      `Ghi nhận: ${n(k.recognized.value)} (${formatSignedPercent(k.recognized.percent)}) · Thực thu: ${n(k.collected.value)} (${formatSignedPercent(k.collected.percent)}) · Lượt khám: ${n(k.visits.value)} (${formatSignedPercent(k.visits.percent)}) · Bệnh nhân mới: ${n(k.newPatients.value)} (${formatSignedPercent(k.newPatients.percent)}) · Lãi gộp thuốc: ${n(k.drugMargin.value)} (${formatSignedPercent(k.drugMargin.percent)}) · Lãi gộp dịch vụ: ${n(k.serviceMargin.value)} (${formatSignedPercent(k.serviceMargin.percent)}) · Lãi gộp tổng: ${n(k.totalMargin.value)} (${formatSignedPercent(k.totalMargin.percent)})`,
     ],
     sections: [
       {
@@ -108,9 +110,11 @@ export function buildSystemMonthlyPrintSpec(report: SystemMonthlyReport, ctx: Sy
           { header: `Thực thu ${monthShort(report.previousMonth)}`, align: 'right' },
           { header: 'So tháng trước', align: 'right' },
           { header: 'Lãi gộp thuốc', align: 'right' },
+          { header: 'Lãi gộp dịch vụ', align: 'right' },
+          { header: 'Lãi gộp tổng', align: 'right' },
         ],
-        rows: report.rows.map((r) => [r.branchName, n(r.current.visits), n(r.current.newPatients), n(r.current.recognized), n(r.current.collected), n(r.previous.collected), formatSignedPercent(changePercent(r.current.collected, r.previous.collected)), n(r.current.drugMargin)]),
-        totalRows: [[`Cộng ${report.rows.length} chi nhánh`, n(sum('visits', 'current')), n(sum('newPatients', 'current')), n(sum('recognized', 'current')), n(sum('collected', 'current')), n(sum('collected', 'previous')), formatSignedPercent(changePercent(sum('collected', 'current'), sum('collected', 'previous'))), n(sum('drugMargin', 'current'))]],
+        rows: report.rows.map((r) => [r.branchName, n(r.current.visits), n(r.current.newPatients), n(r.current.recognized), n(r.current.collected), n(r.previous.collected), formatSignedPercent(changePercent(r.current.collected, r.previous.collected)), n(r.current.drugMargin), n(r.current.serviceMargin), n(r.current.totalMargin)]),
+        totalRows: [[`Cộng ${report.rows.length} chi nhánh`, n(sum('visits', 'current')), n(sum('newPatients', 'current')), n(sum('recognized', 'current')), n(sum('collected', 'current')), n(sum('collected', 'previous')), formatSignedPercent(changePercent(sum('collected', 'current'), sum('collected', 'previous'))), n(sum('drugMargin', 'current')), n(sum('serviceMargin', 'current')), n(sum('totalMargin', 'current'))]],
         emptyText: 'Không có chi nhánh nào trong phạm vi đã chọn.',
       },
       {

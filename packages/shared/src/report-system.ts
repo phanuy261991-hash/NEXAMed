@@ -63,6 +63,9 @@ export const systemBranchRowSchema = branchRef.extend({
   followUpArrivalPercent: percent,
   /** Lãi gộp của riêng thuốc và vật tư. */
   drugMargin: money,
+  /** Lãi gộp dịch vụ (doanh thu trừ chi phí vật tư tiêu hao, các lượt đã ghi tiêu hao) và lãi gộp tổng = thuốc và vật tư + dịch vụ (#297 bổ sung 4). */
+  serviceMargin: money,
+  totalMargin: money,
 });
 export type SystemBranchRow = z.infer<typeof systemBranchRowSchema>;
 
@@ -90,6 +93,8 @@ export const systemOverviewReportSchema = z.object({
     averageWaitMinutes: percent,
     followUpArrivalPercent: percent,
     drugMargin: money,
+    serviceMargin: money,
+    totalMargin: money,
   }),
   /** Thực thu từng ngày của từng chi nhánh: `dates` là mọi ngày của kỳ, mỗi chuỗi có đúng bấy nhiêu giá trị. */
   daily: z.object({ dates: z.array(isoDate), series: z.array(branchRef.extend({ values: z.array(money) })) }),
@@ -122,12 +127,14 @@ export const systemRankingReportSchema = z.object({
   doctors: z.array(systemRankRowSchema),
   /** Thuốc và vật tư — xếp theo lãi gộp; số lượng là số lượng bán ròng (đơn vị cơ sở). */
   drugs: z.array(systemRankRowSchema),
+  /** Dịch vụ — xếp theo lãi gộp dịch vụ (doanh thu trừ chi phí vật tư tiêu hao, các lượt đã ghi); số lượng là số lượt đã ghi tiêu hao (#297 bổ sung 4). */
+  serviceMargins: z.array(systemRankRowSchema),
 });
 export type SystemRankingReport = z.infer<typeof systemRankingReportSchema>;
 
 // ---- Tổng hợp tháng ----
 
-const monthMetrics = z.object({ visits: count, newPatients: count, recognized: money, collected: money, drugMargin: money });
+const monthMetrics = z.object({ visits: count, newPatients: count, recognized: money, collected: money, drugMargin: money, serviceMargin: money, totalMargin: money });
 export type SystemMonthMetrics = z.infer<typeof monthMetrics>;
 
 export const systemMonthlyReportSchema = z.object({
@@ -135,7 +142,7 @@ export const systemMonthlyReportSchema = z.object({
   /** Tháng đang xem `YYYY-MM` và tháng liền trước dùng để so sánh. */
   month: z.string(),
   previousMonth: z.string(),
-  kpis: z.object({ recognized: kpiWithPreviousSchema, collected: kpiWithPreviousSchema, visits: kpiWithPreviousSchema, newPatients: kpiWithPreviousSchema, drugMargin: kpiWithPreviousSchema }),
+  kpis: z.object({ recognized: kpiWithPreviousSchema, collected: kpiWithPreviousSchema, visits: kpiWithPreviousSchema, newPatients: kpiWithPreviousSchema, drugMargin: kpiWithPreviousSchema, serviceMargin: kpiWithPreviousSchema, totalMargin: kpiWithPreviousSchema }),
   rows: z.array(branchRef.extend({ current: monthMetrics, previous: monthMetrics })),
   groups: z.array(z.object({ group: revenueGroupSchema, amount: money, sharePercent: percent })),
   groupTotal: money,

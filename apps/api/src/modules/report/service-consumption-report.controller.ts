@@ -6,13 +6,19 @@ import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
 import type { ReportBranchScope } from '../../common/report-branch-scope.service';
-import { buildServiceConsumptionByCustomerExcel, buildServiceConsumptionByServiceExcel, type ServiceConsumptionExcelContext } from './service-consumption-report-export';
+import {
+  buildServiceConsumptionByBranchExcel,
+  buildServiceConsumptionByCustomerExcel,
+  buildServiceConsumptionByItemExcel,
+  buildServiceConsumptionByServiceExcel,
+  type ServiceConsumptionExcelContext,
+} from './service-consumption-report-export';
 import { ServiceConsumptionReportService } from './service-consumption-report.service';
 
 const EXCEL_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /**
- * Báo cáo "Chi phí vật tư theo dịch vụ" (docs/DECISIONS.md #297 GĐ4, màn 9), 2 tab: Theo dịch vụ, Theo khách — mỗi tab một route xem và một route `…/export` (Excel). Quyền `service_consumption.report`
+ * Báo cáo "Chi phí vật tư theo dịch vụ" (docs/DECISIONS.md #297 GĐ4, màn 9), 4 tab: Theo dịch vụ, Theo khách, Theo vật tư, Theo chi nhánh (#297 bổ sung 4) — mỗi tab một route xem và một route `…/export` (Excel). Quyền `service_consumption.report`
  * (mặc định chỉ quản lý phòng khám vì có giá vốn). Gộp từ hai chi nhánh trở lên cần THÊM `company_report.read` — `ReportBranchScopeService` kiểm trong service. Route cố định, không có route tham số.
  */
 @Controller('reports/service-consumption')
@@ -62,5 +68,31 @@ export class ServiceConsumptionReportController {
   async byCustomerExport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = serviceConsumptionReportQuerySchema.parse(query);
     await this.exportReport(req, res, 'by-customer', 'chi-phi-vat-tu-theo-khach', (now) => this.service.getByCustomer(req.user!, dto, now), (r, ctx, multi) => buildServiceConsumptionByCustomerExcel(r, multi, ctx));
+  }
+
+  @Get('by-item')
+  @RequirePermission('service_consumption', 'report')
+  async byItem(@Query() query: unknown, @Req() req: Request) {
+    return (await this.service.getByItem(req.user!, serviceConsumptionReportQuerySchema.parse(query))).report;
+  }
+
+  @Get('by-item/export')
+  @RequirePermission('service_consumption', 'report')
+  async byItemExport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const dto = serviceConsumptionReportQuerySchema.parse(query);
+    await this.exportReport(req, res, 'by-item', 'chi-phi-vat-tu-theo-vat-tu', (now) => this.service.getByItem(req.user!, dto, now), (r, ctx) => buildServiceConsumptionByItemExcel(r, ctx));
+  }
+
+  @Get('by-branch')
+  @RequirePermission('service_consumption', 'report')
+  async byBranch(@Query() query: unknown, @Req() req: Request) {
+    return (await this.service.getByBranch(req.user!, serviceConsumptionReportQuerySchema.parse(query))).report;
+  }
+
+  @Get('by-branch/export')
+  @RequirePermission('service_consumption', 'report')
+  async byBranchExport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const dto = serviceConsumptionReportQuerySchema.parse(query);
+    await this.exportReport(req, res, 'by-branch', 'chi-phi-vat-tu-theo-chi-nhanh', (now) => this.service.getByBranch(req.user!, dto, now), (r, ctx) => buildServiceConsumptionByBranchExcel(r, ctx));
   }
 }

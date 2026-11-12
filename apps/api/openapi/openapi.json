@@ -70336,6 +70336,12 @@
                               },
                               "drugMargin": {
                                 "type": "integer"
+                              },
+                              "serviceMargin": {
+                                "type": "integer"
+                              },
+                              "totalMargin": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -70349,7 +70355,9 @@
                               "unpaidCount",
                               "averageWaitMinutes",
                               "followUpArrivalPercent",
-                              "drugMargin"
+                              "drugMargin",
+                              "serviceMargin",
+                              "totalMargin"
                             ]
                           }
                         },
@@ -70388,6 +70396,12 @@
                             },
                             "drugMargin": {
                               "type": "integer"
+                            },
+                            "serviceMargin": {
+                              "type": "integer"
+                            },
+                            "totalMargin": {
+                              "type": "integer"
                             }
                           },
                           "required": [
@@ -70399,7 +70413,9 @@
                             "unpaidCount",
                             "averageWaitMinutes",
                             "followUpArrivalPercent",
-                            "drugMargin"
+                            "drugMargin",
+                            "serviceMargin",
+                            "totalMargin"
                           ]
                         },
                         "daily": {
@@ -71009,6 +71025,43 @@
                               "byBranch"
                             ]
                           }
+                        },
+                        "serviceMargins": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "subtitle": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "total": {
+                                "type": "integer"
+                              },
+                              "byBranch": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer"
+                                }
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "name",
+                              "subtitle",
+                              "quantity",
+                              "total",
+                              "byBranch"
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -71019,7 +71072,8 @@
                         "branches",
                         "services",
                         "doctors",
-                        "drugs"
+                        "drugs",
+                        "serviceMargins"
                       ]
                     },
                     "meta": {
@@ -71524,6 +71578,68 @@
                                 "percent",
                                 "direction"
                               ]
+                            },
+                            "serviceMargin": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": "integer"
+                                },
+                                "previous": {
+                                  "type": "integer"
+                                },
+                                "percent": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "direction": {
+                                  "type": "string",
+                                  "enum": [
+                                    "up",
+                                    "down",
+                                    "flat"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "previous",
+                                "percent",
+                                "direction"
+                              ]
+                            },
+                            "totalMargin": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": "integer"
+                                },
+                                "previous": {
+                                  "type": "integer"
+                                },
+                                "percent": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "direction": {
+                                  "type": "string",
+                                  "enum": [
+                                    "up",
+                                    "down",
+                                    "flat"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "previous",
+                                "percent",
+                                "direction"
+                              ]
                             }
                           },
                           "required": [
@@ -71531,7 +71647,9 @@
                             "collected",
                             "visits",
                             "newPatients",
-                            "drugMargin"
+                            "drugMargin",
+                            "serviceMargin",
+                            "totalMargin"
                           ]
                         },
                         "rows": {
@@ -71563,6 +71681,12 @@
                                   },
                                   "drugMargin": {
                                     "type": "integer"
+                                  },
+                                  "serviceMargin": {
+                                    "type": "integer"
+                                  },
+                                  "totalMargin": {
+                                    "type": "integer"
                                   }
                                 },
                                 "required": [
@@ -71570,7 +71694,9 @@
                                   "newPatients",
                                   "recognized",
                                   "collected",
-                                  "drugMargin"
+                                  "drugMargin",
+                                  "serviceMargin",
+                                  "totalMargin"
                                 ]
                               },
                               "previous": {
@@ -71590,6 +71716,12 @@
                                   },
                                   "drugMargin": {
                                     "type": "integer"
+                                  },
+                                  "serviceMargin": {
+                                    "type": "integer"
+                                  },
+                                  "totalMargin": {
+                                    "type": "integer"
                                   }
                                 },
                                 "required": [
@@ -71597,7 +71729,9 @@
                                   "newPatients",
                                   "recognized",
                                   "collected",
-                                  "drugMargin"
+                                  "drugMargin",
+                                  "serviceMargin",
+                                  "totalMargin"
                                 ]
                               }
                             },
@@ -74005,6 +74139,18 @@
                             "null"
                           ]
                         },
+                        "totalRevenue": {
+                          "type": "integer"
+                        },
+                        "totalMargin": {
+                          "type": "integer"
+                        },
+                        "marginPercent": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
                         "serviceOptions": {
                           "type": "array",
                           "items": {
@@ -74049,6 +74195,18 @@
                                   "null"
                                 ]
                               },
+                              "revenue": {
+                                "type": "integer"
+                              },
+                              "margin": {
+                                "type": "integer"
+                              },
+                              "marginPercent": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
                               "topItems": {
                                 "type": "array",
                                 "items": {
@@ -74062,6 +74220,9 @@
                               "visitCount",
                               "cost",
                               "averageCost",
+                              "revenue",
+                              "margin",
+                              "marginPercent",
                               "topItems"
                             ]
                           }
@@ -74075,6 +74236,9 @@
                         "totalCost",
                         "visitCount",
                         "averageCost",
+                        "totalRevenue",
+                        "totalMargin",
+                        "marginPercent",
                         "serviceOptions",
                         "serviceCount",
                         "rows"
@@ -74478,6 +74642,18 @@
                             "null"
                           ]
                         },
+                        "totalRevenue": {
+                          "type": "integer"
+                        },
+                        "totalMargin": {
+                          "type": "integer"
+                        },
+                        "marginPercent": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
                         "serviceOptions": {
                           "type": "array",
                           "items": {
@@ -74534,6 +74710,15 @@
                               "cost": {
                                 "type": "integer"
                               },
+                              "revenue": {
+                                "type": "integer"
+                              },
+                              "margin": {
+                                "type": "integer"
+                              },
+                              "refunded": {
+                                "type": "boolean"
+                              },
                               "branchName": {
                                 "type": "string"
                               }
@@ -74547,6 +74732,9 @@
                               "doctorName",
                               "performerName",
                               "cost",
+                              "revenue",
+                              "margin",
+                              "refunded",
                               "branchName"
                             ]
                           }
@@ -74560,6 +74748,9 @@
                         "totalCost",
                         "visitCount",
                         "averageCost",
+                        "totalRevenue",
+                        "totalMargin",
+                        "marginPercent",
                         "serviceOptions",
                         "entryCount",
                         "entries"
@@ -74711,6 +74902,1013 @@
           "report"
         ],
         "summary": "Xuất Excel Chi phí vật tư theo khách (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "pattern": "^(EXAM_TYPE|TECHNICAL_SERVICE):.+$"
+            },
+            "required": false,
+            "name": "serviceKey",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "doctorId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.report hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/service-consumption/by-item": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Chi phí vốn theo từng mặt hàng đã dùng — số lượng, giá vốn trung bình, tỷ trọng, dịch vụ dùng; lọc theo Dịch vụ và Bác sĩ (quyền service_consumption.report, #297; scope=all|pick cần thêm company_report.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "pattern": "^(EXAM_TYPE|TECHNICAL_SERVICE):.+$"
+            },
+            "required": false,
+            "name": "serviceKey",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "doctorId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "branchCount": {
+                          "type": "integer"
+                        },
+                        "totalCost": {
+                          "type": "integer"
+                        },
+                        "itemCount": {
+                          "type": "integer"
+                        },
+                        "medicineCount": {
+                          "type": "integer"
+                        },
+                        "supplyCount": {
+                          "type": "integer"
+                        },
+                        "topItem": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "sharePercent": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "sharePercent"
+                          ]
+                        },
+                        "serviceOptions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "name"
+                            ]
+                          }
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "itemType": {
+                                "type": "string",
+                                "enum": [
+                                  "MEDICINE",
+                                  "SUPPLY"
+                                ]
+                              },
+                              "serviceNames": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "serviceCount": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitName": {
+                                "type": "string"
+                              },
+                              "averageUnitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "cost": {
+                                "type": "integer"
+                              },
+                              "sharePercent": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "name",
+                              "itemType",
+                              "serviceNames",
+                              "serviceCount",
+                              "quantity",
+                              "unitName",
+                              "averageUnitCost",
+                              "cost",
+                              "sharePercent"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "from",
+                        "to",
+                        "branchCount",
+                        "totalCost",
+                        "itemCount",
+                        "medicineCount",
+                        "supplyCount",
+                        "topItem",
+                        "serviceOptions",
+                        "rows"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.report hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chi nhánh không thuộc công ty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/service-consumption/by-item/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Chi phí vật tư theo vật tư (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "pattern": "^(EXAM_TYPE|TECHNICAL_SERVICE):.+$"
+            },
+            "required": false,
+            "name": "serviceKey",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "doctorId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.report hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/service-consumption/by-branch": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Số lượt, doanh thu, chi phí vốn và lãi gộp dịch vụ của từng chi nhánh trong phạm vi; gộp từ hai chi nhánh cần quyền xem báo cáo toàn công ty (quyền service_consumption.report, #297; scope=all|pick cần thêm company_report.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "pattern": "^(EXAM_TYPE|TECHNICAL_SERVICE):.+$"
+            },
+            "required": false,
+            "name": "serviceKey",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "doctorId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "branchCount": {
+                          "type": "integer"
+                        },
+                        "totalCost": {
+                          "type": "integer"
+                        },
+                        "visitCount": {
+                          "type": "integer"
+                        },
+                        "averageCost": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "totalRevenue": {
+                          "type": "integer"
+                        },
+                        "totalMargin": {
+                          "type": "integer"
+                        },
+                        "marginPercent": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "serviceOptions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "name"
+                            ]
+                          }
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "branchId": {
+                                "type": "string"
+                              },
+                              "branchName": {
+                                "type": "string"
+                              },
+                              "visitCount": {
+                                "type": "integer"
+                              },
+                              "revenue": {
+                                "type": "integer"
+                              },
+                              "cost": {
+                                "type": "integer"
+                              },
+                              "averageCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "margin": {
+                                "type": "integer"
+                              },
+                              "marginPercent": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "branchId",
+                              "branchName",
+                              "visitCount",
+                              "revenue",
+                              "cost",
+                              "averageCost",
+                              "margin",
+                              "marginPercent"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "from",
+                        "to",
+                        "branchCount",
+                        "totalCost",
+                        "visitCount",
+                        "averageCost",
+                        "totalRevenue",
+                        "totalMargin",
+                        "marginPercent",
+                        "serviceOptions",
+                        "rows"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.report hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chi nhánh không thuộc công ty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/service-consumption/by-branch/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Chi phí vật tư theo chi nhánh (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)",
         "security": [
           {
             "bearerAuth": []
