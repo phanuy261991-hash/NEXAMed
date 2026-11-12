@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { ArrowCounterClockwise } from '@phosphor-icons/react';
-import type { ConsumptionService } from '@nexamed/shared';
+import type { ConsumptionService, ConsumptionWarehouse } from '@nexamed/shared';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { formatVnd } from '../../shared/format/currency';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
 import { ReasonConfirmDialog } from '../../shared/ui/ReasonConfirmDialog';
 import { SaveErrorBanner } from '../../shared/ui/SaveErrorBanner';
 import { useHasPermission } from '../auth/usePermission';
@@ -23,13 +24,32 @@ function formatDateTime(iso: string): string {
  * kèm người ghi và (nếu có quyền xem giá vốn) giá vốn từng dòng + tổng; sửa nhầm = "Đảo phiếu" có lý do rồi ghi lại. Không thu thêm tiền khách.
  * Lỗi lưu (thiếu tồn, trùng...) hiện tại chỗ và GIỮ NGUYÊN dữ liệu đang nhập.
  */
-export function ServiceConsumptionPanel({ encounterId, service, canSeeCost, idPrefix }: { encounterId: string; service: ConsumptionService; canSeeCost: boolean; idPrefix: string }) {
+export function ServiceConsumptionPanel({
+  encounterId,
+  service,
+  canSeeCost,
+  warehouses,
+  idPrefix,
+}: {
+  encounterId: string;
+  service: ConsumptionService;
+  canSeeCost: boolean;
+  /** Kho chọn được làm kho trừ (kho chính đứng đầu). Chỉ một kho thì ẩn ô "Kho trừ", giao diện không đổi. */
+  warehouses: ConsumptionWarehouse[];
+  idPrefix: string;
+}) {
   const record = service.record;
-  if (record) return <RecordedView encounterId={encounterId} service={service} canSeeCost={canSeeCost} />;
-  return <DraftEditor key={service.target.id} encounterId={encounterId} service={service} idPrefix={idPrefix} />;
+  if (record) return <RecordedView encounterId={encounterId} service={service} canSeeCost={canSeeCost} showWarehouse={warehouses.length > 1} />;
+  return <DraftEditor key={service.target.id} encounterId={encounterId} service={service} warehouses={warehouses} idPrefix={idPrefix} />;
 }
 
-function DraftEditor({ encounterId, service, idPrefix }: { encounterId: string; service: ConsumptionService; idPrefix: string }) {
+/** Nhãn một kho trong ô "Kho trừ": kho chính ghi rõ "(kho chính)", kho phụ kèm Khoa/Phòng quản lý nếu có. */
+function warehouseLabel(w: ConsumptionWarehouse): string {
+  if (w.isDefault) return `${w.name} (kho chính)`;
+  return w.departmentName ? `${w.name} · ${w.departmentName}` : w.name;
+}
+
+function DraftEditor({ encounterId, service, warehouses, idPrefix }: { encounterId: string; service: ConsumptionService; warehouses: ConsumptionWarehouse[]; idPrefix: string }) {
   const canRecord = useHasPermission('service_consumption', 'record');
   const mutation = useRecordConsumptionMutation(encounterId);
   const { saveError, run, clear } = useSaveAttempt();
@@ -37,6 +57,12 @@ function DraftEditor({ encounterId, service, idPrefix }: { encounterId: string; 
   // `null` = chưa sửa: hiện sẵn định mức của dịch vụ (đổi định mức xong tải lại vẫn ra đúng, không phải chép vào state).
   const [edits, setEdits] = useState<ConsumptionDraftLine[] | null>(null);
   const lines = edits ?? draftFromNorm(service.norm);
+  // Kho trừ: mặc định LUÔN là kho chính (chủ dự án chốt 12/11/2026), không nhớ lựa chọn lần trước. Chỉ một kho thì ẩn ô.
+  const multiWarehouse = warehouses.length > 1;
+  const [pickedWarehouseId, setPickedWarehouseId] = useState('');
+  const warehouseId = warehouses.some((w) => w.id === pickedWarehouseId) ? pickedWarehouseId : (warehouses.find((w) => w.isDefault)?.id ?? warehouses[0]?.id ?? '');
+  const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: warehouseLabel(w) }));
+  const chosenWarehouse = warehouses.find((w) => w.id === warehouseId);
 
   function change(next: ConsumptionDraftLine[]) {
     setEdits(next);
@@ -48,7 +74,7 @@ function DraftEditor({ encounterId, service, idPrefix }: { encounterId: string; 
     const invalid = validateDraftLines(lines, { allowEmpty: false });
     setValidationError(invalid);
     if (invalid) return;
-    await run(() => mutation.mutateAsync({ encounterId, target: service.target, lines: toRequestLines(lines) }));
+    await run(() => mutation.mutateAsync({ encounterId, target: service.target, ...(multiWarehouse && warehouseId ? { warehouseId } : {}), lines: toRequestLines(lines) }));
   }
 
   if (!canRecord) {
@@ -57,7 +83,15 @@ function DraftEditor({ encounterId, service, idPrefix }: { encounterId: string; 
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        {multiWarehouse && (
+          <div className="flex w-[300px] max-w-full flex-col gap-1.5">
+            <label htmlFor={`${idPrefix}-warehouse`} className="text-sm font-semibold text-slate-800">
+              Kho trừ
+            </label>
+            <Combobox id={`${idPrefix}-warehouse`} value={warehouseId} options={warehouseOptions} onChange={setPickedWarehouseId} disabled={mutation.isPending} />
+          </div>
+        )}
         <div className="min-w-[260px] flex-1">
           <ConsumptionItemPicker
             id={`${idPrefix}-search`}
@@ -73,7 +107,7 @@ function DraftEditor({ encounterId, service, idPrefix }: { encounterId: string; 
           </Button>
         )}
       </div>
-      <ConsumptionDraftTable idPrefix={idPrefix} lines={lines} onChange={change} showLot emptyText="Chưa có vật tư hoặc thuốc nào" disabled={mutation.isPending} />
+      <ConsumptionDraftTable idPrefix={idPrefix} lines={lines} onChange={change} showLot lotHint={multiWarehouse && chosenWarehouse ? `trong ${chosenWarehouse.name}` : undefined} emptyText="Chưa có vật tư hoặc thuốc nào" disabled={mutation.isPending} />
       {(validationError || saveError) && <SaveErrorBanner message={validationError ?? saveError?.message ?? ''} />}
       <div className="flex justify-end">
         <Button type="button" loading={mutation.isPending} disabled={lines.length === 0} onClick={() => void save()}>
@@ -84,7 +118,7 @@ function DraftEditor({ encounterId, service, idPrefix }: { encounterId: string; 
   );
 }
 
-function RecordedView({ encounterId, service, canSeeCost }: { encounterId: string; service: ConsumptionService; canSeeCost: boolean }) {
+function RecordedView({ encounterId, service, canSeeCost, showWarehouse }: { encounterId: string; service: ConsumptionService; canSeeCost: boolean; showWarehouse: boolean }) {
   const record = service.record!;
   const canReverse = useHasPermission('service_consumption', 'reverse');
   const reverse = useReverseConsumptionMutation(encounterId);
@@ -101,6 +135,7 @@ function RecordedView({ encounterId, service, canSeeCost }: { encounterId: strin
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
         <span>
           Ghi bởi {record.performedByName} · {formatDateTime(record.occurredAt)} · {record.issueNo}
+          {showWarehouse && <> · <b className="font-semibold text-slate-800">{record.warehouseName}</b></>}
         </span>
         {canReverse && (
           <Button type="button" variant="dangerGhost" onClick={() => setReversing(true)}>

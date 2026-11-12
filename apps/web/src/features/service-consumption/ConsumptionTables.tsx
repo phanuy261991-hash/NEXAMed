@@ -30,6 +30,7 @@ export function ConsumptionDraftTable({
   onChange,
   disabled,
   showLot,
+  lotHint,
   emptyText,
   idPrefix,
 }: {
@@ -37,6 +38,8 @@ export function ConsumptionDraftTable({
   onChange: (lines: ConsumptionDraftLine[]) => void;
   disabled?: boolean;
   showLot?: boolean;
+  /** Dòng nhỏ dưới chữ "Tự chọn theo hạn dùng" của cột Lô (ví dụ "trong Kho thủ thuật" khi chi nhánh có nhiều kho). */
+  lotHint?: string;
   emptyText: string;
   /** Tiền tố id ô số lượng (nhiều bảng cùng trang). */
   idPrefix: string;
@@ -70,7 +73,12 @@ export function ConsumptionDraftTable({
               <td className="px-2 py-2.5 text-center">
                 <ItemTypeBadge itemType={l.itemType} />
               </td>
-              {showLot && <td className="px-2 py-2.5 text-center text-slate-600">Tự chọn theo hạn dùng</td>}
+              {showLot && (
+                <td className="px-2 py-2.5 text-center text-slate-600">
+                  Tự chọn theo hạn dùng
+                  {lotHint && <div className="text-xs text-slate-500">{lotHint}</div>}
+                </td>
+              )}
               <td className="px-2 py-2.5 text-center">
                 <input
                   id={`${idPrefix}-qty-${l.drugId}`}

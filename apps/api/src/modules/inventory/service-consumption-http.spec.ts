@@ -119,6 +119,7 @@ describe('HTTP e2e — /api/v1/service-consumption (Chi phí vật tư theo dị
 
   type Overview = {
     canSeeCost: boolean;
+    warehouses: { id: string; name: string; isDefault: boolean; departmentName: string | null }[];
     services: {
       target: { kind: string; id: string };
       serviceKind: string;
@@ -344,5 +345,222 @@ describe('HTTP e2e — /api/v1/service-consumption (Chi phí vật tư theo dị
     const voided = await http().post(`/api/v1/inventory/issues/${issueId}/void`).set(authed(adminToken)).send({ version: detail.body.data.version, reason: 'Huỷ thử ở danh sách' });
     expect(voided.status, JSON.stringify(voided.body)).toBe(409);
     expect((await overview(encounterId)).services[0]!.record).not.toBeNull();
+  });
+  describe('Chọn kho trừ — kho chính và kho phụ theo chi nhánh', () => {
+    let branchAId: string;
+    let branchBId: string;
+    let adminBranchBToken: string;
+    let mainA: string;
+    let mainB: string;
+    let subA: string;
+    let subB: string;
+
+    /** Tài khoản gán đúng MỘT chi nhánh (công ty đã có 2 chi nhánh thì tài khoản mới phải được gán). */
+    async function userIn(roleName: string, branchId: string, departmentId?: string) {
+      const username = `e2e-sc-wh-${roleName}-${randomUUID()}`;
+      const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+      const user = await privileged.userAccount.create({ data: { tenantId: fixture.tenantA.id, username, passwordHash, fullName: `User ${roleName}`, ...(departmentId ? { departmentId } : {}), createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      const role = await privileged.role.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, name: roleName } });
+      await privileged.userRole.create({ data: { tenantId: fixture.tenantA.id, userId: user.id, roleId: role.id, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      await privileged.userBranch.create({ data: { tenantId: fixture.tenantA.id, userId: user.id, branchId, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      const login = await http().post('/api/v1/auth/login').send({ tenantId: fixture.tenantA.id, username, password });
+      expect(login.status, JSON.stringify(login.body)).toBe(200);
+      return { token: login.body.data.accessToken as string, userId: user.id as string };
+    }
+
+    async function stockInAt(token: string, whId: string, drugId: string, quantity: number, unitCost: number) {
+      const created = await http()
+        .post('/api/v1/inventory/receipts')
+        .set(authed(token))
+        .send({ warehouseId: whId, receiptType: 'OPENING_BALANCE', lines: [{ drugId, unitCode: 'VIEN', quantity, unitCost, batchNo: `WH-${randomUUID().slice(0, 6)}`, expiryDate: '2099-01-01' }] });
+      expect(created.status, JSON.stringify(created.body)).toBe(200);
+      const approved = await http().post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`).set(authed(token)).send({ version: created.body.data.version });
+      expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+    }
+
+    const onHandAt = async (token: string, whId: string, drugId: string): Promise<number> => {
+      const rows = (await http().get('/api/v1/inventory/balances').set(authed(token)).query({ warehouseId: whId })).body.data.items as { drugId: string; quantityOnHand: number }[];
+      return rows.find((r) => r.drugId === drugId)?.quantityOnHand ?? 0;
+    };
+
+    const warehouseIds = async (token: string, encounterId: string) => (await overview(encounterId, token)).warehouses.map((w) => w.id);
+
+    beforeAll(async () => {
+      branchAId = (await privileged.branch.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id }, orderBy: { createdAt: 'asc' } })).id;
+      const br = await http().post('/api/v1/branches').set(authed(adminToken)).send({ name: 'Chi nhánh Quận 7 (kho nhỏ)', address: '88 Nguyễn Thị Thập', phone: '0283777556' });
+      expect(br.status, JSON.stringify(br.body)).toBe(200);
+      branchBId = br.body.data.id as string;
+      adminBranchBToken = (await userIn('clinic_admin', branchBId)).token;
+      mainA = warehouseId;
+      // Kho nhỏ: KHÔNG truyền chi nhánh → thuộc chi nhánh đang làm việc của người tạo.
+      const a = await http().post('/api/v1/warehouses').set(authed(adminToken)).send({ name: 'Kho thủ thuật A' });
+      expect(a.status, JSON.stringify(a.body)).toBe(200);
+      subA = a.body.data.id as string;
+      const b = await http().post('/api/v1/warehouses').set(authed(adminBranchBToken)).send({ name: 'Kho thủ thuật B' });
+      expect(b.status, JSON.stringify(b.body)).toBe(200);
+      subB = b.body.data.id as string;
+      const listB = (await http().get('/api/v1/warehouses').set(authed(adminBranchBToken))).body.data.items as { id: string; isDefault: boolean }[];
+      mainB = listB.find((w) => w.isDefault)!.id;
+    }, 120_000);
+
+    it('tạo kho không chọn chi nhánh → thuộc chi nhánh đang làm việc của người tạo; danh sách kho chỉ thấy kho của chi nhánh mình', async () => {
+      const subAdb = await privileged.warehouse.findFirstOrThrow({ where: { id: subA } });
+      const subBdb = await privileged.warehouse.findFirstOrThrow({ where: { id: subB } });
+      expect(subAdb.branchId).toBe(branchAId);
+      expect(subBdb.branchId).toBe(branchBId);
+      const listA = ((await http().get('/api/v1/warehouses').set(authed(adminToken))).body.data.items as { id: string }[]).map((w) => w.id);
+      const listB = ((await http().get('/api/v1/warehouses').set(authed(adminBranchBToken))).body.data.items as { id: string }[]).map((w) => w.id);
+      expect(listA).toEqual(expect.arrayContaining([mainA, subA]));
+      expect(listA).not.toContain(subB);
+      expect(listA).not.toContain(mainB);
+      expect(listB).toEqual(expect.arrayContaining([mainB, subB]));
+      expect(listB).not.toContain(subA);
+      expect(listB).not.toContain(mainA);
+    });
+
+    it('ô chọn kho của chi nhánh A: kho chính đứng đầu + kho phụ của A, KHÔNG có kho nào của chi nhánh B', async () => {
+      const { encounterId } = await newEncounter();
+      const view = await overview(encounterId);
+      expect(view.warehouses[0]).toMatchObject({ id: mainA, isDefault: true });
+      const ids = view.warehouses.map((w) => w.id);
+      expect(ids).toEqual(expect.arrayContaining([mainA, subA]));
+      expect(ids).not.toContain(subB);
+      expect(ids).not.toContain(mainB);
+    });
+
+    it('chọn kho phụ: chỉ kho phụ đó bị trừ; kho chính cùng chi nhánh và kho cùng mặt hàng ở chi nhánh khác KHÔNG đổi; phiếu ghi đúng kho; đảo phiếu hoàn về kho phụ', async () => {
+      const drug = await createDrug('Kho phụ cô lập', { itemType: 'SUPPLY' });
+      await stockInAt(adminToken, mainA, drug, 50, 100);
+      await stockInAt(adminToken, subA, drug, 10, 100);
+      await stockInAt(adminBranchBToken, mainB, drug, 30, 100);
+      await stockInAt(adminBranchBToken, subB, drug, 20, 100);
+
+      const { encounterId } = await newEncounter();
+      const svc = (await overview(encounterId)).services[0]!;
+      const res = await record(adminToken, { encounterId, target: svc.target, warehouseId: subA, lines: [{ drugId: drug, quantity: 4 }] });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      const rec = res.body.data.services[0].record;
+      expect(rec.warehouseName).toBe('Kho thủ thuật A');
+      expect(await onHandAt(adminToken, subA, drug)).toBe(6);
+      expect(await onHandAt(adminToken, mainA, drug)).toBe(50);
+      expect(await onHandAt(adminBranchBToken, subB, drug)).toBe(20);
+      expect(await onHandAt(adminBranchBToken, mainB, drug)).toBe(30);
+      const issue = await privileged.stockIssue.findFirstOrThrow({ where: { id: rec.id } });
+      expect(issue.warehouseId).toBe(subA);
+
+      const rev = await http().post(`/api/v1/service-consumption/records/${rec.id}/reverse`).set(authed(adminToken)).send({ reason: 'Ghi nhầm kho' });
+      expect(rev.status, JSON.stringify(rev.body)).toBe(200);
+      expect(await onHandAt(adminToken, subA, drug)).toBe(10);
+      expect(await onHandAt(adminToken, mainA, drug)).toBe(50);
+    });
+
+    it('không chọn kho → trừ kho chính; chọn kho của chi nhánh KHÁC (phụ hoặc chính) hoặc kho của công ty khác → 404, không ghi gì, không tự đổi sang kho chính', async () => {
+      const drug = await createDrug('Chọn sai kho', { itemType: 'SUPPLY' });
+      await stockInAt(adminToken, mainA, drug, 20, 100);
+      await stockInAt(adminBranchBToken, subB, drug, 20, 100);
+      const tenantBWarehouse = ((await http().get('/api/v1/warehouses').set(authed(tenantBAdminToken))).body.data.items as { id: string }[])[0]!.id;
+
+      const { encounterId } = await newEncounter();
+      const svc = (await overview(encounterId)).services[0]!;
+      for (const wrong of [subB, mainB, tenantBWarehouse]) {
+        const res = await record(adminToken, { encounterId, target: svc.target, warehouseId: wrong, lines: [{ drugId: drug, quantity: 1 }] });
+        expect(res.status, `${wrong} ${JSON.stringify(res.body)}`).toBe(404);
+      }
+      expect(await onHandAt(adminToken, mainA, drug)).toBe(20);
+      expect((await overview(encounterId)).services[0]!.record).toBeNull();
+
+      const ok = await record(adminToken, { encounterId, target: svc.target, lines: [{ drugId: drug, quantity: 2 }] });
+      expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+      expect(ok.body.data.services[0].record.warehouseName).not.toBe('Kho thủ thuật A');
+      expect(await onHandAt(adminToken, mainA, drug)).toBe(18);
+    });
+
+    it('thiếu tồn ở kho phụ đã chọn → 422 nêu tên kho phụ, KHÔNG lấy bù từ kho chính', async () => {
+      const drug = await createDrug('Thiếu ở kho phụ', { itemType: 'SUPPLY' });
+      await stockInAt(adminToken, mainA, drug, 100, 100);
+      await stockInAt(adminToken, subA, drug, 2, 100);
+      const { encounterId } = await newEncounter();
+      const svc = (await overview(encounterId)).services[0]!;
+      const res = await record(adminToken, { encounterId, target: svc.target, warehouseId: subA, lines: [{ drugId: drug, quantity: 5 }] });
+      expect(res.status, JSON.stringify(res.body)).toBe(422);
+      expect(res.body.error.message).toContain('Kho thủ thuật A');
+      expect(await onHandAt(adminToken, mainA, drug)).toBe(100);
+      expect(await onHandAt(adminToken, subA, drug)).toBe(2);
+    });
+
+    it('kho phụ NGỪNG hoạt động không chọn được (404) và không hiện trong ô chọn', async () => {
+      const w = await http().post('/api/v1/warehouses').set(authed(adminToken)).send({ name: 'Kho tạm ngừng' });
+      const wid = w.body.data.id as string;
+      const { encounterId } = await newEncounter();
+      expect(await warehouseIds(adminToken, encounterId)).toContain(wid);
+      const off = await http().patch(`/api/v1/warehouses/${wid}`).set(authed(adminToken)).send({ version: w.body.data.version, isActive: false });
+      expect(off.status, JSON.stringify(off.body)).toBe(200);
+      expect(await warehouseIds(adminToken, encounterId)).not.toContain(wid);
+      const svc = (await overview(encounterId)).services[0]!;
+      const drug = await createDrug('Kho ngừng', { itemType: 'SUPPLY' });
+      expect((await record(adminToken, { encounterId, target: svc.target, warehouseId: wid, lines: [{ drugId: drug, quantity: 1 }] })).status).toBe(404);
+    });
+
+    it('báo cáo chi phí: chi phí trừ ở kho phụ của chi nhánh A tính vào chi nhánh A, chi nhánh B không thấy', async () => {
+      const range = { from: new Date(Date.now() - 24 * 3_600_000).toISOString().slice(0, 10), to: new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10) };
+      const a = (await http().get('/api/v1/reports/service-consumption/by-service').set(authed(adminToken)).query(range)).body.data;
+      const b = (await http().get('/api/v1/reports/service-consumption/by-service').set(authed(adminBranchBToken)).query(range)).body.data;
+      expect(a.totalCost).toBeGreaterThan(0);
+      expect(b).toMatchObject({ totalCost: 0, visitCount: 0 });
+    });
+
+    describe('phạm vi Khoa/Phòng', () => {
+      let deptD1: string;
+      let deptD2: string;
+      let subD1: string;
+      let subD2: string;
+      let deptUserToken: string;
+      let noDeptUserToken: string;
+
+      beforeAll(async () => {
+        const d1 = await http().post('/api/v1/departments').set(authed(adminToken)).send({ name: `Khoa Thủ thuật e2e ${randomUUID().slice(0, 6)}` });
+        const d2 = await http().post('/api/v1/departments').set(authed(adminToken)).send({ name: `Khoa Xét nghiệm e2e ${randomUUID().slice(0, 6)}` });
+        deptD1 = d1.body.data.id as string;
+        deptD2 = d2.body.data.id as string;
+        subD1 = (await http().post('/api/v1/warehouses').set(authed(adminToken)).send({ name: 'Kho của Khoa 1', departmentId: deptD1 })).body.data.id as string;
+        subD2 = (await http().post('/api/v1/warehouses').set(authed(adminToken)).send({ name: 'Kho của Khoa 2', departmentId: deptD2 })).body.data.id as string;
+
+        // Vai trò sao chép từ quản lý, riêng nhóm tiêu hao ở phạm vi Khoa/Phòng.
+        const roles = await http().get('/api/v1/roles').set(authed(adminToken));
+        const adminRole = roles.body.data.items.find((r: { name: string }) => r.name === 'clinic_admin');
+        const matrix = await http().get(`/api/v1/roles/${adminRole.id}/permissions`).set(authed(adminToken));
+        const roleName = `Tiêu hao Khoa e2e ${randomUUID().slice(0, 6)}`;
+        const newRole = await http().post('/api/v1/roles').set(authed(adminToken)).send({ name: roleName });
+        const entries = (matrix.body.data.permissions as { permissionId: string; module: string; dataScope: string }[])
+          .filter((e) => e.dataScope !== 'none')
+          .map((e) => ({ permissionId: e.permissionId, dataScope: e.module === 'service_consumption' ? 'department' : e.dataScope }));
+        await http().put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(adminToken)).send({ entries, version: newRole.body.data.version });
+        deptUserToken = (await userIn(roleName, branchAId, deptD1)).token;
+        noDeptUserToken = (await userIn(roleName, branchAId)).token;
+      }, 120_000);
+
+      it('quyền Khoa/Phòng: chỉ thấy và chọn được kho chính + kho của Khoa mình; kho của Khoa khác → 404; chưa gán Khoa/Phòng thì chỉ kho chính', async () => {
+        const { encounterId } = await newEncounter();
+        const mine = await warehouseIds(deptUserToken, encounterId);
+        expect(mine).toEqual(expect.arrayContaining([mainA, subD1]));
+        expect(mine).not.toContain(subD2);
+        expect(mine).not.toContain(subA);
+        const none = await warehouseIds(noDeptUserToken, encounterId);
+        expect(none).toEqual([mainA]);
+
+        const drug = await createDrug('Kho theo Khoa', { itemType: 'SUPPLY' });
+        await stockInAt(adminToken, subD1, drug, 10, 100);
+        await stockInAt(adminToken, subD2, drug, 10, 100);
+        const svc = (await overview(encounterId)).services[0]!;
+        const other = await record(deptUserToken, { encounterId, target: svc.target, warehouseId: subD2, lines: [{ drugId: drug, quantity: 1 }] });
+        expect(other.status, JSON.stringify(other.body)).toBe(404);
+        const noDeptPick = await record(noDeptUserToken, { encounterId, target: svc.target, warehouseId: subD1, lines: [{ drugId: drug, quantity: 1 }] });
+        expect(noDeptPick.status, JSON.stringify(noDeptPick.body)).toBe(404);
+        const ok = await record(deptUserToken, { encounterId, target: svc.target, warehouseId: subD1, lines: [{ drugId: drug, quantity: 3 }] });
+        expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+        expect(await onHandAt(adminToken, subD1, drug)).toBe(7);
+        expect(await onHandAt(adminToken, subD2, drug)).toBe(10);
+      });
+    });
   });
 });

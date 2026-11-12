@@ -100,7 +100,7 @@ describe('sameDraftLines', () => {
 describe('servicesMissingRecord', () => {
   it('chỉ lấy dịch vụ có định mức mà chưa ghi', () => {
     const withNorm = service({ norm: [normLine(D1, 1)] });
-    const withNormRecorded = service({ target: { kind: 'CLINICAL_ORDER_ITEM', id: D2 }, norm: [normLine(D1, 1)], record: { id: D1, issueNo: 'X', occurredAt: '', performedBy: D1, performedByName: 'A', lines: [], totalCost: null } });
+    const withNormRecorded = service({ target: { kind: 'CLINICAL_ORDER_ITEM', id: D2 }, norm: [normLine(D1, 1)], record: { id: D1, issueNo: 'X', occurredAt: '', performedBy: D1, performedByName: 'A', warehouseName: 'Kho chính', lines: [], totalCost: null } });
     const noNorm = service({ target: { kind: 'ENCOUNTER_SERVICE_ITEM', id: D2 } });
     expect(servicesMissingRecord([withNorm, withNormRecorded, noNorm])).toEqual([withNorm]);
   });

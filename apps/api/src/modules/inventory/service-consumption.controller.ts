@@ -38,7 +38,7 @@ export class ServiceConsumptionController {
   @AuditView('encounter', { paramName: 'encounterId' })
   @UseInterceptors(AuditViewInterceptor)
   async getForEncounter(@Param('encounterId', ParseUUIDPipe) encounterId: string, @Req() req: Request) {
-    return this.service.getForEncounter(req.user!.tenantId, requireBranchId(req.user!), req.user!.userId, encounterId);
+    return this.service.getForEncounter(req.user!.tenantId, requireBranchId(req.user!), req.user!.userId, req.dataScope!, encounterId);
   }
 
   @Post('records')
@@ -46,7 +46,7 @@ export class ServiceConsumptionController {
   @RequirePermission('service_consumption', 'record')
   async record(@Body() body: unknown, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.service.record(tenantId, requireBranchId(req.user!), userId, recordConsumptionRequestSchema.parse(body), extractRequestMeta(req));
+    return this.service.record(tenantId, requireBranchId(req.user!), userId, req.dataScope!, recordConsumptionRequestSchema.parse(body), extractRequestMeta(req));
   }
 
   @Post('records/:issueId/reverse')
@@ -54,6 +54,6 @@ export class ServiceConsumptionController {
   @RequirePermission('service_consumption', 'reverse')
   async reverse(@Param('issueId', ParseUUIDPipe) issueId: string, @Body() body: unknown, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.service.reverse(tenantId, requireBranchId(req.user!), userId, issueId, reverseConsumptionRequestSchema.parse(body), extractRequestMeta(req));
+    return this.service.reverse(tenantId, requireBranchId(req.user!), userId, req.dataScope!, issueId, reverseConsumptionRequestSchema.parse(body), extractRequestMeta(req));
   }
 }

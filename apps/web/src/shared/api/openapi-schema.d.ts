@@ -61315,6 +61315,13 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 encounterId: string;
+                                warehouses: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    isDefault: boolean;
+                                    departmentName: string | null;
+                                }[];
                                 canSeeCost: boolean;
                                 services: {
                                     target: {
@@ -61346,6 +61353,7 @@ export interface paths {
                                         /** Format: uuid */
                                         performedBy: string;
                                         performedByName: string;
+                                        warehouseName: string;
                                         lines: {
                                             /** Format: uuid */
                                             drugId: string;
@@ -61450,6 +61458,8 @@ export interface paths {
                             /** Format: uuid */
                             id: string;
                         };
+                        /** Format: uuid */
+                        warehouseId?: string;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -61469,6 +61479,13 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 encounterId: string;
+                                warehouses: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    isDefault: boolean;
+                                    departmentName: string | null;
+                                }[];
                                 canSeeCost: boolean;
                                 services: {
                                     target: {
@@ -61500,6 +61517,7 @@ export interface paths {
                                         /** Format: uuid */
                                         performedBy: string;
                                         performedByName: string;
+                                        warehouseName: string;
                                         lines: {
                                             /** Format: uuid */
                                             drugId: string;
@@ -61656,6 +61674,13 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 encounterId: string;
+                                warehouses: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    isDefault: boolean;
+                                    departmentName: string | null;
+                                }[];
                                 canSeeCost: boolean;
                                 services: {
                                     target: {
@@ -61687,6 +61712,7 @@ export interface paths {
                                         /** Format: uuid */
                                         performedBy: string;
                                         performedByName: string;
+                                        warehouseName: string;
                                         lines: {
                                             /** Format: uuid */
                                             drugId: string;

@@ -34,7 +34,7 @@ export function EncounterConsumptionTab({ encounterId }: { encounterId: string }
         <SegmentedToggle ariaLabel="Chọn dịch vụ" items={items} value={consumptionTargetKey(current.target)} onChange={setSelected} />
       </div>
       {missingKeys.size > 0 && <p className="text-sm text-slate-500">Dấu • là dịch vụ có định mức mà chưa ghi vật tư đã dùng.</p>}
-      <ServiceConsumptionPanel key={current.target.id} encounterId={encounterId} service={current} canSeeCost={query.data.canSeeCost} idPrefix={`ec-${current.target.id}`} />
+      <ServiceConsumptionPanel key={current.target.id} encounterId={encounterId} service={current} canSeeCost={query.data.canSeeCost} warehouses={query.data.warehouses} idPrefix={`ec-${current.target.id}`} />
     </div>
   );
 }

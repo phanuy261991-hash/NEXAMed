@@ -49,6 +49,11 @@ function check(name, ok, detail) {
   const gel = await mkSupply('Gel siêu âm kiểm', 300);
   const tissue = await mkSupply('Giấy lau kiểm', 50);
   check('dữ liệu thử: 2 vật tư có tồn', !!gel?.id && !!tissue?.id);
+  // Kho phụ của chi nhánh (không gắn Khoa/Phòng): có 100 Giấy lau; kho chính cũng có 100.
+  const subWh = (await api('POST', '/warehouses', { name: `KIEM297 Kho phụ ${stamp}` })).body;
+  const subReceipt = (await api('POST', '/inventory/receipts', { warehouseId: subWh.id, receiptType: 'OPENING_BALANCE', lines: [{ drugId: tissue.id, unitCode: 'CAI', quantity: 100, unitCost: 50, batchNo: `K297S${stamp}`, expiryDate: '2099-01-01' }] })).body;
+  await api('POST', `/inventory/receipts/${subReceipt.id}/approve`, { version: subReceipt.version });
+  check('dữ liệu thử: kho phụ thuộc chi nhánh đang làm việc', !!subWh?.id && subWh.branchId === wh.branchId, `${subWh?.branchId} / ${wh.branchId}`);
 
   const svc = (await api('POST', '/technical-services', { name: `KIEM297 Siêu âm ${stamp}`, serviceKind: 'IMAGING', isPerformedInHouse: true, prices: [{ priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 420000, effectiveFrom: '2020-01-01' }] }));
   check('dữ liệu thử: dịch vụ kỹ thuật', svc.status === 200, JSON.stringify(svc.error ?? ''));
@@ -179,6 +184,13 @@ function check(name, ok, detail) {
     await tabSearch.fill(`Giấy lau kiểm ${stamp}`);
     await page.getByRole('option').filter({ hasText: `Giấy lau kiểm ${stamp}` }).first().click();
     await page.getByLabel(`Số lượng Giấy lau kiểm ${stamp}`).fill('3');
+    // Ô "Kho trừ": mặc định kho chính; chọn kho phụ.
+    const khoBox = page.getByLabel('Kho trừ');
+    await khoBox.waitFor({ timeout: 10000 });
+    check('màn 7B: ô "Kho trừ" mặc định là kho chính', /kho chính/i.test(await khoBox.inputValue()), await khoBox.inputValue());
+    await khoBox.click();
+    await page.getByRole('option', { name: new RegExp(`KIEM297 Kho phụ ${stamp}`) }).click();
+    check('màn 7B: chọn được kho phụ; cột Lô ghi "trong <kho phụ>"', /KIEM297 Kho phụ/.test(await khoBox.inputValue()) && new RegExp(`trong KIEM297 Kho phụ ${stamp}`).test(await bodyText()));
     await shot('07-tab-vat-tu-da-dung.png');
     // Lỗi máy chủ khi lưu: hộp báo lỗi tiếng Việt, KHÔNG lộ mã/lỗi thô, dữ liệu đang nhập còn nguyên.
     await page.route('**/api/v1/service-consumption/records', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Service Unavailable' } }) }));
@@ -195,6 +207,9 @@ function check(name, ok, detail) {
     await page.getByText(/Ghi bởi/).waitFor({ timeout: 15000 });
     const saved7b = await bodyText();
     check('màn 7B: lưu lại thành công → chỉ đọc, chi phí 150 (3 × 50), có "Đảo phiếu"', /Ghi bởi/.test(saved7b) && /150/.test(saved7b) && (await page.getByRole('button', { name: /Đảo phiếu/ }).count()) > 0);
+    check('màn 7B: sau khi lưu hiện tên kho đã trừ', new RegExp(`KIEM297 Kho phụ ${stamp}`).test(saved7b));
+    const bal = async (khoId) => ((await api('GET', `/inventory/balances?warehouseId=${khoId}`)).body.items ?? []).find((r) => r.drugId === tissue.id)?.quantityOnHand;
+    check('màn 7B: tồn Giấy lau: kho phụ 97 (100 − 3), kho chính 98 (100 − 2 của dịch vụ A) — không lẫn nhau', (await bal(subWh.id)) === 97 && (await bal(wh.id)) === 98, `${await bal(subWh.id)} / ${await bal(wh.id)}`);
     await shot('09-tab-vat-tu-da-ghi.png');
 
     // ── Màn 9: báo cáo ──
@@ -253,6 +268,7 @@ function check(name, ok, detail) {
     // Cần version (khoá lạc quan) — đọc lại bản mới nhất rồi mới ẩn.
     for (const d of [gel, tissue]) if (d?.id) { const cur = (await api('GET', `/drugs/${d.id}`)).body; if (cur) await api('PATCH', `/drugs/${d.id}`, { version: cur.version, isActive: false }); }
     if (doctor?.id) { const cur = (await api('GET', `/users/${doctor.id}`)).body; if (cur) await api('PATCH', `/users/${doctor.id}`, { version: cur.version, isActive: false }); }
+    if (subWh?.id) { const cur = (await api('GET', `/warehouses/${subWh.id}`)).body; if (cur) await api('PATCH', `/warehouses/${subWh.id}`, { version: cur.version, isActive: false }); }
     for (const id of [svcId, svc2Id]) if (id) { const cur = (await api('GET', `/technical-services/${id}`)).body; if (cur) await api('PATCH', `/technical-services/${id}`, { version: cur.version, isActive: false }); }
     if (!hadDeferred) await api('PATCH', '/clinic-settings', { deferredPaymentEnabled: false }).catch(() => {});
     if (hadShiftRule) await api('PATCH', '/clinic-settings', { requirePreviousShiftClosed: true }).catch(() => {});

@@ -158291,6 +158291,36 @@
                           "type": "string",
                           "format": "uuid"
                         },
+                        "warehouses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "isDefault",
+                              "departmentName"
+                            ]
+                          }
+                        },
                         "canSeeCost": {
                           "type": "boolean"
                         },
@@ -158406,6 +158436,9 @@
                                   "performedByName": {
                                     "type": "string"
                                   },
+                                  "warehouseName": {
+                                    "type": "string"
+                                  },
                                   "lines": {
                                     "type": "array",
                                     "items": {
@@ -158482,6 +158515,7 @@
                                   "occurredAt",
                                   "performedBy",
                                   "performedByName",
+                                  "warehouseName",
                                   "lines",
                                   "totalCost"
                                 ]
@@ -158501,6 +158535,7 @@
                       },
                       "required": [
                         "encounterId",
+                        "warehouses",
                         "canSeeCost",
                         "services"
                       ]
@@ -158655,6 +158690,10 @@
                       "id"
                     ]
                   },
+                  "warehouseId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "lines": {
                     "type": "array",
                     "items": {
@@ -158702,6 +158741,36 @@
                         "encounterId": {
                           "type": "string",
                           "format": "uuid"
+                        },
+                        "warehouses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "isDefault",
+                              "departmentName"
+                            ]
+                          }
                         },
                         "canSeeCost": {
                           "type": "boolean"
@@ -158818,6 +158887,9 @@
                                   "performedByName": {
                                     "type": "string"
                                   },
+                                  "warehouseName": {
+                                    "type": "string"
+                                  },
                                   "lines": {
                                     "type": "array",
                                     "items": {
@@ -158894,6 +158966,7 @@
                                   "occurredAt",
                                   "performedBy",
                                   "performedByName",
+                                  "warehouseName",
                                   "lines",
                                   "totalCost"
                                 ]
@@ -158913,6 +158986,7 @@
                       },
                       "required": [
                         "encounterId",
+                        "warehouses",
                         "canSeeCost",
                         "services"
                       ]
@@ -159175,6 +159249,36 @@
                           "type": "string",
                           "format": "uuid"
                         },
+                        "warehouses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "isDefault",
+                              "departmentName"
+                            ]
+                          }
+                        },
                         "canSeeCost": {
                           "type": "boolean"
                         },
@@ -159290,6 +159394,9 @@
                                   "performedByName": {
                                     "type": "string"
                                   },
+                                  "warehouseName": {
+                                    "type": "string"
+                                  },
                                   "lines": {
                                     "type": "array",
                                     "items": {
@@ -159366,6 +159473,7 @@
                                   "occurredAt",
                                   "performedBy",
                                   "performedByName",
+                                  "warehouseName",
                                   "lines",
                                   "totalCost"
                                 ]
@@ -159385,6 +159493,7 @@
                       },
                       "required": [
                         "encounterId",
+                        "warehouses",
                         "canSeeCost",
                         "services"
                       ]

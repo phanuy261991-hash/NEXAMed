@@ -68,6 +68,8 @@ export type ConsumptionTarget = z.infer<typeof consumptionTargetSchema>;
 export const recordConsumptionRequestSchema = z.object({
   encounterId: z.string().uuid(),
   target: consumptionTargetSchema,
+  /** Kho trừ — bỏ trống = kho chính của chi nhánh đang làm việc. Phải là kho đang hoạt động của CHÍNH chi nhánh đó, trong phạm vi quyền Khoa/Phòng của người ghi (kho chính luôn dùng được); sai thì máy chủ từ chối, không tự đổi sang kho chính. */
+  warehouseId: z.string().uuid().optional(),
   lines: z.array(z.object({ drugId: z.string().uuid(), quantity: quantitySchema })).min(1, 'Phải có ít nhất 1 vật tư hoặc thuốc.').max(MAX_CONSUMPTION_LINES).superRefine(uniqueDrugs),
 });
 export type RecordConsumptionRequest = z.infer<typeof recordConsumptionRequestSchema>;
@@ -93,6 +95,8 @@ export const consumptionRecordSchema = z.object({
   occurredAt: z.string(),
   performedBy: z.string().uuid(),
   performedByName: z.string(),
+  /** Kho đã trừ vật tư. */
+  warehouseName: z.string(),
   lines: z.array(consumptionRecordLineSchema),
   /** Tổng giá vốn — CHỈ có với người có quyền xem giá vốn. */
   totalCost: z.number().int().nullable(),
@@ -112,8 +116,20 @@ export const consumptionServiceSchema = z.object({
 });
 export type ConsumptionService = z.infer<typeof consumptionServiceSchema>;
 
+/** Kho người ghi được chọn làm kho trừ (kho chính + các kho phụ trong phạm vi quyền Khoa/Phòng); kho chính đứng đầu. */
+export const consumptionWarehouseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  /** `true` = kho chính của chi nhánh (kho mặc định). */
+  isDefault: z.boolean(),
+  departmentName: z.string().nullable(),
+});
+export type ConsumptionWarehouse = z.infer<typeof consumptionWarehouseSchema>;
+
 export const encounterConsumptionResponseSchema = z.object({
   encounterId: z.string().uuid(),
+  /** Kho chọn được làm kho trừ. Chỉ có một kho thì web ẩn ô "Kho trừ". */
+  warehouses: z.array(consumptionWarehouseSchema),
   /** Người xem có quyền xem giá vốn hay không (quyết định `unitCost`/`totalCost` có giá trị). */
   canSeeCost: z.boolean(),
   services: z.array(consumptionServiceSchema),

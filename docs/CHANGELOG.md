@@ -18,6 +18,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 Khai **định mức** vật tư/thuốc tiêu hao ngay trong form Dịch vụ kỹ thuật và Dịch vụ khám; người thực hiện **ghi vật tư đã dùng** ở màn nhập kết quả cận lâm sàng và ở tab mới "Vật tư đã dùng" của màn khám (điền sẵn theo định mức, tự chọn lô theo hạn dùng, không thu thêm tiền khách); quản lý đảo phiếu có lý do để hoàn kho. Hộp "Khách không làm dịch vụ" hiện vật tư đã ghi và bắt chọn giữ nguyên hoặc đảo phiếu hoàn kho. Báo cáo mới "Chi phí vật tư theo dịch vụ" (Theo dịch vụ, Theo khách; có Excel và In; chỉ quản lý xem vì có giá vốn; phạm vi chi nhánh như các báo cáo khác). Chi phí này không trừ vào lãi gộp. Phiếu tiêu hao không huỷ được ở danh sách phiếu xuất (phải đảo ở dịch vụ, có quyền và lý do). Cần `db:deploy` (1 migration) + `db:seed` (5 quyền mới `service_consumption.*`) + khởi động lại API.
 
+### "Kho trừ" khi ghi vật tư tiêu hao (`docs/DECISIONS.md` #297 bổ sung 3)
+
+Người ghi chọn kho trừ: mặc định kho chính của chi nhánh, có thể chọn kho phụ của chi nhánh (trong phạm vi quyền Khoa/Phòng); chi nhánh một kho thì không hiện ô. Thiếu tồn ở kho đã chọn thì báo lỗi nêu tên kho, không lấy bù kho khác; đảo phiếu hoàn đúng kho cũ. Không migration, không `db:seed`; cần khởi động lại API.
+
 Sửa kèm: bước tách quyền nhà cung cấp một lần (#291) chỉ áp cho vai trò tuỳ biến, để kỹ thuật viên có `drug.read` không bị cấp thêm quyền nhà cung cấp.
 
 ## 2026-11-11

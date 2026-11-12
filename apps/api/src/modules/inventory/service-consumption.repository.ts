@@ -101,6 +101,7 @@ export class ServiceConsumptionRepository {
       where: { tenantId, encounterId, issueType: 'SERVICE_CONSUMPTION', status: 'POSTED', deletedAt: null, warehouse: { branchId } },
       orderBy: { occurredAt: 'asc' },
       include: {
+        warehouse: { select: { name: true } },
         lines: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' }, include: { drug: { select: { id: true, code: true, name: true, itemType: true, baseUnitCode: true } }, batch: { select: { batchNo: true, expiryDate: true } } } },
       },
     });

@@ -1,8 +1,9 @@
-import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
-import { getVietnamDateString, maxDataScope, selectFefoBatches, type ActiveServiceConsumption } from '@nexamed/core';
+import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import type { Prisma, Warehouse } from '@prisma/client';
+import { DOCTOR_DIRECTORY_PORT, getVietnamDateString, maxDataScope, selectFefoBatches, type ActiveServiceConsumption, type DoctorDirectoryPort } from '@nexamed/core';
 import type {
   ConsumptionRecord,
+  DataScope,
   ConsumptionService,
   EncounterConsumptionResponse,
   PutServiceNormRequest,
@@ -16,6 +17,7 @@ import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import { findScopesForUserPermission } from '../../infrastructure/persistence/permission-lookup.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import { resolveActorDepartmentId } from '../../common/warehouse-scope.helper';
 import { WarehouseRepository } from '../drug/warehouse.repository';
 import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockBalanceRepository } from './stock-balance.repository';
@@ -38,7 +40,19 @@ export class ServiceConsumptionService {
     private readonly inventoryBatchRepository: InventoryBatchRepository,
     private readonly stockBalanceRepository: StockBalanceRepository,
     private readonly warehouseRepository: WarehouseRepository,
+    @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
+
+  /**
+   * Kho này người ghi có được chọn làm kho trừ không: kho CHÍNH luôn được; kho phụ phải đang hoạt động và (khi quyền ở mức Khoa/Phòng) thuộc đúng Khoa/Phòng của người ghi.
+   * Quyền `global` thì mọi kho đang hoạt động của chi nhánh. Cùng quy tắc `assertWarehouseInScope` của các nghiệp vụ kho khác, nhưng trả đúng/sai để lập danh sách chọn.
+   */
+  private isSelectableWarehouse(w: { id: string; isActive: boolean; departmentId: string | null }, mainId: string | null, dataScope: DataScope, actorDepartmentId: string | null): boolean {
+    if (!w.isActive) return false;
+    if (w.id === mainId) return true;
+    if (dataScope !== 'department') return true;
+    return actorDepartmentId !== null && w.departmentId === actorDepartmentId;
+  }
 
   // ============ Định mức ============
 
@@ -82,11 +96,19 @@ export class ServiceConsumptionService {
 
   // ============ Dịch vụ + định mức + phiếu đã ghi của một lượt khám ============
 
-  async getForEncounter(tenantId: string, branchId: string, actorId: string, encounterId: string): Promise<EncounterConsumptionResponse> {
+  async getForEncounter(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, encounterId: string): Promise<EncounterConsumptionResponse> {
+    // Port tự mở kết nối riêng → đọc Khoa/Phòng của người ghi TRƯỚC khi mở giao dịch (#264).
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.repository.findEncounter(tx, tenantId, branchId, encounterId);
       if (!encounter) throw new NotFoundException();
       const canSeeCost = await this.canSeeCost(tx, tenantId, actorId);
+      const mainWarehouse = await this.warehouseRepository.findDefault(tx, tenantId, branchId);
+      const warehouses = (await this.warehouseRepository.list(tx, tenantId, [branchId]))
+        .filter((w) => this.isSelectableWarehouse(w, mainWarehouse?.id ?? null, dataScope, actorDepartmentId))
+        // Kho chính đứng đầu, các kho phụ theo tên.
+        .sort((a, b) => Number(b.id === mainWarehouse?.id) - Number(a.id === mainWarehouse?.id) || a.name.localeCompare(b.name, 'vi'))
+        .map((w) => ({ id: w.id, name: w.name, isDefault: w.id === mainWarehouse?.id, departmentName: w.department?.name ?? null }));
 
       const [serviceItems, orderItems, issues] = await Promise.all([
         this.repository.listServiceItems(tx, tenantId, encounterId),
@@ -115,6 +137,7 @@ export class ServiceConsumptionService {
         occurredAt: issue.occurredAt.toISOString(),
         performedBy: issue.performedBy!,
         performedByName: performerNames.get(issue.performedBy!) ?? 'Không rõ',
+        warehouseName: issue.warehouse.name,
         lines: issue.lines.map((l) => ({
           drugId: l.drug.id,
           drugCode: l.drug.code,
@@ -155,13 +178,14 @@ export class ServiceConsumptionService {
           };
         }),
       ];
-      return { encounterId, canSeeCost, services };
+      return { encounterId, warehouses, canSeeCost, services };
     });
   }
 
   // ============ Ghi tiêu hao ============
 
-  async record(tenantId: string, branchId: string, actorId: string, dto: RecordConsumptionRequest, meta: RequestMeta): Promise<EncounterConsumptionResponse> {
+  async record(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: RecordConsumptionRequest, meta: RequestMeta): Promise<EncounterConsumptionResponse> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
     try {
       await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
         const encounter = await this.repository.findEncounter(tx, tenantId, branchId, dto.encounterId);
@@ -181,7 +205,15 @@ export class ServiceConsumptionService {
           throw new ConflictException('Dịch vụ này đã ghi vật tư tiêu hao. Muốn ghi lại, hãy đảo phiếu cũ trước.');
         }
 
-        const warehouse = await this.warehouseRepository.findDefault(tx, tenantId, branchId);
+        // Kho trừ: mặc định kho chính của chi nhánh; người ghi có thể chọn kho phụ cùng chi nhánh (trong phạm vi quyền Khoa/Phòng).
+        const main = await this.warehouseRepository.findDefault(tx, tenantId, branchId);
+        let warehouse: Warehouse | null = main;
+        if (dto.warehouseId && dto.warehouseId !== main?.id) {
+          // `findById` có `branchId`: kho của chi nhánh khác hoặc công ty khác → null. Kho ngừng hoạt động / ngoài quyền Khoa/Phòng → cũng 404 (không lộ), KHÔNG tự đổi sang kho chính.
+          const chosen = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
+          if (!chosen || !this.isSelectableWarehouse(chosen, main?.id ?? null, dataScope, actorDepartmentId)) throw new NotFoundException();
+          warehouse = chosen;
+        }
         if (!warehouse) throw new UnprocessableEntityException('Chi nhánh chưa có kho để trừ vật tư.');
         const drugs = await this.repository.findDrugs(tx, tenantId, dto.lines.map((l) => l.drugId));
         const drugById = new Map(drugs.map((d) => [d.id, d]));
@@ -201,7 +233,7 @@ export class ServiceConsumptionService {
             );
             if (!allocation) {
               const available = usable.reduce((sum, b) => sum + b.quantityOnHand, 0);
-              throw new UnprocessableEntityException(`Không đủ tồn kho "${drug.name}": cần ${line.quantity}, còn dùng được ${available}.`);
+              throw new UnprocessableEntityException(`Không đủ tồn kho "${drug.name}" ở ${warehouse.name}: cần ${line.quantity}, còn dùng được ${available}.`);
             }
             for (const a of allocation) {
               const batch = usable.find((b) => b.batchId === a.batchId)!;
@@ -210,7 +242,7 @@ export class ServiceConsumptionService {
           } else {
             const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, drug.id, warehouse.id, null);
             const onHand = balance?.quantityOnHand ?? 0;
-            if (onHand < line.quantity) throw new UnprocessableEntityException(`Không đủ tồn kho "${drug.name}": cần ${line.quantity}, còn ${onHand}.`);
+            if (onHand < line.quantity) throw new UnprocessableEntityException(`Không đủ tồn kho "${drug.name}" ở ${warehouse.name}: cần ${line.quantity}, còn ${onHand}.`);
             issueLines.push({ drugId: drug.id, batchId: null, quantity: line.quantity, unitCost: balance?.averageUnitCost ?? 0n });
           }
         }
@@ -240,14 +272,14 @@ export class ServiceConsumptionService {
       if ((e as { code?: string }).code === 'P2002') throw new ConflictException('Dịch vụ này vừa được ghi vật tư tiêu hao. Tải lại để xem.');
       throw e;
     }
-    return this.getForEncounter(tenantId, branchId, actorId, dto.encounterId);
+    return this.getForEncounter(tenantId, branchId, actorId, dataScope, dto.encounterId);
   }
 
   // ============ Đảo phiếu ============
 
-  async reverse(tenantId: string, branchId: string, actorId: string, issueId: string, dto: ReverseConsumptionRequest, meta: RequestMeta): Promise<EncounterConsumptionResponse> {
+  async reverse(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, issueId: string, dto: ReverseConsumptionRequest, meta: RequestMeta): Promise<EncounterConsumptionResponse> {
     const encounterId = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.reverseInTx(tx, tenantId, branchId, actorId, issueId, dto.reason, meta, false));
-    return this.getForEncounter(tenantId, branchId, actorId, encounterId);
+    return this.getForEncounter(tenantId, branchId, actorId, dataScope, encounterId);
   }
 
   /** Đảo phiếu trong transaction của người gọi. `viaDecline` = đảo cùng lúc thu ngân bỏ dịch vụ (ghi vào nhật ký để truy ngược). */

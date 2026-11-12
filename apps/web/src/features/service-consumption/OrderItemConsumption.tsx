@@ -33,7 +33,7 @@ export function OrderItemConsumption({ encounterId, itemIds }: { encounterId: st
       {services.map((service) => (
         <div key={service.target.id} className="space-y-2">
           {services.length > 1 && <h3 className="text-sm font-semibold text-slate-800">{service.serviceName}</h3>}
-          <ServiceConsumptionPanel encounterId={encounterId} service={service} canSeeCost={query.data.canSeeCost} idPrefix={`oc-${service.target.id}`} />
+          <ServiceConsumptionPanel encounterId={encounterId} service={service} canSeeCost={query.data.canSeeCost} warehouses={query.data.warehouses} idPrefix={`oc-${service.target.id}`} />
         </div>
       ))}
     </section>

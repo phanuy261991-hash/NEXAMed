@@ -618,4 +618,13 @@ Làm theo mockup 11 màn đã duyệt (màn 7–10), bám sát; các chỗ lệc
 **Môi trường khác**: `pnpm install` (không đổi), `db:deploy` (migration `20261112090000_service_consumption`), `db:seed` (5 quyền `service_consumption.*`), khởi động lại API.
 
 **Việc kế tiếp (chủ dự án yêu cầu 12/11/2026, chưa làm, cần mockup duyệt)**: rà soát báo cáo lợi nhuận hiện có, rồi "lãi gộp theo dịch vụ" + tab "Theo vật tư" + tab "Theo chi nhánh" của báo cáo chi phí vật tư — xem `docs/TASK.md`. Còn GĐ5 (tài liệu hướng dẫn nhập liệu).
+## 297 bổ sung 3 — "Kho trừ": chọn kho chính hoặc kho phụ của chi nhánh khi ghi vật tư tiêu hao (12/11/2026, mockup https://claude.ai/artifact/Y9CKzPtb8eQ4exGDQm5mRy chủ dự án DUYỆT)
+
+Bối cảnh: GĐ4 trừ vật tư ở kho mặc định của chi nhánh, chủ dự án muốn mỗi chi nhánh có một kho chính và các kho phụ (Thủ thuật, Xét nghiệm...). Dữ liệu SẴN CÓ nên KHÔNG migration: `warehouse.branch_id` (kho thuộc chi nhánh), `warehouse.department_id` (Khoa/Phòng quản lý, tuỳ chọn), `warehouse.is_default` (kho chính, mỗi chi nhánh chỉ một), màn "Danh mục kho" đã cho tạo/sửa. Tạo kho không chọn chi nhánh thì thuộc chi nhánh đang làm việc của người tạo (công ty nhiều chi nhánh có ô Chi nhánh, tài khoản phải được gán chi nhánh đó).
+
+**Đã chốt (4 câu)**: người ghi chọn "Kho trừ" mỗi lần; mặc định LUÔN là kho chính (không nhớ lần trước); chỉ kho đang hoạt động của chi nhánh đang làm việc, quyền Khoa/Phòng thì chỉ kho chính + kho của Khoa/Phòng mình; chi nhánh chỉ một kho thì ẩn ô; thiếu tồn → báo lỗi nêu tên kho, KHÔNG lấy bù từ kho khác.
+
+**Đã làm**: `POST /service-consumption/records` nhận `warehouseId` (tuỳ chọn); phản hồi thêm `warehouses` (kho chọn được, kho chính đứng đầu) và `warehouseName` của phiếu; máy chủ kiểm lại kho (kho chi nhánh khác/công ty khác/ngừng hoạt động/ngoài quyền Khoa/Phòng → 404, không tự đổi kho). Web: ô "Kho trừ" ở khối ghi tiêu hao (màn kết quả CLS + tab "Vật tư đã dùng"), cột Lô ghi "trong <kho>", dòng "Ghi bởi…" hiện tên kho; đảo phiếu hoàn đúng kho cũ.
+
+**Kiểm cô lập (anh dặn)**: API +8 ca (`service-consumption-http`, 16/16): kho tạo không chọn chi nhánh thuộc chi nhánh người tạo; danh sách kho và ô chọn của chi nhánh A không có kho chi nhánh B; trừ kho phụ A chỉ đổi tồn kho phụ A, kho chính A và kho phụ/kho chính của chi nhánh B (cùng mặt hàng) KHÔNG đổi; chọn kho chi nhánh khác/công ty khác → 404 và không ghi; thiếu tồn ở kho phụ không lấy bù; kho ngừng hoạt động; báo cáo chi phí của A không lẫn sang B; quyền Khoa/Phòng (kho Khoa khác → 404, chưa gán Khoa chỉ kho chính). Đột biến 3/3 bị bắt (bỏ lọc chi nhánh, bỏ kiểm Khoa/Phòng, bỏ qua `warehouseId`). Chrome IP LAN `service-consumption-check.cjs` 41/41 (kho phụ thuộc đúng chi nhánh, chọn kho phụ, tồn kho phụ 97 và kho chính 98 không lẫn nhau).
 
