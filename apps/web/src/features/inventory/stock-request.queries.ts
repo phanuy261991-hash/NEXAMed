@@ -27,6 +27,7 @@ import {
   getStockRequestLowStock,
   getStockRequestOptions,
   getStockRequestPendingCounts,
+  getStockRequestRestock,
   getStockRequests,
   noteStockRequest,
   rejectStockRequest,
@@ -63,6 +64,11 @@ export function useStockRequestPendingCountsQuery(enabled = true) {
     enabled,
     refetchInterval: 60_000,
   });
+}
+
+export function useStockRequestRestockQuery(enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({ queryKey: queryKey(tenantId, 'stock-request', 'restock'), queryFn: getStockRequestRestock, enabled });
 }
 
 export function useStockRequestOptionsQuery(enabled = true) {

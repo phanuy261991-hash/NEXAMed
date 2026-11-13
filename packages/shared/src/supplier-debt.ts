@@ -101,6 +101,9 @@ export const supplierDebtLedgerEntrySchema = z.object({
   createdAt: z.string(),
   stockReceiptId: z.string().uuid().nullable(),
   stockReceiptNo: z.string().nullable(),
+  /** Đơn đặt hàng NCC mà phiếu nhập nhận theo + đợt nhận (#298 giai đoạn 2) — hiện dưới số chứng từ ở sổ công nợ; `null` với phiếu lập tay. */
+  purchaseOrderNo: z.string().nullable().optional(),
+  purchaseOrderRound: z.number().int().nullable().optional(),
   /** "Công nợ nhà cung cấp" Phần C — nguồn RETURN (phiếu xuất trả NCC). `stockIssueNo` luôn `null`
    * ở API (đúng lý do `stockReceiptNo`) — web tự ghép qua `GET /inventory/issues?supplierId=`. */
   stockIssueId: z.string().uuid().nullable(),
@@ -168,6 +171,9 @@ export const supplierDebtReceiptStatusSchema = z.object({
   sourceBranchName: z.string().nullable(),
   /** Số phiếu nhập gốc — hiện được cả khi phiếu thuộc chi nhánh khác (web không ghép được từ `GET /inventory/receipts` vì danh sách đó lọc theo chi nhánh). */
   stockReceiptNo: z.string().nullable(),
+  /** Đơn đặt hàng NCC mà phiếu nhập nhận theo + đợt nhận (#298 giai đoạn 2) — hiện dưới số chứng từ ở sổ công nợ; `null` với phiếu lập tay. */
+  purchaseOrderNo: z.string().nullable().optional(),
+  purchaseOrderRound: z.number().int().nullable().optional(),
 });
 export type SupplierDebtReceiptStatus = z.infer<typeof supplierDebtReceiptStatusSchema>;
 

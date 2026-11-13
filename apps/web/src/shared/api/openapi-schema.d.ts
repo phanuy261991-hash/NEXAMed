@@ -3738,6 +3738,9 @@ export interface paths {
                                 doctorDashboardMoneyEnabled: boolean;
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
+                                branchPurchasingEnabled: boolean;
+                                branchPurchaseNeedsMainApproval: boolean;
+                                allowOverReceipt: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -14601,7 +14604,7 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        code: string;
+                        code?: string;
                         name: string;
                         /** @enum {string} */
                         itemType: "MEDICINE" | "SUPPLY";
@@ -19165,6 +19168,9 @@ export interface paths {
                                 doctorDashboardMoneyEnabled: boolean;
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
+                                branchPurchasingEnabled: boolean;
+                                branchPurchaseNeedsMainApproval: boolean;
+                                allowOverReceipt: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -19286,6 +19292,9 @@ export interface paths {
                         doctorDashboardMoneyEnabled?: boolean;
                         labPartnerEnabled?: boolean;
                         stockRequestEnabled?: boolean;
+                        branchPurchasingEnabled?: boolean;
+                        branchPurchaseNeedsMainApproval?: boolean;
+                        allowOverReceipt?: boolean;
                     };
                 };
             };
@@ -19366,6 +19375,9 @@ export interface paths {
                                 doctorDashboardMoneyEnabled: boolean;
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
+                                branchPurchasingEnabled: boolean;
+                                branchPurchaseNeedsMainApproval: boolean;
+                                allowOverReceipt: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -21436,7 +21448,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO" | "LAB_PARTNER_DISPATCH";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "DRUG" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO" | "LAB_PARTNER_DISPATCH";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -21809,7 +21821,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO" | "LAB_PARTNER_DISPATCH";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "DRUG" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO" | "LAB_PARTNER_DISPATCH";
                 };
                 cookie?: never;
             };
@@ -21834,7 +21846,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO" | "LAB_PARTNER_DISPATCH";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "DRUG" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO" | "LAB_PARTNER_DISPATCH";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -34288,7 +34300,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string | null;
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                     name: string;
                                     /** @enum {string} */
                                     paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
@@ -34370,7 +34382,7 @@ export interface paths {
                                 catalog: {
                                     documentTypes: {
                                         /** @enum {string} */
-                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
+                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                         label: string;
                                         group: string;
                                         allowedPapers: ("A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40")[];
@@ -35011,7 +35023,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
+                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                         name: string;
                         /** @enum {string} */
                         paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
@@ -35102,7 +35114,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                 name: string;
                                 /** @enum {string} */
                                 paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
@@ -35295,7 +35307,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                     /** @enum {string} */
                                     paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                     widthMm: number;
@@ -35513,7 +35525,7 @@ export interface paths {
                             showTaxCode: boolean;
                             showDivider: boolean;
                         };
-                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT")[];
+                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT")[];
                     };
                 };
             };
@@ -35795,7 +35807,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "STOCK_REQUEST" | "PURCHASE_ORDER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                 name: string;
                                 /** @enum {string} */
                                 paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
@@ -40015,6 +40027,8 @@ export interface paths {
                     to?: string;
                     q?: string;
                     supplierId?: string;
+                    fromOrder?: "yes" | "no";
+                    purchaseOrderId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -40061,6 +40075,9 @@ export interface paths {
                                     /** Format: uuid */
                                     sourceIssueId: string | null;
                                     sourceIssueNo: string | null;
+                                    /** Format: uuid */
+                                    purchaseOrderId: string | null;
+                                    purchaseOrderNo: string | null;
                                     lineCount: number;
                                     createdByName: string;
                                     approvedByName: string | null;
@@ -40138,6 +40155,8 @@ export interface paths {
                         prepaidCashAccountId?: string | null;
                         /** Format: uuid */
                         sourceIssueId?: string | null;
+                        /** Format: uuid */
+                        purchaseOrderId?: string | null;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -40150,6 +40169,8 @@ export interface paths {
                             /** @enum {string|null} */
                             discountType?: "PERCENT" | "AMOUNT" | null;
                             discountValue?: number | null;
+                            /** Format: uuid */
+                            purchaseOrderLineId?: string | null;
                         }[];
                     };
                 };
@@ -40193,6 +40214,9 @@ export interface paths {
                                 /** Format: uuid */
                                 sourceIssueId: string | null;
                                 sourceIssueNo: string | null;
+                                /** Format: uuid */
+                                purchaseOrderId: string | null;
+                                purchaseOrderNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -40222,6 +40246,8 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** Format: uuid */
+                                    purchaseOrderLineId: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -40353,6 +40379,9 @@ export interface paths {
                                 /** Format: uuid */
                                 sourceIssueId: string | null;
                                 sourceIssueNo: string | null;
+                                /** Format: uuid */
+                                purchaseOrderId: string | null;
+                                purchaseOrderNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -40382,6 +40411,8 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** Format: uuid */
+                                    purchaseOrderLineId: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -40472,6 +40503,8 @@ export interface paths {
                         prepaidCashAccountId?: string | null;
                         /** Format: uuid */
                         sourceIssueId?: string | null;
+                        /** Format: uuid */
+                        purchaseOrderId?: string | null;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -40484,6 +40517,8 @@ export interface paths {
                             /** @enum {string|null} */
                             discountType?: "PERCENT" | "AMOUNT" | null;
                             discountValue?: number | null;
+                            /** Format: uuid */
+                            purchaseOrderLineId?: string | null;
                         }[];
                         version: number;
                     };
@@ -40528,6 +40563,9 @@ export interface paths {
                                 /** Format: uuid */
                                 sourceIssueId: string | null;
                                 sourceIssueNo: string | null;
+                                /** Format: uuid */
+                                purchaseOrderId: string | null;
+                                purchaseOrderNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -40557,6 +40595,8 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** Format: uuid */
+                                    purchaseOrderLineId: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -40692,6 +40732,9 @@ export interface paths {
                                 /** Format: uuid */
                                 sourceIssueId: string | null;
                                 sourceIssueNo: string | null;
+                                /** Format: uuid */
+                                purchaseOrderId: string | null;
+                                purchaseOrderNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -40721,6 +40764,8 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** Format: uuid */
+                                    purchaseOrderLineId: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -40861,6 +40906,9 @@ export interface paths {
                                 /** Format: uuid */
                                 sourceIssueId: string | null;
                                 sourceIssueNo: string | null;
+                                /** Format: uuid */
+                                purchaseOrderId: string | null;
+                                purchaseOrderNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -40890,6 +40938,8 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** Format: uuid */
+                                    purchaseOrderLineId: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -41030,6 +41080,9 @@ export interface paths {
                                 /** Format: uuid */
                                 sourceIssueId: string | null;
                                 sourceIssueNo: string | null;
+                                /** Format: uuid */
+                                purchaseOrderId: string | null;
+                                purchaseOrderNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -41059,6 +41112,8 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** Format: uuid */
+                                    purchaseOrderLineId: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -44092,6 +44147,2272 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/requests/restock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tab "Hàng cần bổ sung": mặt hàng dưới mức tối thiểu của kho chính chi nhánh kèm phần phòng ban đang chờ và gợi ý số cần bổ sung */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                warehouseId: string | null;
+                                warehouseName: string | null;
+                                canRequestUp: boolean;
+                                stats: {
+                                    belowMin: number;
+                                    deptWaiting: number;
+                                    waitingArrival: number;
+                                    requestedUp: number;
+                                };
+                                items: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string | null;
+                                    onHand: number;
+                                    minStock: number;
+                                    deptWaitingQty: number;
+                                    deptWaitingRequestNos: string[];
+                                    suggestedQty: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_request.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/purchase-order-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ba công tắc Đơn đặt hàng NCC (tự-phục vụ, mọi nhân viên đăng nhập đọc được) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                branchPurchasingEnabled: boolean;
+                                branchPurchaseNeedsMainApproval: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Đơn đặt hàng NCC — view mine (chi nhánh đang làm) / approval (đơn chờ tôi duyệt), cursor, lọc, dải đếm theo trạng thái */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    view?: "mine" | "approval";
+                    status?: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                    supplierId?: string;
+                    warehouseId?: string;
+                    from?: string;
+                    to?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    orderNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    supplierName: string;
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                    expectedDate: string | null;
+                                    note: string | null;
+                                    totalAmount: number;
+                                    lineCount: number;
+                                    receivedLineCount: number;
+                                    draftReceiptCount: number;
+                                    createdByName: string;
+                                    createdAt: string;
+                                    submittedAt: string | null;
+                                    approvedAt: string | null;
+                                    approvedByName: string | null;
+                                    orderedAt: string | null;
+                                    rejectionReason: string | null;
+                                    cancellationReason: string | null;
+                                    closedReason: string | null;
+                                    requiresMainApproval: boolean;
+                                    version: number;
+                                }[];
+                                nextCursor: string | null;
+                                statusCounts: {
+                                    DRAFT?: number;
+                                    PENDING_APPROVAL?: number;
+                                    REJECTED?: number;
+                                    APPROVED?: number;
+                                    ORDERED?: number;
+                                    PARTIALLY_RECEIVED?: number;
+                                    RECEIVED?: number;
+                                    CLOSED?: number;
+                                    CANCELLED?: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Lập đơn đặt hàng NCC (lưu Nháp) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        supplierId: string;
+                        /** Format: uuid */
+                        warehouseId: string;
+                        expectedDate?: string | null;
+                        note?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            unitCode: string;
+                            quantity: number;
+                            expectedUnitCost?: number | null;
+                            lineNote?: string | null;
+                            /** Format: uuid */
+                            sourceRequestLineId?: string | null;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Mặt hàng/đơn vị không hợp lệ hoặc dòng yêu cầu cấp hàng không còn chờ hàng về */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/pending-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chấm số trên menu: đơn đang chờ tôi duyệt */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                toApprove: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cờ cấu hình và chi nhánh hiện tại (được lập đơn không, cần chi nhánh chính duyệt không) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                canOrderHere: boolean;
+                                requiresMainApproval: boolean;
+                                isMainBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết đơn đặt hàng NCC — dòng (đã nhận/còn thiếu), phiếu nhập liên kết */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa đơn khi còn Nháp hoặc đã bị Từ chối (quay về Nháp) — thay toàn bộ dòng */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        supplierId: string;
+                        /** Format: uuid */
+                        warehouseId: string;
+                        expectedDate?: string | null;
+                        note?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            unitCode: string;
+                            quantity: number;
+                            expectedUnitCost?: number | null;
+                            lineNote?: string | null;
+                            /** Format: uuid */
+                            sourceRequestLineId?: string | null;
+                        }[];
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gửi duyệt: Nháp → Chờ duyệt */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.create hoặc sai phía duyệt (PURCHASE_ORDER_APPROVER_BRANCH) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt: Nháp (tự duyệt, đơn không cần chi nhánh chính duyệt) hoặc Chờ duyệt → Đã duyệt */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.approve hoặc sai phía duyệt (PURCHASE_ORDER_APPROVER_BRANCH) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối đơn đang Chờ duyệt (lý do bắt buộc) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.approve hoặc sai phía duyệt (PURCHASE_ORDER_APPROVER_BRANCH) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/{id}/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gửi nhà cung cấp: Đã duyệt → Đã đặt NCC */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.create hoặc sai phía duyệt (PURCHASE_ORDER_APPROVER_BRANCH) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đóng đơn khi nhà cung cấp không giao nữa (lý do bắt buộc) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.create hoặc sai phía duyệt (PURCHASE_ORDER_APPROVER_BRANCH) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Huỷ đơn (lý do bắt buộc) — chưa nhận hàng */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                orderNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
+                                expectedDate: string | null;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                receivedLineCount: number;
+                                draftReceiptCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                approvedAt: string | null;
+                                approvedByName: string | null;
+                                orderedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                closedReason: string | null;
+                                requiresMainApproval: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    expectedUnitCost: number | null;
+                                    lineAmount: number;
+                                    lineNote: string | null;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    sourceRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                    }[];
+                                }[];
+                                receipts: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    occurredAt: string;
+                                    lineCount: number;
+                                    voided: boolean;
+                                }[];
+                                canActAsApprover: boolean;
+                                isOwnBranch: boolean;
+                                allowOverReceipt: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.create hoặc sai phía duyệt (PURCHASE_ORDER_APPROVER_BRANCH) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/purchase-orders/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel danh sách đơn đặt hàng NCC theo bộ lọc */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    view?: "mine" | "approval";
+                    status?: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED";
+                    supplierId?: string;
+                    warehouseId?: string;
+                    from?: string;
+                    to?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền purchase_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/requests/{id}/withdraw-requests/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Kho cấp xác nhận hoặc từ chối "Yêu cầu rút" của bên xin (dòng chờ hàng về gắn đơn NCC đã đặt) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        lineIds: string[];
+                        /** @enum {string} */
+                        action: "CONFIRM" | "DECLINE";
+                        note?: string | null;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                requestNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                /** @enum {string} */
+                                priority: "NORMAL" | "URGENT";
+                                neededBy: string | null;
+                                note: string | null;
+                                /** Format: uuid */
+                                requestingWarehouseId: string;
+                                requestingWarehouseName: string;
+                                /** Format: uuid */
+                                requestingBranchId: string;
+                                requestingBranchName: string;
+                                /** Format: uuid */
+                                supplyingWarehouseId: string;
+                                supplyingWarehouseName: string;
+                                /** Format: uuid */
+                                supplyingBranchId: string;
+                                supplyingBranchName: string;
+                                lineCount: number;
+                                createdByName: string;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                acceptedByName: string | null;
+                                acceptedAt: string | null;
+                                completedAt: string | null;
+                                rejectionReason: string | null;
+                                cancellationReason: string | null;
+                                supplierUpdatePending: boolean;
+                                /** Format: uuid */
+                                parentRequestId: string | null;
+                                parentRequestNo: string | null;
+                                readyToSupply: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string | null;
+                                    requestedQty: number;
+                                    requesterStockSnapshot: number | null;
+                                    supplierStock: number | null;
+                                    lineNote: string | null;
+                                    /** @enum {string} */
+                                    fulfilStatus: "PENDING" | "WAITING_STOCK" | "ALLOCATED" | "REJECTED" | "WITHDRAWN";
+                                    /** @enum {string} */
+                                    displayStatus: "PENDING" | "WAITING_STOCK" | "REJECTED" | "WITHDRAWN" | "WILL_SUPPLY" | "IN_TRANSIT" | "VARIANCE_PENDING" | "RETURNING" | "RECEIVED";
+                                    allocatedQty: number;
+                                    receivedQty: number;
+                                    remainingQty: number;
+                                    decisionReason: string | null;
+                                    waitExpectedDate: string | null;
+                                    /** Format: uuid */
+                                    waitChildRequestId: string | null;
+                                    waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
+                                    addedAfterAccept: boolean;
+                                    withdrawReason: string | null;
+                                    withdrawnAt: string | null;
+                                    transfers: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        transferNo: string;
+                                        /** @enum {string} */
+                                        status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
+                                    }[];
+                                }[];
+                                events: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    eventType: string;
+                                    actorName: string;
+                                    occurredAt: string;
+                                    message: string | null;
+                                    detail: string | null;
+                                }[];
+                                transfers: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    transferNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
+                                    lineCount: number;
+                                    fromBranchName: string;
+                                    toBranchName: string;
+                                    fromWarehouseName: string;
+                                    toWarehouseName: string;
+                                    canOpen: boolean;
+                                }[];
+                                canActAsRequester: boolean;
+                                canActAsSupplier: boolean;
+                                canEscalate: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_request.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/requests": {
         parameters: {
             query?: never;
@@ -44329,6 +46650,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -44805,6 +47133,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -45014,6 +47349,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -45214,6 +47556,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -45419,6 +47768,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -45627,6 +47983,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -45837,6 +48200,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -46058,6 +48428,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -46262,6 +48639,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -46467,6 +48851,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -46665,6 +49056,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -46806,6 +49204,8 @@ export interface paths {
                                 action: "WAIT" | "REJECT";
                                 reason: string;
                                 expectedDate?: string | null;
+                                /** Format: uuid */
+                                purchaseOrderId?: string | null;
                             } | null;
                         }[];
                     };
@@ -46880,6 +49280,13 @@ export interface paths {
                                     /** Format: uuid */
                                     waitChildRequestId: string | null;
                                     waitChildRequestNo: string | null;
+                                    /** Format: uuid */
+                                    waitPurchaseOrderId: string | null;
+                                    waitPurchaseOrderNo: string | null;
+                                    /** @enum {string|null} */
+                                    waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                    withdrawRequestedAt: string | null;
+                                    withdrawRequestReason: string | null;
                                     addedAfterAccept: boolean;
                                     withdrawReason: string | null;
                                     withdrawnAt: string | null;
@@ -47101,6 +49508,13 @@ export interface paths {
                                         /** Format: uuid */
                                         waitChildRequestId: string | null;
                                         waitChildRequestNo: string | null;
+                                        /** Format: uuid */
+                                        waitPurchaseOrderId: string | null;
+                                        waitPurchaseOrderNo: string | null;
+                                        /** @enum {string|null} */
+                                        waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                        withdrawRequestedAt: string | null;
+                                        withdrawRequestReason: string | null;
                                         addedAfterAccept: boolean;
                                         withdrawReason: string | null;
                                         withdrawnAt: string | null;
@@ -47199,6 +49613,13 @@ export interface paths {
                                         /** Format: uuid */
                                         waitChildRequestId: string | null;
                                         waitChildRequestNo: string | null;
+                                        /** Format: uuid */
+                                        waitPurchaseOrderId: string | null;
+                                        waitPurchaseOrderNo: string | null;
+                                        /** @enum {string|null} */
+                                        waitPurchaseOrderStatus: "DRAFT" | "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED" | null;
+                                        withdrawRequestedAt: string | null;
+                                        withdrawRequestReason: string | null;
                                         addedAfterAccept: boolean;
                                         withdrawReason: string | null;
                                         withdrawnAt: string | null;
@@ -49556,6 +51977,8 @@ export interface paths {
                                     /** Format: uuid */
                                     stockReceiptId: string | null;
                                     stockReceiptNo: string | null;
+                                    purchaseOrderNo?: string | null;
+                                    purchaseOrderRound?: number | null;
                                     /** Format: uuid */
                                     stockIssueId: string | null;
                                     stockIssueNo: string | null;
@@ -49677,6 +52100,8 @@ export interface paths {
                                     sourceBranchId: string | null;
                                     sourceBranchName: string | null;
                                     stockReceiptNo: string | null;
+                                    purchaseOrderNo?: string | null;
+                                    purchaseOrderRound?: number | null;
                                 }[];
                                 totalOriginalAmount: number;
                                 totalPaidAmount: number;

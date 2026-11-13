@@ -23,6 +23,7 @@ import {
   useRejectStockRequestMutation,
   useStockRequestQuery,
 } from './stock-request.queries';
+import { useResolveWithdrawRequestsMutation } from './purchase-order.queries';
 import {
   formatDateTimeLongVn,
   formatDayVn,
@@ -281,6 +282,7 @@ export function StockRequestDetailPage() {
         </div>
       )}
       {actionError && <ErrorBanner message={actionError} onRetry={() => setActionError(null)} />}
+      {asSupplier && request.lines.some((l) => l.withdrawRequestedAt) && <WithdrawRequestNotice request={request} onError={setActionError} />}
 
       <dl className="grid flex-shrink-0 grid-cols-2 gap-x-6 gap-y-2 rounded-md border border-slate-200 bg-white px-4 py-3 sm:grid-cols-3 lg:grid-cols-6" aria-label="Thông tin phiếu">
         <Info label="Từ (kho xin)" value={place(request.requestingBranchName, request.requestingWarehouseName)} />
@@ -440,13 +442,15 @@ function RequesterTable({
               line.decisionReason ?? line.withdrawReason,
               line.waitExpectedDate ? `Dự kiến ${formatDayVn(line.waitExpectedDate).slice(0, 5)}` : null,
               line.waitChildRequestNo ? `Đã xin cấp trên: ${line.waitChildRequestNo}` : null,
+              line.waitPurchaseOrderNo ? `Đang chờ đơn ${line.waitPurchaseOrderNo}` : null,
+              line.withdrawRequestedAt ? `Đã gửi yêu cầu rút: ${line.withdrawRequestReason ?? ''}` : null,
               line.transfers.length > 0 ? `Phiếu điều chuyển ${line.transfers.map((t) => t.transferNo).join(', ')}` : null,
             ]
               .filter(Boolean)
               .join('. ');
             const inTransit = line.transfers.find((t) => t.status === 'IN_TRANSIT');
             const canOpenTransit = inTransit ? request.transfers.find((t) => t.id === inTransit.id)?.canOpen === true : false;
-            const canWithdrawLine = canWithdraw && (withdrawOnlyWaiting ? line.fulfilStatus === 'WAITING_STOCK' : line.fulfilStatus === 'PENDING' || line.fulfilStatus === 'WAITING_STOCK');
+            const canWithdrawLine = canWithdraw && !line.withdrawRequestedAt && (withdrawOnlyWaiting ? line.fulfilStatus === 'WAITING_STOCK' : line.fulfilStatus === 'PENDING' || line.fulfilStatus === 'WAITING_STOCK');
             return (
               <div key={line.id} role="row" style={{ gridTemplateColumns: REQUESTER_GRID, minHeight: 56 }} className="grid items-center gap-x-4 border-b border-slate-100 px-4 py-2 text-sm">
                 <div role="cell" className="min-w-0">
@@ -459,6 +463,7 @@ function RequesterTable({
                 <div role="cell" className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
+                    {line.withdrawRequestedAt && <StatusBadge tone="warning">Chờ kho cấp xác nhận rút</StatusBadge>}
                     {inTransit && canOpenTransit && request.canActAsRequester && (
                       <Button type="button" variant="info" className="px-2.5 py-1 text-xs" onClick={() => navigate(`/inventory/transfers/${inTransit.id}`)}>
                         Kiểm nhận
@@ -548,5 +553,34 @@ function EscalateDialog({ request, onClose }: { request: StockRequestDetail; onC
         ))}
       </ul>
     </ConfirmDialog>
+  );
+}
+
+/** Kho cấp xử lý "Yêu cầu rút" của bên xin (#298 giai đoạn 2): dòng chờ hàng về đã gắn đơn NCC đã đặt. Xác nhận thì dòng rút; giữ lại thì dòng vẫn chờ hàng về. Đơn NCC không bị huỷ theo. */
+function WithdrawRequestNotice({ request, onError }: { request: StockRequestDetail; onError: (message: string | null) => void }) {
+  const mutation = useResolveWithdrawRequestsMutation();
+  const lines = request.lines.filter((l) => l.withdrawRequestedAt);
+  async function resolve(action: 'CONFIRM' | 'DECLINE') {
+    onError(null);
+    try {
+      await mutation.mutateAsync({ id: request.id, body: { version: request.version, lineIds: lines.map((l) => l.id), action } });
+    } catch (err) {
+      onError(err instanceof ApiError ? err.message : 'Xử lý yêu cầu rút thất bại, vui lòng thử lại.');
+    }
+  }
+  return (
+    <div role="status" className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      <span>
+        <strong>Bên xin gửi yêu cầu rút:</strong> {lines.map((l) => `${l.drugName} (đơn ${l.waitPurchaseOrderNo ?? '—'}, lý do: ${l.withdrawRequestReason ?? '—'})`).join('; ')}. Đơn đặt hàng không bị huỷ; hàng về vẫn nhập kho của bạn.
+      </span>
+      <span className="flex gap-2">
+        <Button type="button" variant="secondary" loading={mutation.isPending} onClick={() => void resolve('DECLINE')}>
+          Giữ lại
+        </Button>
+        <Button type="button" variant="amber" loading={mutation.isPending} onClick={() => void resolve('CONFIRM')}>
+          Xác nhận rút
+        </Button>
+      </span>
+    </div>
   );
 }

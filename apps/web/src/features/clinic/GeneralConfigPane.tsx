@@ -347,6 +347,45 @@ export function GeneralConfigPane() {
 
       <div className="flex items-start justify-between gap-5">
         <div>
+          <p className="text-[14.5px] font-semibold text-slate-900">Cho phép chi nhánh đặt hàng NCC riêng</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">Tắt: chỉ chi nhánh chính đặt và nhập hàng từ nhà cung cấp; chi nhánh phụ không thấy &quot;Đơn đặt hàng NCC&quot; và không lập được Phiếu nhập mua hàng.</p>
+        </div>
+        <ToggleSwitch
+          checked={settingsQuery.data.branchPurchasingEnabled}
+          disabled={updateMutation.isPending}
+          onChange={(checked) => updateMutation.mutate({ branchPurchasingEnabled: checked })}
+          ariaLabel="Cho phép chi nhánh đặt hàng NCC riêng"
+        />
+      </div>
+
+      <div className={`flex items-start justify-between gap-5 ${settingsQuery.data.branchPurchasingEnabled ? '' : 'opacity-50'}`}>
+        <div>
+          <p className="text-[14.5px] font-semibold text-slate-900">Đơn của chi nhánh phụ cần chi nhánh chính duyệt</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">Bật: đơn phải được chi nhánh chính duyệt mới gửi nhà cung cấp. Tắt: chi nhánh tự duyệt theo quyền của mình.</p>
+        </div>
+        <ToggleSwitch
+          checked={settingsQuery.data.branchPurchaseNeedsMainApproval}
+          disabled={updateMutation.isPending || !settingsQuery.data.branchPurchasingEnabled}
+          onChange={(checked) => updateMutation.mutate({ branchPurchaseNeedsMainApproval: checked })}
+          ariaLabel="Đơn của chi nhánh phụ cần chi nhánh chính duyệt"
+        />
+      </div>
+
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-[14.5px] font-semibold text-slate-900">Cho phép nhận vượt số đặt</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">Tắt: nhận hàng nhiều hơn số đặt trên đơn bị chặn và báo lỗi. Bật: cho phép nhận phần dư.</p>
+        </div>
+        <ToggleSwitch
+          checked={settingsQuery.data.allowOverReceipt}
+          disabled={updateMutation.isPending}
+          onChange={(checked) => updateMutation.mutate({ allowOverReceipt: checked })}
+          ariaLabel="Cho phép nhận vượt số đặt"
+        />
+      </div>
+
+      <div className="flex items-start justify-between gap-5">
+        <div>
           <p className="text-[14.5px] font-semibold text-slate-900">Ngưỡng cảnh báo hạn dùng sắp hết</p>
           <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
             Số ngày trước hạn dùng để bắt đầu hiển thị cảnh báo lô sắp hết hạn trong &quot;Tồn kho theo lô&quot; và

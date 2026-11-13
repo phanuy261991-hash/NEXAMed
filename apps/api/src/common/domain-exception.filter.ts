@@ -233,6 +233,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // Yêu cầu cấp hàng (#298) — công tắc tắt / trạng thái phiếu không cho phép thao tác là xung đột trạng thái, không phải lỗi input; không có kho cấp trên, thiếu tồn, số cấp sai dùng mặc định 422.
   STOCK_REQUEST_DISABLED: HttpStatus.CONFLICT,
   STOCK_REQUEST_INVALID_STATE: HttpStatus.CONFLICT,
+  // Đơn đặt hàng NCC (#298 giai đoạn 2) — sai trạng thái / chi nhánh không được đặt riêng là xung đột trạng thái; sai phía duyệt là 403; phiếu nhập lệch đơn / nhận vượt dùng mặc định 422.
+  PURCHASE_ORDER_INVALID_STATE: HttpStatus.CONFLICT,
+  BRANCH_PURCHASING_DISABLED: HttpStatus.CONFLICT,
+  PURCHASE_ORDER_APPROVER_BRANCH: HttpStatus.FORBIDDEN,
   // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — NCC đã có bút toán rồi (Q7: chỉ khai nợ
   // đầu kỳ được 1 lần) là xung đột với trạng thái hiện có, không phải lỗi input.
   SUPPLIER_DEBT_OPENING_BALANCE_ALREADY_EXISTS: HttpStatus.CONFLICT,

@@ -1,5 +1,6 @@
 import { forwardRef, Injectable, Inject, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
+  CLINIC_CONFIG_READER_PORT,
   checkManufactureDate,
   computeDiscountAmount,
   computeInvoiceDiscount,
@@ -10,6 +11,7 @@ import {
   StockReceiptLineUnitInvalidError,
   StockReceiptNotDraftError,
   StockReceiptVoidNotAllowedError,
+  type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   vietnamDayStartUtc,
   vietnamDayEndUtc,
@@ -44,6 +46,7 @@ import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockLedgerRepository } from './stock-ledger.repository';
 import { StockBalanceRepository } from './stock-balance.repository';
 import { StockIssueRepository } from './stock-issue.repository';
+import { PurchaseOrderLinkService } from './purchase-order-link.service';
 
 /** "Phiếu nhập kho mở rộng" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) mở khoá thêm `RETURN_FROM_USE`
  * (lập tay, Nháp→Duyệt đúng khuôn PURCHASE/OPENING_BALANCE — không cột đặc thù, "kiểm duyệt chặt
@@ -87,6 +90,9 @@ export class StockReceiptService {
     // cho circular provider dependency (khác forwardRef Ở MODULE chỉ giải quyết thứ tự require() CommonJS).
     @Inject(forwardRef(() => SupplierDebtService)) private readonly supplierDebtService: SupplierDebtService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
+    // Đơn đặt hàng NCC (#298 giai đoạn 2): kiểm chi nhánh được nhập mua riêng + nhận theo đơn; cấu hình đọc TRƯỚC khi mở transaction (#264).
+    private readonly purchaseOrderLink: PurchaseOrderLinkService,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
 
   async create(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CreateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
@@ -94,6 +100,7 @@ export class StockReceiptService {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.receiptType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    const orderSettings = dto.receiptType === 'PURCHASE' ? await this.clinicConfigReader.getPurchaseOrderSettings(tenantId) : null;
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
@@ -104,6 +111,7 @@ export class StockReceiptService {
         if (!supplier) throw new NotFoundException();
       }
       await this.validateSourceIssueRef(tx, tenantId, branchId, dto.sourceIssueId);
+      await this.assertPurchaseOrderRules(tx, tenantId, branchId, dto, orderSettings);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
       await this.assertReturnWithinIssued(tx, tenantId, dto.receiptType, dto.sourceIssueId, lines);
@@ -130,6 +138,7 @@ export class StockReceiptService {
         countId: null,
         transferId: null,
         sourceIssueId: dto.sourceIssueId ?? null,
+        purchaseOrderId: dto.purchaseOrderId ?? null,
       });
 
       await writeAuditLog(tx, tenantId, {
@@ -156,6 +165,7 @@ export class StockReceiptService {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.receiptType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    const orderSettings = dto.receiptType === 'PURCHASE' ? await this.clinicConfigReader.getPurchaseOrderSettings(tenantId) : null;
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockReceiptRepository.findById(tx, tenantId, branchId, id);
@@ -173,6 +183,7 @@ export class StockReceiptService {
         if (!supplier) throw new NotFoundException();
       }
       await this.validateSourceIssueRef(tx, tenantId, branchId, dto.sourceIssueId);
+      await this.assertPurchaseOrderRules(tx, tenantId, branchId, dto, orderSettings);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
       await this.assertReturnWithinIssued(tx, tenantId, dto.receiptType, dto.sourceIssueId, lines, id);
@@ -195,6 +206,7 @@ export class StockReceiptService {
         prepaidCashAccountId: dto.prepaidCashAccountId ?? null,
         lines,
         sourceIssueId: dto.sourceIssueId ?? null,
+        purchaseOrderId: dto.purchaseOrderId ?? null,
       });
       if (count === 0) throw new ConcurrentModificationError();
 
@@ -251,6 +263,8 @@ export class StockReceiptService {
         to: query.to ? vietnamDayEndUtc(query.to) : undefined,
         q: query.q,
         supplierId: query.supplierId,
+        fromOrder: query.fromOrder,
+        purchaseOrderId: query.purchaseOrderId,
         cursor: query.cursor,
         take: query.limit + 1,
         departmentId: dataScope === 'department' ? (actorDepartmentId ?? undefined) : undefined,
@@ -275,6 +289,7 @@ export class StockReceiptService {
     // Công tắc duyệt phiếu chi + ca thu ngân cho "Trả ngay": đi qua port tự mở transaction nên lấy TRƯỚC khi mở transaction
     // (docs/DECISIONS.md #296) — hai lần đọc nhẹ, cả với phiếu không có "Trả ngay".
     const purchaseContext = await this.supplierDebtService.loadPurchaseApprovalContext(tenantId, branchId, actorId);
+    const orderSettings = await this.clinicConfigReader.getPurchaseOrderSettings(tenantId);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, branchId, id);
@@ -283,6 +298,22 @@ export class StockReceiptService {
 
       const existingWarehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(existingWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+
+      // Nhận theo Đơn đặt hàng NCC: kiểm lại lúc Duyệt (đơn có thể đã đóng/huỷ hoặc phiếu khác đã nhận phần còn thiếu từ lúc lập Nháp).
+      if (existing.purchaseOrderId) {
+        await this.purchaseOrderLink.validateReceiptAgainstOrder(
+          tx,
+          tenantId,
+          branchId,
+          {
+            purchaseOrderId: existing.purchaseOrderId,
+            supplierId: existing.supplierId,
+            warehouseId: existing.warehouseId,
+            lines: existing.lines.map((l) => ({ purchaseOrderLineId: l.purchaseOrderLineId ?? '', drugId: l.drugId, unitCode: l.unitCode, quantity: l.quantity })),
+          },
+          orderSettings.allowOverReceipt,
+        );
+      }
 
       // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — ghi PURCHASE + xử lý "Trả ngay" TRƯỚC
       // khi chuyển phiếu sang POSTED, để `prepaidVoucherId` (nếu có) gắn được ngay trong CÙNG lệnh
@@ -317,6 +348,7 @@ export class StockReceiptService {
       if (count === 0) throw new ConcurrentModificationError();
 
       await this.applyPostedLines(tx, tenantId, actorId, existing);
+      if (existing.purchaseOrderId) await this.purchaseOrderLink.syncStatus(tx, tenantId, actorId, existing.purchaseOrderId);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -759,6 +791,33 @@ export class StockReceiptService {
     if (existing.receiptType === 'PURCHASE' && existing.supplierId) {
       await this.supplierDebtService.reverseStockEntry(tx, tenantId, actorId, { stockReceiptId: existing.id, stockIssueId: null }, reason, meta);
     }
+    // Đơn đặt hàng NCC (#298 giai đoạn 2): số đã nhận giảm → trạng thái đơn lùi theo.
+    if (existing.purchaseOrderId) await this.purchaseOrderLink.syncStatus(tx, tenantId, actorId, existing.purchaseOrderId);
+  }
+
+  /** Chi nhánh phụ không lập được Phiếu nhập mua hàng khi tắt "đặt hàng NCC riêng"; phiếu nhận theo đơn phải khớp đơn (NCC, kho, mặt hàng, đơn vị) và không nhận vượt. */
+  private async assertPurchaseOrderRules(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    dto: CreateStockReceiptRequest,
+    settings: { branchPurchasingEnabled: boolean; allowOverReceipt: boolean } | null,
+  ): Promise<void> {
+    if (dto.receiptType !== 'PURCHASE' || !settings) return;
+    await this.purchaseOrderLink.assertBranchMayPurchase(tx, tenantId, branchId, settings.branchPurchasingEnabled);
+    if (!dto.purchaseOrderId) return;
+    await this.purchaseOrderLink.validateReceiptAgainstOrder(
+      tx,
+      tenantId,
+      branchId,
+      {
+        purchaseOrderId: dto.purchaseOrderId,
+        supplierId: dto.supplierId ?? null,
+        warehouseId: dto.warehouseId,
+        lines: dto.lines.map((l) => ({ purchaseOrderLineId: l.purchaseOrderLineId ?? '', drugId: l.drugId, unitCode: l.unitCode, quantity: l.quantity })),
+      },
+      settings.allowOverReceipt,
+    );
   }
 
   // ============ helpers ============
@@ -879,6 +938,7 @@ export class StockReceiptService {
         lineAmount: BigInt(line.quantity) * BigInt(line.unitCost),
         discountType: (line.discountType ?? null) as DiscountType | null,
         discountValue: line.discountValue != null ? BigInt(line.discountValue) : null,
+        purchaseOrderLineId: line.purchaseOrderLineId ?? null,
       });
     }
     return result;
@@ -921,7 +981,7 @@ export class StockReceiptService {
   }
 
   private toSummaryDto(
-    row: StockReceipt & { sourceIssue: { issueNo: string } | null },
+    row: StockReceipt & { sourceIssue: { issueNo: string } | null; purchaseOrder?: { orderNo: string } | null },
     warehouseName: string,
     supplierName: string | null,
     lineCount: number,
@@ -949,6 +1009,8 @@ export class StockReceiptService {
       prepaidVoucherId: row.prepaidVoucherId,
       sourceIssueId: row.sourceIssueId,
       sourceIssueNo: row.sourceIssue?.issueNo ?? null,
+      purchaseOrderId: row.purchaseOrderId,
+      purchaseOrderNo: row.purchaseOrder?.orderNo ?? null,
       lineCount,
       createdByName: names.get(row.createdBy) ?? 'Không rõ',
       approvedByName: row.approvedBy ? (names.get(row.approvedBy) ?? 'Không rõ') : null,
@@ -994,6 +1056,7 @@ export class StockReceiptService {
         discountType: line.discountType,
         discountValue: line.discountValue !== null ? Number(line.discountValue) : null,
         discountAmount: computeDiscountAmount(Number(line.lineAmount), line.discountType, line.discountValue !== null ? Number(line.discountValue) : null),
+        purchaseOrderLineId: line.purchaseOrderLineId,
       })),
     };
   }

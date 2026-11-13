@@ -371,3 +371,16 @@ Migration `20261112150000_stock_request`. Chi nhánh KẾ THỪA qua kho xin/kho
 | `stock_transfer.request_id`, `stock_transfer_line.request_line_id` | Nối phiếu điều chuyển sinh ra từ yêu cầu | NULL với phiếu lập tay; FK ghép `(tenant_id, …)`. |
 
 Enum DB mới: `stock_request_status`, `stock_request_priority`, `stock_request_line_status`; `PrintDocumentType` thêm `STOCK_REQUEST`. Quyền mới `stock_request.create/read/approve`; công tắc `tenant_setting` `stock_request_enabled` (mặc định bật).
+
+### 3.25 Đơn đặt hàng NCC (v1.98, `docs/DECISIONS.md` #298 bổ sung, giai đoạn 2)
+
+Migration `20261113090000_purchase_order` (FORCE RLS ngay trong migration). Chi nhánh KẾ THỪA qua kho nhận (không có cột `branch_id`, đúng khuôn `stock_request`/`stock_transfer`). Số đã nhận của dòng đơn SUY RA từ các dòng phiếu nhập ĐÃ DUYỆT (`stock_receipt_line.purchase_order_line_id`, phiếu `POSTED` chưa bị huỷ), không lưu trùng.
+
+| Bảng | Vai trò | Đặc thù |
+|---|---|---|
+| `purchase_order` | Đơn đặt hàng NCC | `order_no` (DDH), `supplier_id`, `warehouse_id` (kho nhận), `status` (DRAFT/PENDING_APPROVAL/REJECTED/APPROVED/ORDERED/PARTIALLY_RECEIVED/RECEIVED/CLOSED/CANCELLED), `expected_date` DATE, `note`, `total_amount` BIGINT (snapshot tổng dự kiến), các cặp `*_at`/`*_by` (gửi duyệt, duyệt, đặt NCC, từ chối, huỷ, đóng); CHECK lý do bắt buộc khi Từ chối/Huỷ/Đóng và rỗng ở trạng thái khác. |
+| `purchase_order_line` | Dòng đơn | `drug_id`, `unit_code` (đúng đơn vị đã chọn, Phiếu nhập liên kết dùng lại), `quantity` > 0, `expected_unit_cost` BIGINT tuỳ chọn, `line_note`; chỉ mục duy nhất một phần (order, drug) khi chưa xoá. |
+| `stock_receipt.purchase_order_id`, `stock_receipt_line.purchase_order_line_id` | Nối Phiếu nhập kho với đơn | NULL với phiếu lập tay; FK ghép `(tenant_id, …)`. |
+| `stock_request_line.wait_purchase_order_id` + `withdraw_requested_at/by/reason` | Dòng yêu cầu cấp hàng chờ hàng của đơn + "Yêu cầu rút" | CHECK có lý do khi có thời điểm yêu cầu rút. |
+
+Enum DB mới: `purchase_order_status`; `PrintDocumentType` thêm `PURCHASE_ORDER`. Quyền mới `purchase_order.create/read/approve` (mặc định chỉ clinic_admin); 3 khoá `tenant_setting`: `branch_purchasing_enabled` (mặc định bật), `branch_purchase_needs_main_approval` (tắt), `allow_over_receipt` (tắt).

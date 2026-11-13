@@ -1,16 +1,16 @@
 # Current — NEXAMed
 
-Trạng thái HIỆN TẠI của dự án (cập nhật 11/11/2026). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
+Trạng thái HIỆN TẠI của dự án (cập nhật 12/11/2026). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
 
 Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURRENT-den-2026-10-16.md` và `docs/archive/CURRENT-den-2026-11-04.md` (bản dài đến 04/11/2026, gồm chi tiết kiểm thử từng chức năng) — **chỉ mở khi cần tra một mục cụ thể**. Khi file này vượt ~40 KB thì chuyển phần cũ sang `docs/archive/CURRENT-*.md` mới và viết lại bản ngắn (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
 ## Bức tranh hiện tại
 
 - Phiên bản phần mềm `0.9.5` (tag `v0.9.5` tạo cục bộ 10/11/2026, chưa push, chưa dựng gói; gói demo gần nhất đã dựng là `0.9.3`; chốt `1.0.0` SAU pilot). Đang pilot tại phòng khám thật; môi trường dev dùng tenant test cố định `01a0cc3c-8626-746b-9d2a-5ea0268ec19f`, đăng nhập `dev.admin` / `Dev@12345` (tài khoản quét quyền `rl.<vai trò>`, mật khẩu `12345678`).
-- `master` = `8ee4ae8` (12/11/2026, ĐÃ PUSH, working tree sạch; CI GitHub XANH ở `0507858`; gồm #297 GĐ3, GĐ4, "Kho trừ", lãi gộp dịch vụ). Lần chạy cuối: full API 2310 xanh, Chrome IP LAN 54/54 + 19/19, typecheck + lint sạch.
+- `master` = commit "Đơn đặt hàng NCC GĐ2 + thêm nhanh mặt hàng" (13/11/2026; trước đó `9ccc4a5`, CI GitHub XANH ở `3a9acab`; gồm #297 đầy đủ GĐ1–GĐ5, lãi gộp dịch vụ, #298 GĐ1 Yêu cầu cấp hàng). Lần chạy cuối: full API 2332 xanh, core 869, web 778, Chrome IP LAN 26/26, typecheck + lint sạch.
 - Phạm vi v1 đã mở rộng nhiều so với PRD gốc (danh sách chốt đầy đủ ở `CLAUDE.md`, mục Phạm vi v1): Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn, Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư GĐ1–5, Công nợ nhà cung cấp A–E, Cận lâm sàng, Điều trị & Hẹn tái khám, Lịch làm việc/đơn nghỉ/đổi ca, Bảng giá có thời hạn, Thẻ BHYT (chỉ lưu/hiển thị), Hồ sơ bệnh án MS 15/BV-01, Khách không làm dịch vụ, hệ thống báo cáo + Tổng quan theo vai trò.
 - **Tầng chi nhánh** (#231/#233/#235): Đợt 1–3 xong; chưa bật chi nhánh thứ 2 ở khách thật. Mọi chức năng mới trả lời 4 câu hỏi chi nhánh (`CLAUDE.md`). **SaaS** (#237): nền tên miền phụ + Khu quản trị nền tảng xong; còn hạ tầng thật (chờ báo giá). **Trình cài đặt `nexamed-setup`** (#238) xong; chưa kiểm Let's Encrypt/NAS/Windows sạch.
-- **Yêu cầu cấp hàng theo cấp** (#298, 12/11/2026): GĐ1 XONG và ĐÃ PUSH (`3a9acab`, CI xanh); bàn giao `docs/handoffs/HANDOFF-YeuCauCapHang-GD1-DonDatHangNCC-GD2-2026-11-12-p3.md` (migration `20261112150000_stock_request`, quyền `stock_request.*` cần `pnpm db:seed` + khởi động lại API); GĐ2 Đơn đặt hàng NCC chưa làm. Chi tiết ở `docs/TASK.md`.
+- **Yêu cầu cấp hàng + Đơn đặt hàng NCC** (#298): GĐ1 Yêu cầu cấp hàng XONG và ĐÃ PUSH (`3a9acab`, CI xanh). **GĐ2 Đơn đặt hàng NCC XONG code + test ngày 13/11/2026, CHƯA COMMIT** (migration `20261113090000_purchase_order`, quyền `purchase_order.*`, 3 công tắc mới; cần `pnpm db:deploy` + `pnpm db:seed` + khởi động lại API; chi tiết DECISIONS #298 bổ sung 1). **Thêm nhanh mặt hàng (#298 bổ sung 2) XONG 13/11/2026** (ô tìm hàng của đơn/phiếu nhập mở hộp thêm Thuốc/Vật tư, mã `MH…` tự sinh; làm bù 3 chỗ mockup; Chrome IP LAN 25/25 + 38/38). Cột "Diễn giải" ở sổ công nợ NCC đã thêm (đúng mockup màn 12). Full test đã xanh; còn commit/push (chờ chủ dự án đồng ý). Chi tiết ở `docs/TASK.md`.
 - **Runtime Node 26** (#253), NestJS 11, Vite 6/Vitest 4 (#249, #252). Mọi mã mới chạy được ở LAN HTTP on-prem (#257); lỗi hiện qua màn thông báo cụ thể (#255); POST có `Idempotency-Key` (#257); một request = MỘT transaction (#264).
 
 ## Hệ thống báo cáo + Tổng quan theo vai trò (#279, kế hoạch `docs/product/reporting-plan.md`)
@@ -62,10 +62,13 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-LaiGopDichVu-BaoCaoChiPhiVatTu-2026-11-12-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 12/11/2026 phần 2): lãi gộp dịch vụ + 2 tab báo cáo chi phí vật tư + Toàn hệ thống XONG, đã push, CI xanh, không có việc dở; mục 5 liệt kê việc kế tiếp, mục 6 là cách chạy lại kiểm Chrome.
+**`docs/handoffs/HANDOFF-DonDatHangNCC-GD2-ThemNhanhMatHang-2026-11-13.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 13/11/2026): Đơn đặt hàng NCC GĐ2 + "Thêm nhanh mặt hàng" + cột "Diễn giải" sổ công nợ đã XONG và đã commit (13/11/2026; việc dở ghi trong file này đã hoàn tất, xem DECISIONS #298 bổ sung 2–3); quy tắc mới còn hiệu lực: không được tự cắt mockup đã duyệt.
+
+Bản cũ hơn: **`docs/handoffs/HANDOFF-YeuCauCapHang-GD1-DonDatHangNCC-GD2-2026-11-12-p3.md`** (đã được bản trên thay — ĐỌC TRƯỚC, 12/11/2026 phần 3): Yêu cầu cấp hàng GĐ1 XONG, đã push, CI xanh; kế tiếp GĐ2 Đơn đặt hàng NCC (mục 5 là việc cần làm, mục 6 quy tắc giao diện, mục 7 cách chạy kiểm Chrome, mục 8 bẫy đã gặp).
 
 Các bản cũ hơn (đã được bản trên thay, chỉ mở khi cần tra):
 
+- `docs/handoffs/HANDOFF-LaiGopDichVu-BaoCaoChiPhiVatTu-2026-11-12-p2.md` — 12/11/2026 phần 2: lãi gộp dịch vụ + báo cáo chi phí vật tư (đã xong, đã push).
 - `docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-XongWebBaoCao-2026-11-12.md` — 12/11/2026 phần 1: #297 GĐ4 + "Kho trừ" xong.
 - `docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-2026-11-11-p2.md` — 11/11/2026 phần 2: GĐ4 đang dở (đã xong ở bản trên).
 - `docs/handoffs/HANDOFF-VatTuYTe-CoNoiBo-TieuHao-GD1-2026-11-11.md` — 11/11/2026: #297 GĐ1–GĐ3.

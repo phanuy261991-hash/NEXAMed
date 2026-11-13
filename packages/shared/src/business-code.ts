@@ -76,6 +76,8 @@ export const businessCodeTypeSchema = z.enum([
   'STOCK_COUNT',
   'STOCK_TRANSFER',
   'STOCK_REQUEST',
+  'PURCHASE_ORDER',
+  'DRUG',
   'SUPPLIER_DEBT_ADJUSTMENT',
   'SUPPLIER_DEBT_RECONCILIATION',
   'INVOICE_REFUND',
@@ -141,6 +143,10 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, BusinessCodeT
   STOCK_TRANSFER: { label: 'Mã phiếu điều chuyển kho', internalPrefix: 'PDC' },
   // "Phiếu yêu cầu cấp hàng" (docs/DECISIONS.md #298), không trùng tiền tố nào đã dùng ở trên.
   STOCK_REQUEST: { label: 'Mã phiếu yêu cầu cấp hàng', internalPrefix: 'YCCH' },
+  // "Đơn đặt hàng NCC" (docs/DECISIONS.md #298 giai đoạn 2), không trùng tiền tố nào đã dùng ở trên.
+  PURCHASE_ORDER: { label: 'Mã đơn đặt hàng NCC', internalPrefix: 'DDH' },
+  // Mã thuốc/vật tư tự sinh khi "Thêm mặt hàng mới" nhanh ở Đơn đặt hàng NCC / Phiếu nhập kho (#298 bổ sung 2) — nhập tay ở Danh mục vẫn tự đặt mã được.
+  DRUG: { label: 'Mã thuốc/vật tư', internalPrefix: 'MH' },
   // "Công nợ nhà cung cấp" Phần D (docs/DECISIONS.md #180/#182) — "Phiếu điều chỉnh công nợ"/"Đề
   // nghị huỷ", không trùng tiền tố nào đã dùng ở trên.
   SUPPLIER_DEBT_ADJUSTMENT: { label: 'Mã phiếu điều chỉnh công nợ', internalPrefix: 'PDN' },

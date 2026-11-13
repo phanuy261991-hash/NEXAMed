@@ -213,6 +213,20 @@ import {
   followUpFeatureStatusSchema,
   labPartnerFeatureStatusSchema,
   stockRequestFeatureStatusSchema,
+  purchaseOrderSettingsSchema,
+  getStockRequestRestockResponseSchema,
+  purchaseOrderDetailSchema,
+  listPurchaseOrdersQuerySchema,
+  listPurchaseOrdersResponseSchema,
+  getPurchaseOrderPendingCountsResponseSchema,
+  getPurchaseOrderOptionsResponseSchema,
+  createPurchaseOrderRequestSchema,
+  updatePurchaseOrderRequestSchema,
+  versionedPurchaseOrderRequestSchema,
+  rejectPurchaseOrderRequestSchema,
+  cancelPurchaseOrderRequestSchema,
+  closePurchaseOrderRequestSchema,
+  resolveStockRequestWithdrawRequestSchema,
   listInsuranceCardsResponseSchema,
   saveInsuranceCardResponseSchema,
   updateInsuranceCardRequestSchema,
@@ -6062,6 +6076,144 @@ registry.registerPath({
     404: errorResponse('Không tìm thấy'),
     409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT)'),
   },
+});
+
+// ============ Đơn đặt hàng NCC (docs/DECISIONS.md #298 giai đoạn 2) ============
+const purchaseOrderIdParams = z.object({ id: z.string().uuid() });
+const PO_BASE = '/api/v1/inventory/purchase-orders';
+const poErrors = {
+  401: errorResponse('Thiếu hoặc sai access token'),
+  404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+  409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái đơn không cho phép (PURCHASE_ORDER_INVALID_STATE) hoặc chi nhánh không được đặt hàng riêng (BRANCH_PURCHASING_DISABLED)'),
+};
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/requests/restock',
+  tags: ['inventory'],
+  summary: 'Tab "Hàng cần bổ sung": mặt hàng dưới mức tối thiểu của kho chính chi nhánh kèm phần phòng ban đang chờ và gợi ý số cần bổ sung',
+  security: [{ bearerAuth: [] }],
+  responses: { 200: jsonResponse('Thành công', envelope(getStockRequestRestockResponseSchema)), 401: errorResponse('Thiếu hoặc sai access token'), 403: errorResponse('Không có quyền stock_request.create'), 409: errorResponse('Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED)') },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/purchase-order-settings',
+  tags: ['clinic-settings'],
+  summary: 'Ba công tắc Đơn đặt hàng NCC (tự-phục vụ, mọi nhân viên đăng nhập đọc được)',
+  security: [{ bearerAuth: [] }],
+  responses: { 200: jsonResponse('Thành công', envelope(purchaseOrderSettingsSchema)), 401: errorResponse('Thiếu hoặc sai access token') },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: PO_BASE,
+  tags: ['inventory'],
+  summary: 'Danh sách Đơn đặt hàng NCC — view mine (chi nhánh đang làm) / approval (đơn chờ tôi duyệt), cursor, lọc, dải đếm theo trạng thái',
+  security: [{ bearerAuth: [] }],
+  request: { query: listPurchaseOrdersQuerySchema },
+  responses: { 200: jsonResponse('Thành công', envelope(listPurchaseOrdersResponseSchema)), 401: poErrors[401], 403: errorResponse('Không có quyền purchase_order.read') },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: PO_BASE + '/pending-counts',
+  tags: ['inventory'],
+  summary: 'Chấm số trên menu: đơn đang chờ tôi duyệt',
+  security: [{ bearerAuth: [] }],
+  responses: { 200: jsonResponse('Thành công', envelope(getPurchaseOrderPendingCountsResponseSchema)), 401: poErrors[401], 403: errorResponse('Không có quyền purchase_order.read') },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: PO_BASE + '/options',
+  tags: ['inventory'],
+  summary: 'Cờ cấu hình và chi nhánh hiện tại (được lập đơn không, cần chi nhánh chính duyệt không)',
+  security: [{ bearerAuth: [] }],
+  responses: { 200: jsonResponse('Thành công', envelope(getPurchaseOrderOptionsResponseSchema)), 401: poErrors[401], 403: errorResponse('Không có quyền purchase_order.read') },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: PO_BASE + '/{id}',
+  tags: ['inventory'],
+  summary: 'Chi tiết đơn đặt hàng NCC — dòng (đã nhận/còn thiếu), phiếu nhập liên kết',
+  security: [{ bearerAuth: [] }],
+  request: { params: purchaseOrderIdParams },
+  responses: { 200: jsonResponse('Thành công', envelope(purchaseOrderDetailSchema)), 401: poErrors[401], 403: errorResponse('Không có quyền purchase_order.read'), 404: poErrors[404] },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: PO_BASE,
+  tags: ['inventory'],
+  summary: 'Lập đơn đặt hàng NCC (lưu Nháp)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createPurchaseOrderRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(purchaseOrderDetailSchema)),
+    401: poErrors[401],
+    403: errorResponse('Không có quyền purchase_order.create'),
+    404: poErrors[404],
+    409: poErrors[409],
+    422: errorResponse('Mặt hàng/đơn vị không hợp lệ hoặc dòng yêu cầu cấp hàng không còn chờ hàng về'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: PO_BASE + '/{id}',
+  tags: ['inventory'],
+  summary: 'Sửa đơn khi còn Nháp hoặc đã bị Từ chối (quay về Nháp) — thay toàn bộ dòng',
+  security: [{ bearerAuth: [] }],
+  request: { params: purchaseOrderIdParams, body: { content: { 'application/json': { schema: updatePurchaseOrderRequestSchema } } } },
+  responses: { 200: jsonResponse('Thành công', envelope(purchaseOrderDetailSchema)), 401: poErrors[401], 403: errorResponse('Không có quyền purchase_order.create'), 404: poErrors[404], 409: poErrors[409] },
+});
+
+const poActions: { action: string; permission: string; summary: string; schema: z.ZodTypeAny }[] = [
+  { action: 'submit', permission: 'create', summary: 'Gửi duyệt: Nháp → Chờ duyệt', schema: versionedPurchaseOrderRequestSchema },
+  { action: 'approve', permission: 'approve', summary: 'Duyệt: Nháp (tự duyệt, đơn không cần chi nhánh chính duyệt) hoặc Chờ duyệt → Đã duyệt', schema: versionedPurchaseOrderRequestSchema },
+  { action: 'reject', permission: 'approve', summary: 'Từ chối đơn đang Chờ duyệt (lý do bắt buộc)', schema: rejectPurchaseOrderRequestSchema },
+  { action: 'order', permission: 'create', summary: 'Gửi nhà cung cấp: Đã duyệt → Đã đặt NCC', schema: versionedPurchaseOrderRequestSchema },
+  { action: 'close', permission: 'create', summary: 'Đóng đơn khi nhà cung cấp không giao nữa (lý do bắt buộc)', schema: closePurchaseOrderRequestSchema },
+  { action: 'cancel', permission: 'create', summary: 'Huỷ đơn (lý do bắt buộc) — chưa nhận hàng', schema: cancelPurchaseOrderRequestSchema },
+];
+for (const a of poActions) {
+  registry.registerPath({
+    method: 'post',
+    path: PO_BASE + '/{id}/' + a.action,
+    tags: ['inventory'],
+    summary: a.summary,
+    security: [{ bearerAuth: [] }],
+    request: { params: purchaseOrderIdParams, body: { content: { 'application/json': { schema: a.schema } } } },
+    responses: {
+      200: jsonResponse('Thành công', envelope(purchaseOrderDetailSchema)),
+      401: poErrors[401],
+      403: errorResponse('Không có quyền purchase_order.' + a.permission + ' hoặc sai phía duyệt (PURCHASE_ORDER_APPROVER_BRANCH)'),
+      404: poErrors[404],
+      409: poErrors[409],
+    },
+  });
+}
+
+registry.registerPath({
+  method: 'get',
+  path: PO_BASE + '/export',
+  tags: ['inventory'],
+  summary: 'Xuất Excel danh sách đơn đặt hàng NCC theo bộ lọc',
+  security: [{ bearerAuth: [] }],
+  request: { query: listPurchaseOrdersQuerySchema },
+  responses: { 200: { description: 'Tệp .xlsx' }, 401: poErrors[401], 403: errorResponse('Không có quyền purchase_order.read') },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/withdraw-requests/resolve',
+  tags: ['inventory'],
+  summary: 'Kho cấp xác nhận hoặc từ chối "Yêu cầu rút" của bên xin (dòng chờ hàng về gắn đơn NCC đã đặt)',
+  security: [{ bearerAuth: [] }],
+  request: { params: purchaseOrderIdParams, body: { content: { 'application/json': { schema: resolveStockRequestWithdrawRequestSchema } } } },
+  responses: { 200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)), 401: poErrors[401], 403: errorResponse('Không có quyền stock_request.approve'), 404: poErrors[404], 409: poErrors[409] },
 });
 
 // ============ Yêu cầu cấp hàng (docs/DECISIONS.md #298) ============

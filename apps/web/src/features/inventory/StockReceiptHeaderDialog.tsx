@@ -48,6 +48,7 @@ export function StockReceiptHeaderDialog({
   allowSimpleClose,
   onCancel,
   onSave,
+  lockedByOrder = false,
 }: {
   initial: StockReceiptHeaderValues;
   warehouseOptions: ComboboxOption[];
@@ -58,6 +59,8 @@ export function StockReceiptHeaderDialog({
   allowSimpleClose: boolean;
   onCancel: () => void;
   onSave: (values: StockReceiptHeaderValues) => void;
+  /** Phiếu nhận theo Đơn đặt hàng NCC (#298 giai đoạn 2): khoá Loại phiếu, Kho và Nhà cung cấp theo đơn. */
+  lockedByOrder?: boolean;
 }) {
   const [receiptType, setReceiptType] = useState<StockReceiptType>(initial.receiptType);
   const [warehouseId, setWarehouseId] = useState(initial.warehouseId);
@@ -114,7 +117,7 @@ export function StockReceiptHeaderDialog({
             <label className="mb-1 block text-sm font-semibold text-slate-800">
               Loại phiếu <span className="text-rose-500">*</span>
             </label>
-            <Combobox id="receipt-type" value={receiptType} onChange={(v) => setReceiptType(v as StockReceiptType)} options={RECEIPT_TYPE_OPTIONS} />
+            <Combobox id="receipt-type" value={receiptType} disabled={lockedByOrder} onChange={(v) => setReceiptType(v as StockReceiptType)} options={RECEIPT_TYPE_OPTIONS} />
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-800">
@@ -123,6 +126,7 @@ export function StockReceiptHeaderDialog({
             <Combobox
               id="receipt-warehouse"
               value={warehouseId}
+              disabled={lockedByOrder}
               onChange={(v) => {
                 setWarehouseId(v);
                 setSourceIssueId('');
@@ -142,7 +146,7 @@ export function StockReceiptHeaderDialog({
               <label className="mb-1 block text-sm font-semibold text-slate-800">
                 Nhà cung cấp <span className="text-rose-500">*</span>
               </label>
-              <Combobox id="receipt-supplier" value={supplierId} onChange={setSupplierId} placeholder="— Chọn NCC —" options={supplierOptions} />
+              <Combobox id="receipt-supplier" value={supplierId} disabled={lockedByOrder} onChange={setSupplierId} placeholder="— Chọn NCC —" options={supplierOptions} />
             </div>
           )}
           {receiptType === 'PURCHASE' && (

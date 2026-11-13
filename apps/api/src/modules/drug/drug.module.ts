@@ -1,4 +1,5 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { ClinicModule } from '../clinic/clinic.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { DrugController } from './drug.controller';
@@ -42,7 +43,7 @@ import { PrescriptionTemplateRepository } from './prescription-template.reposito
  * khai báo TRƯỚC `DrugController` (route tĩnh `drugs/export`/`drugs/import-template` phải khớp trước `drugs/:id`).
  */
 @Module({
-  imports: [forwardRef(() => InventoryModule), ReferenceCatalogModule],
+  imports: [forwardRef(() => InventoryModule), ReferenceCatalogModule, ClinicModule],
   controllers: [DrugImportController, DrugController, SupplierController, WarehouseController, PrescriptionTemplateController],
   providers: [
     DrugService,

@@ -11,6 +11,7 @@ const LINE_INCLUDE = {
   include: {
     drug: { select: { code: true, name: true, baseUnitCode: true, isBatchManaged: true } },
     waitChildRequest: { select: { requestNo: true } },
+    waitPurchaseOrder: { select: { orderNo: true, status: true } },
     transferLines: {
       where: { deletedAt: null },
       select: { quantityShipped: true, quantityReceived: true, transfer: { select: { id: true, transferNo: true, status: true } } },
@@ -255,13 +256,26 @@ export class StockRequestRepository {
     await tx.stockRequestLine.updateMany({ where: { tenantId, id: lineId, deletedAt: null }, data: { ...data, updatedBy: actorId, version: { increment: 1 } } });
   }
 
-  async setLineStatus(tx: Prisma.TransactionClient, tenantId: string, lineId: string, actorId: string, status: StockRequestLineStatus, extra: { decisionReason?: string | null; waitExpectedDate?: Date | null; waitChildRequestId?: string | null } = {}): Promise<void> {
+  async setLineStatus(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    lineId: string,
+    actorId: string,
+    status: StockRequestLineStatus,
+    extra: { decisionReason?: string | null; waitExpectedDate?: Date | null; waitChildRequestId?: string | null; waitPurchaseOrderId?: string | null } = {},
+  ): Promise<void> {
     await this.updateLine(tx, tenantId, lineId, actorId, {
       fulfilStatus: status,
       decisionReason: extra.decisionReason ?? null,
       waitExpectedDate: extra.waitExpectedDate ?? null,
       waitChildRequestId: extra.waitChildRequestId ?? null,
+      waitPurchaseOrderId: extra.waitPurchaseOrderId ?? null,
     });
+  }
+
+  /** Đơn đặt hàng NCC mà dòng chờ hàng về muốn gắn vào (#298 giai đoạn 2) — chỉ cần kho nhận + trạng thái để kiểm. */
+  findOrderBrief(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<{ id: string; warehouseId: string; status: string } | null> {
+    return tx.purchaseOrder.findFirst({ where: { tenantId, id, deletedAt: null }, select: { id: true, warehouseId: true, status: true } });
   }
 
   async addEvent(tx: Prisma.TransactionClient, tenantId: string, requestId: string, actorId: string, eventType: string, message: string | null, meta: Prisma.InputJsonValue = {}): Promise<void> {
@@ -294,6 +308,44 @@ export class StockRequestRepository {
     return drugs
       .map((d) => ({ drugId: d.id, code: d.code, name: d.name, unitCode: d.baseUnitCode, onHand: onHandById.get(d.id) ?? 0, minStock: d.minStockAlert as number }))
       .filter((d) => d.onHand < d.minStock);
+  }
+
+  /**
+   * Số liệu tab "Hàng cần bổ sung" của MỘT kho chính (mockup màn 4): mặt hàng có mức tối thiểu và tồn <= mức đó hoặc đang bị phòng ban chờ nhiều hơn tồn; mỗi mặt hàng kèm phần phòng ban đang chờ cấp
+   * (số xin trừ phần đã giao, trên các phiếu đã gửi tới kho này mà chưa hoàn thành) và số phiếu. Đếm thêm dòng đang chờ hàng về và phiếu kho này đã xin lên cấp trên.
+   */
+  async listRestockNeeds(tx: Prisma.TransactionClient, tenantId: string, warehouseId: string) {
+    const [drugs, lines, requestedUp, waitingArrival] = await Promise.all([
+      tx.drug.findMany({ where: { tenantId, deletedAt: null, isActive: true, minStockAlert: { not: null } }, select: { id: true, code: true, name: true, baseUnitCode: true, minStockAlert: true }, orderBy: { name: 'asc' } }),
+      tx.stockRequestLine.findMany({
+        where: { tenantId, deletedAt: null, fulfilStatus: { in: ['PENDING', 'WAITING_STOCK'] }, request: { supplyingWarehouseId: warehouseId, deletedAt: null, status: { in: ['SUBMITTED', 'ACCEPTED', 'IN_PROGRESS'] } } },
+        select: { drugId: true, requestedQty: true, request: { select: { requestNo: true } }, transferLines: { where: { deletedAt: null }, select: { quantityShipped: true, transfer: { select: { status: true } } } } },
+      }),
+      tx.stockRequest.count({ where: { tenantId, deletedAt: null, requestingWarehouseId: warehouseId, status: { in: ['SUBMITTED', 'ACCEPTED', 'IN_PROGRESS'] } } }),
+      tx.stockRequestLine.count({ where: { tenantId, deletedAt: null, fulfilStatus: 'WAITING_STOCK', request: { supplyingWarehouseId: warehouseId, deletedAt: null, status: { in: ['ACCEPTED', 'IN_PROGRESS'] } } } }),
+    ]);
+    const balances = await tx.stockBalance.groupBy({ by: ['drugId'], where: { tenantId, warehouseId, deletedAt: null }, _sum: { quantityOnHand: true } });
+    const onHandById = new Map(balances.map((b) => [b.drugId, b._sum.quantityOnHand ?? 0]));
+    const waitingByDrug = new Map<string, { qty: number; requestNos: Set<string> }>();
+    for (const l of lines) {
+      const shipped = l.transferLines.filter((t) => t.transfer.status !== 'REJECTED').reduce((s, t) => s + t.quantityShipped, 0);
+      const remaining = Math.max(l.requestedQty - shipped, 0);
+      if (remaining <= 0) continue;
+      const entry = waitingByDrug.get(l.drugId) ?? { qty: 0, requestNos: new Set<string>() };
+      entry.qty += remaining;
+      entry.requestNos.add(l.request.requestNo);
+      waitingByDrug.set(l.drugId, entry);
+    }
+    const items = drugs
+      .map((d) => {
+        const onHand = onHandById.get(d.id) ?? 0;
+        const minStock = d.minStockAlert as number;
+        const waiting = waitingByDrug.get(d.id);
+        const deptWaitingQty = waiting?.qty ?? 0;
+        return { drugId: d.id, drugCode: d.code, drugName: d.name, unitCode: d.baseUnitCode, onHand, minStock, deptWaitingQty, deptWaitingRequestNos: waiting ? [...waiting.requestNos].sort() : [], suggestedQty: Math.max(minStock - onHand + deptWaitingQty, 0) };
+      })
+      .filter((i) => i.onHand <= i.minStock || i.deptWaitingQty > i.onHand);
+    return { items, requestedUp, waitingArrival };
   }
 
   /** Phiếu điều chuyển liên kết với yêu cầu — dùng để đồng bộ trạng thái. */

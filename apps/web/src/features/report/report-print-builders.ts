@@ -7,6 +7,7 @@ import type {
   StockBalanceItem,
   StockBalanceStatus,
   StockExpiryWarningItem,
+  PurchaseOrderSummary,
   StockRequestSummary,
   StockTransferShrinkageCause,
   SupplierDebtLedgerEntry,
@@ -20,6 +21,7 @@ import type { ReportPrintSpec } from '../../shared/print/report-print-spec';
 import type { StockLedgerDisplayRow } from '../inventory/stock-ledger-rows';
 import { ENTRY_TYPE_LABEL } from '../supplier-debt/ledger-labels';
 import { formatDayVn, REQUEST_PRIORITY_LABEL, REQUEST_STATUS_META } from '../inventory/stock-request-meta';
+import { ORDER_STATUS_META } from '../inventory/purchase-order-meta';
 
 /**
  * Hàm THUẦN đổi dữ liệu đang xem của từng báo cáo ĐÃ CÓ thành bản in (docs/DECISIONS.md #287: mọi báo cáo phải in được). Không gọi API, không biết gì về giao diện —
@@ -424,6 +426,39 @@ export function buildStockRequestListPrintSpec(items: StockRequestSummary[], ctx
           REQUEST_STATUS_META[r.status].label,
         ]),
         emptyText: 'Không có phiếu yêu cầu cấp hàng nào.',
+      },
+    ],
+  };
+}
+
+/** In danh sách Đơn đặt hàng NCC (#298 giai đoạn 2; quy tắc #287: mọi bảng kê in được). `view` = tab đang xem; `multiBranch` thêm tên chi nhánh khi công ty có từ 2 chi nhánh. */
+export function buildPurchaseOrderListPrintSpec(items: PurchaseOrderSummary[], ctx: { view: 'mine' | 'approval'; filterLabels: string[]; multiBranch: boolean }): ReportPrintSpec {
+  return {
+    title: ctx.view === 'mine' ? 'Danh sách đơn đặt hàng NCC của chi nhánh' : 'Danh sách đơn đặt hàng NCC cần duyệt',
+    subtitleLines: ctx.filterLabels,
+    sections: [
+      {
+        columns: [
+          { header: 'Số đơn', width: '96px' },
+          { header: 'Ngày lập', width: '72px' },
+          { header: 'Nhà cung cấp' },
+          { header: 'Kho nhận' },
+          { header: 'Giao dự kiến', width: '80px' },
+          { header: 'Dòng', align: 'right', width: '40px' },
+          { header: 'Tổng dự kiến', align: 'right', width: '96px' },
+          { header: 'Trạng thái', width: '110px' },
+        ],
+        rows: items.map((r) => [
+          r.orderNo,
+          formatDateTimeVn(r.createdAt).slice(0, 10),
+          r.supplierName,
+          ctx.multiBranch ? `${r.branchName} / ${r.warehouseName}` : r.warehouseName,
+          r.expectedDate ? formatDayVn(r.expectedDate) : '',
+          n(r.lineCount),
+          r.totalAmount > 0 ? n(r.totalAmount) : '',
+          ORDER_STATUS_META[r.status].label,
+        ]),
+        emptyText: 'Không có đơn đặt hàng nào.',
       },
     ],
   };

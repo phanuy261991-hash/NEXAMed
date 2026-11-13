@@ -7,6 +7,7 @@ import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper
 import type { RequestMeta } from '../../common/request-meta';
 import { StockBalanceRepository } from '../inventory/stock-balance.repository';
 import { DrugRepository, type DrugWithDetails } from './drug.repository';
+import { BusinessCodeService } from '../clinic/business-code.service';
 import { DrugIngredientRepository } from './drug-ingredient.repository';
 import { DrugUnitRepository } from './drug-unit.repository';
 import { DrugDosePresetRepository } from './drug-dose-preset.repository';
@@ -46,6 +47,8 @@ export class DrugService {
     private readonly drugUnitRepository: DrugUnitRepository,
     private readonly drugDosePresetRepository: DrugDosePresetRepository,
     private readonly stockBalanceRepository: StockBalanceRepository,
+    // Mã mặt hàng tự sinh khi client không truyền (#298 bổ sung 2) — cùng cách dịch vụ kỹ thuật sinh mã.
+    private readonly businessCodeService: BusinessCodeService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateDrugRequest, meta: RequestMeta): Promise<DrugSummary> {
@@ -70,11 +73,12 @@ export class DrugService {
 
     const shortcutCode = normalizeShortcutCode(dto.shortcutCode);
     await this.assertShortcutCodeAvailable(tx, tenantId, shortcutCode, null);
+    const code = dto.code?.trim() || (await this.businessCodeService.generate(tx, tenantId, actorId, 'DRUG', new Date()));
 
     let created;
     try {
       created = await this.drugRepository.create(tx, tenantId, actorId, {
-        code: dto.code,
+        code,
         name: dto.name,
         itemType: dto.itemType,
         isBatchManaged: dto.isBatchManaged,

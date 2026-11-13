@@ -15,7 +15,7 @@ import { StatCardRow } from '../../shared/ui/StatCard';
 import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
 import { buildSupplierDebtLedgerPrintSpec } from '../report/report-print-builders';
 import { useExportSupplierDebtLedgerMutation } from '../report/report-exports';
-import { ENTRY_TYPE_LABEL } from './ledger-labels';
+import { describeLedgerEntry, ENTRY_TYPE_LABEL } from './ledger-labels';
 import { TabBar } from '../../shared/ui/TabBar';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
@@ -515,6 +515,7 @@ function LedgerTable({ items, showBranch }: { items: SupplierDebtLedgerEntry[]; 
             <th className="px-3 py-2.5 text-center">Loại</th>
             <th className="px-3 py-2.5 text-center">Chứng từ</th>
             {showBranch && <th className="px-3 py-2.5 text-center">Chi nhánh</th>}
+            <th className="px-3 py-2.5 text-left">Diễn giải</th>
             <th className="px-3 py-2.5 text-center">Tăng nợ</th>
             <th className="px-3 py-2.5 text-center">Giảm nợ</th>
             <th className="px-3 py-2.5 text-center">Số dư sau</th>
@@ -527,19 +528,25 @@ function LedgerTable({ items, showBranch }: { items: SupplierDebtLedgerEntry[]; 
               <td className="px-3 py-2 text-center font-medium text-slate-700">{formatDateShort(e.occurredAt)}</td>
               <td className="px-3 py-2 text-center text-xs font-medium text-slate-500">{formatDateTime(e.createdAt)}</td>
               <td className="px-3 py-2 text-center">
-                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{ENTRY_TYPE_LABEL[e.entryType]}</span>
+                <span className="inline-flex items-center whitespace-nowrap rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{ENTRY_TYPE_LABEL[e.entryType]}</span>
                 {e.reversed && <div className="mt-0.5 text-[11px] font-semibold text-slate-400">đã bị đảo</div>}
               </td>
-              <td className="px-3 py-2 text-center text-xs font-semibold text-slate-700">{e.stockReceiptNo ?? e.stockIssueNo ?? e.cashVoucherNo ?? '—'}</td>
+              <td className="px-3 py-2 text-center text-xs font-semibold text-slate-700">
+                {e.stockReceiptNo ?? e.stockIssueNo ?? e.cashVoucherNo ?? '—'}
+              </td>
               {showBranch && (
                 <td className="px-3 py-2 text-center">
                   <LedgerBranchChip entry={e} />
                 </td>
               )}
-              <td className="px-3 py-2 text-center font-semibold text-amber-700">{e.amountChange > 0 ? `+${formatVnd(e.amountChange)}` : ''}</td>
-              <td className="px-3 py-2 text-center font-semibold text-emerald-700">{e.amountChange < 0 ? `−${formatVnd(Math.abs(e.amountChange))}` : ''}</td>
-              <td className="px-3 py-2 text-center font-semibold text-slate-900">{formatVnd(e.balanceAfter)}</td>
-              <td className="px-3 py-2 text-left font-medium text-slate-600">{e.createdByName}</td>
+              <td className="min-w-44 px-3 py-2 text-left font-medium text-slate-800">
+                {describeLedgerEntry(e)}
+                {e.note && <span className="block text-xs font-medium text-slate-500">{e.note}</span>}
+              </td>
+              <td className="whitespace-nowrap px-3 py-2 text-center font-semibold text-amber-700">{e.amountChange > 0 ? `+${formatVnd(e.amountChange)}` : ''}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-center font-semibold text-emerald-700">{e.amountChange < 0 ? `−${formatVnd(Math.abs(e.amountChange))}` : ''}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-center font-semibold text-slate-900">{formatVnd(e.balanceAfter)}</td>
+              <td className="max-w-32 px-3 py-2 text-left font-medium text-slate-600">{e.createdByName}</td>
             </tr>
           ))}
         </tbody>

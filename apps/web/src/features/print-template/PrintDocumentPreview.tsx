@@ -18,6 +18,7 @@ import { StockIssuePrintView } from '../inventory/StockIssuePrintView';
 import { StockReceiptPrintView } from '../inventory/StockReceiptPrintView';
 import { StockTransferPrintView } from '../inventory/StockTransferPrintView';
 import { StockRequestPrintView } from '../inventory/StockRequestPrintView';
+import { PurchaseOrderPrintView } from '../inventory/PurchaseOrderPrintView';
 import { WalletReceiptPrintView } from '../patient-wallet/WalletReceiptPrintView';
 import { DailyReportPrintView } from '../report/DailyReportPrintView';
 import { SAMPLE_DAILY_REPORT } from '../report/daily-report-sample';
@@ -35,6 +36,7 @@ import {
   SAMPLE_STOCK_COUNT,
   SAMPLE_STOCK_ISSUE,
   SAMPLE_STOCK_RECEIPT,
+  SAMPLE_PURCHASE_ORDER,
   SAMPLE_STOCK_REQUEST,
   SAMPLE_STOCK_TRANSFER,
   SAMPLE_UNIT_NAMES,
@@ -128,6 +130,8 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
       return <StockTransferPrintView transfer={SAMPLE_STOCK_TRANSFER} />;
     case 'STOCK_REQUEST':
       return <StockRequestPrintView request={SAMPLE_STOCK_REQUEST} />;
+    case 'PURCHASE_ORDER':
+      return <PurchaseOrderPrintView order={SAMPLE_PURCHASE_ORDER} />;
     case 'MEDICAL_RECORD':
       return <MedicalRecordPreview />;
     case 'MEDICINE_LABEL':

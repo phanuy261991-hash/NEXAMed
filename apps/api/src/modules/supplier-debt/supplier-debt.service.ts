@@ -847,6 +847,8 @@ export class SupplierDebtService {
         createdAt: e.createdAt.toISOString(),
         stockReceiptId: e.stockReceiptId,
         stockReceiptNo: receiptRef?.documentNo ?? null,
+        purchaseOrderNo: receiptRef?.purchaseOrderNo ?? null,
+        purchaseOrderRound: receiptRef?.purchaseOrderRound ?? null,
         stockIssueId: e.stockIssueId,
         stockIssueNo: issueRef?.documentNo ?? null,
         cashVoucherId: e.cashVoucherId,

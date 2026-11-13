@@ -28,8 +28,9 @@ import { getStockRequest, getStockRequests } from './stock-request.api';
 import { useCancelStockRequestMutation, useExportStockRequestsMutation, useStockRequestPendingCountsQuery, useStockRequestsQuery } from './stock-request.queries';
 import { formatDayVn, REQUEST_PRIORITY_LABEL, REQUEST_STATUS_META, REQUEST_STATUS_ORDER, requesterActionsFor } from './stock-request-meta';
 import { StockRequestPrintView } from './StockRequestPrintView';
+import { StockRequestRestockTab } from './StockRequestRestockTab';
 
-type View = 'mine' | 'incoming';
+type View = 'mine' | 'incoming' | 'restock';
 
 const ROW_HEIGHT_PX = 60;
 const PAGE_LIMIT = 50;
@@ -69,8 +70,10 @@ export function StockRequestListPage() {
   const [printing, setPrinting] = useState<StockRequestDetail | null>(null);
   const [printError, setPrintError] = useState<string | null>(null);
 
+  // Tab "Hàng cần bổ sung" (#298 mockup màn 4) tự tải dữ liệu riêng; danh sách bên dưới chỉ chạy cho hai tab phiếu.
+  const listView = view === 'restock' ? 'mine' : view;
   const baseQuery: ListStockRequestsQuery = {
-    view,
+    view: listView,
     limit: PAGE_LIMIT,
     status: status || undefined,
     priority: priority || undefined,
@@ -79,7 +82,7 @@ export function StockRequestListPage() {
     to: to || undefined,
     q: debouncedQ.trim() || undefined,
   };
-  const listQuery = useStockRequestsQuery({ ...baseQuery, cursor: cursorStack[cursorStack.length - 1] });
+  const listQuery = useStockRequestsQuery({ ...baseQuery, cursor: cursorStack[cursorStack.length - 1] }, view !== 'restock');
   const warehousesQuery = useWarehousesQuery();
   const pendingCounts = useStockRequestPendingCountsQuery(canApprove);
   const exportMutation = useExportStockRequestsMutation();
@@ -116,7 +119,7 @@ export function StockRequestListPage() {
   async function loadPrintSpec(): Promise<ReportPrintSpec> {
     const { pages, capped } = await loadAllByCursor((cursor) => getStockRequests({ ...baseQuery, limit: PRINT_LOAD_PAGE_SIZE, cursor }), REPORT_PRINT_ROW_CAP);
     const all = pages.flatMap((p) => p.items).slice(0, REPORT_PRINT_ROW_CAP);
-    const spec = buildStockRequestListPrintSpec(all, { view, filterLabels, multiBranch });
+    const spec = buildStockRequestListPrintSpec(all, { view: listView, filterLabels, multiBranch });
     return capped ? { ...spec, note: `Chỉ in ${REPORT_PRINT_ROW_CAP.toLocaleString('vi-VN')} dòng đầu theo bộ lọc hiện tại.` } : spec;
   }
 
@@ -139,7 +142,7 @@ export function StockRequestListPage() {
     <div className="flex h-full flex-col gap-2.5 p-3">
       <h1 className="sr-only">Yêu cầu cấp hàng</h1>
 
-      {canApprove && (
+      {(canApprove || canCreate) && (
         <TabBar
           variant="underline"
           active={view}
@@ -147,10 +150,15 @@ export function StockRequestListPage() {
           className="flex-shrink-0 px-1"
           tabs={[
             { id: 'mine', label: 'Của tôi' },
-            { id: 'incoming', label: 'Cần duyệt', badge: toAccept + updated },
+            ...(canApprove ? [{ id: 'incoming' as const, label: 'Cần duyệt', badge: toAccept + updated }] : []),
+            ...(canCreate ? [{ id: 'restock' as const, label: 'Hàng cần bổ sung' }] : []),
           ]}
         />
       )}
+
+      {view === 'restock' && <StockRequestRestockTab />}
+      {view !== 'restock' && (
+        <>
 
       <div className="flex flex-shrink-0 flex-wrap items-end justify-between gap-2.5 px-1">
         <div className="flex flex-wrap items-end gap-2.5">
@@ -338,6 +346,9 @@ export function StockRequestListPage() {
             Trang sau →
           </Button>
         </div>
+      )}
+
+        </>
       )}
 
       {cancelTarget && <CancelDialog target={cancelTarget} onClose={() => setCancelTarget(null)} />}

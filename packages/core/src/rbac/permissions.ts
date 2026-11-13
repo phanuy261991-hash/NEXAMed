@@ -312,6 +312,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'stock_request', action: 'create', description: 'Lập/sửa/huỷ phiếu yêu cầu cấp hàng, thêm hoặc rút mặt hàng' },
   { module: 'stock_request', action: 'read', description: 'Xem phiếu yêu cầu cấp hàng' },
   { module: 'stock_request', action: 'approve', description: 'Tiếp nhận / Từ chối / Cấp hàng (chuyển thành phiếu điều chuyển) phiếu yêu cầu cấp hàng' },
+  // Đơn đặt hàng NCC (docs/DECISIONS.md #298 giai đoạn 2) — `create` lập/sửa/gửi duyệt/gửi NCC/huỷ/đóng đơn, `approve` duyệt hoặc từ chối đơn (chi nhánh chính khi đơn cần chi nhánh chính duyệt). Mặc định chỉ clinic_admin.
+  { module: 'purchase_order', action: 'create', description: 'Lập/sửa/gửi duyệt/gửi nhà cung cấp/huỷ/đóng đơn đặt hàng NCC' },
+  { module: 'purchase_order', action: 'read', description: 'Xem đơn đặt hàng NCC' },
+  { module: 'purchase_order', action: 'approve', description: 'Duyệt / Từ chối đơn đặt hàng NCC' },
   // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182, mở rộng phạm vi v1) — mặc định CHỈ
   // `clinic_admin` có đủ 5 quyền (chốt qua AskUserQuestion 24/09/2026, #182), vai trò khác CHƯA
   // được cấp gì, tự mở rộng sau qua "Vai trò & Phân quyền" nếu tenant cần (thận trọng với dữ liệu
@@ -676,6 +680,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'stock_request.create': 'global',
     'stock_request.read': 'global',
     'stock_request.approve': 'global',
+    // Đơn đặt hàng NCC (#298 giai đoạn 2) — chỉ clinic_admin lúc ra mắt, vai trò khác cấp qua "Vai trò & Phân quyền".
+    'purchase_order.create': 'global',
+    'purchase_order.read': 'global',
+    'purchase_order.approve': 'global',
     // "Công nợ nhà cung cấp" (#180/#182) — CHỈ clinic_admin có đủ 5 quyền lúc ra mắt.
     'supplier_debt.read': 'global',
     'supplier_debt.pay': 'global',

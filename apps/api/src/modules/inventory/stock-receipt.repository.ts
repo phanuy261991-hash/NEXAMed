@@ -15,6 +15,8 @@ export interface StockReceiptLineData {
   /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170). */
   discountType: DiscountType | null;
   discountValue: bigint | null;
+  /** Dòng đơn đặt hàng NCC mà dòng nhận này đáp ứng (#298 giai đoạn 2); vắng = phiếu lập tay. */
+  purchaseOrderLineId?: string | null;
 }
 
 export interface CreateStockReceiptData {
@@ -43,6 +45,8 @@ export interface CreateStockReceiptData {
   transferId: string | null;
   /** Phiếu xuất gốc TUỲ CHỌN (docs/DECISIONS.md #195) — chỉ có ý nghĩa khi `receiptType='RETURN_FROM_USE'`. */
   sourceIssueId: string | null;
+  /** Đơn đặt hàng NCC mà phiếu nhận theo (#298 giai đoạn 2). */
+  purchaseOrderId?: string | null;
 }
 
 export interface UpdateStockReceiptData {
@@ -61,6 +65,7 @@ export interface UpdateStockReceiptData {
   prepaidCashAccountId: string | null;
   lines: StockReceiptLineData[];
   sourceIssueId: string | null;
+  purchaseOrderId?: string | null;
 }
 
 const LINE_INCLUDE = {
@@ -72,12 +77,14 @@ const LINE_INCLUDE = {
 export type StockReceiptWithLines = StockReceipt & {
   lines: (Prisma.StockReceiptLineGetPayload<{ include: { drug: { select: { code: true; name: true } } } }>)[];
   sourceIssue: { issueNo: string } | null;
+  purchaseOrder: { orderNo: string } | null;
 };
 
 export interface StockReceiptListRow extends StockReceipt {
   warehouse: { name: string };
   supplier: { name: string } | null;
   sourceIssue: { issueNo: string } | null;
+  purchaseOrder: { orderNo: string } | null;
   _count: { lines: number };
 }
 
@@ -92,6 +99,9 @@ export interface ListStockReceiptsFilter {
   q?: string;
   /** Tab "Phiếu nhập" ở trang chi tiết NCC (#180/#182). */
   supplierId?: string;
+  /** Bộ lọc "Từ đơn" (#298 giai đoạn 2). */
+  fromOrder?: 'yes' | 'no';
+  purchaseOrderId?: string;
   cursor?: string;
   take: number;
   /** Phân quyền theo Khoa/Phòng (retrofit #173, đúng khuôn `StockCountRepository.list()`) — chỉ set
@@ -145,6 +155,7 @@ export class StockReceiptRepository {
         countId: data.countId,
         transferId: data.transferId,
         sourceIssueId: data.sourceIssueId,
+        purchaseOrderId: data.purchaseOrderId ?? null,
         createdBy: actorId,
         updatedBy: actorId,
       },
@@ -164,6 +175,7 @@ export class StockReceiptRepository {
           lineAmount: line.lineAmount,
           discountType: line.discountType,
           discountValue: line.discountValue,
+          purchaseOrderLineId: line.purchaseOrderLineId ?? null,
           createdBy: actorId,
           updatedBy: actorId,
         })),
@@ -171,7 +183,7 @@ export class StockReceiptRepository {
     }
     const created = await tx.stockReceipt.findFirst({
       where: { tenantId, id: header.id },
-      include: { lines: LINE_INCLUDE, sourceIssue: { select: { issueNo: true } } },
+      include: { lines: LINE_INCLUDE, sourceIssue: { select: { issueNo: true } }, purchaseOrder: { select: { orderNo: true } } },
     });
     return created as StockReceiptWithLines;
   }
@@ -196,6 +208,7 @@ export class StockReceiptRepository {
         prepaidPaymentMethodCode: data.prepaidPaymentMethodCode,
         prepaidCashAccountId: data.prepaidCashAccountId,
         sourceIssueId: data.sourceIssueId,
+        purchaseOrderId: data.purchaseOrderId ?? null,
         updatedBy: actorId,
         version: { increment: 1 },
       },
@@ -221,6 +234,7 @@ export class StockReceiptRepository {
           lineAmount: line.lineAmount,
           discountType: line.discountType,
           discountValue: line.discountValue,
+          purchaseOrderLineId: line.purchaseOrderLineId ?? null,
           createdBy: actorId,
           updatedBy: actorId,
         })),
@@ -239,16 +253,24 @@ export class StockReceiptRepository {
     if (ids.length === 0) return [];
     const rows = await tx.stockReceipt.findMany({
       where: { tenantId, id: { in: ids } },
-      select: { id: true, receiptNo: true, warehouse: { select: { branchId: true, branch: { select: { name: true } } } } },
+      select: { id: true, receiptNo: true, purchaseOrderId: true, purchaseOrder: { select: { orderNo: true } }, warehouse: { select: { branchId: true, branch: { select: { name: true } } } } },
     });
-    return rows.map((r) => ({ id: r.id, documentNo: r.receiptNo, branchId: r.warehouse.branchId, branchName: r.warehouse.branch.name }));
+    // Đợt nhận = thứ tự (theo thời điểm tạo) của phiếu trong các phiếu ĐÃ DUYỆT, chưa huỷ, cùng đơn.
+    const orderIds = [...new Set(rows.map((r) => r.purchaseOrderId).filter((v): v is string => v !== null))];
+    const siblings = orderIds.length === 0 ? [] : await tx.stockReceipt.findMany({ where: { tenantId, purchaseOrderId: { in: orderIds }, status: 'POSTED', deletedAt: null }, select: { id: true, purchaseOrderId: true, createdAt: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
+    const roundOf = (r: (typeof rows)[number]): number | null => {
+      if (!r.purchaseOrderId) return null;
+      const index = siblings.filter((s) => s.purchaseOrderId === r.purchaseOrderId).findIndex((s) => s.id === r.id);
+      return index < 0 ? null : index + 1;
+    };
+    return rows.map((r) => ({ id: r.id, documentNo: r.receiptNo, branchId: r.warehouse.branchId, branchName: r.warehouse.branch.name, purchaseOrderNo: r.purchaseOrder?.orderNo ?? null, purchaseOrderRound: roundOf(r) }));
   }
 
   /** Dùng cho đường XEM (GET chi tiết) — KHÔNG lọc `deletedAt`, phiếu đã huỷ vẫn xem được (chỉ đọc). */
   findByIdAnyWithLines(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockReceiptWithLines | null> {
     return tx.stockReceipt.findFirst({
       where: { tenantId, id, warehouse: { branchId } },
-      include: { lines: LINE_INCLUDE, sourceIssue: { select: { issueNo: true } } },
+      include: { lines: LINE_INCLUDE, sourceIssue: { select: { issueNo: true } }, purchaseOrder: { select: { orderNo: true } } },
     }) as Promise<StockReceiptWithLines | null>;
   }
 
@@ -260,6 +282,7 @@ export class StockReceiptRepository {
       receiptType: filter.receiptType,
       status: filter.status,
       supplierId: filter.supplierId,
+      purchaseOrderId: filter.purchaseOrderId ?? (filter.fromOrder === 'yes' ? { not: null } : filter.fromOrder === 'no' ? null : undefined),
       occurredAt: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     if (filter.q) {
@@ -274,6 +297,7 @@ export class StockReceiptRepository {
         warehouse: { select: { name: true } },
         supplier: { select: { name: true } },
         sourceIssue: { select: { issueNo: true } },
+        purchaseOrder: { select: { orderNo: true } },
         _count: { select: { lines: { where: { deletedAt: null } } } },
       },
       orderBy: { id: 'desc' },

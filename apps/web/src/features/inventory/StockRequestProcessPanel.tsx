@@ -1,13 +1,16 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { ArrowsLeftRight, CalendarCheck, Prohibit } from '@phosphor-icons/react';
+import { ArrowsLeftRight, CalendarCheck, Prohibit, ShoppingCart } from '@phosphor-icons/react';
 import type { AllocateStockRequestLine, StockRequestDetail, StockRequestLine, StockRequestRemainder } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { DateInput } from '../../shared/ui/DateInput';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { useHasPermission } from '../auth/usePermission';
+import { usePurchaseOrderOptionsQuery, usePurchaseOrdersQuery } from './purchase-order.queries';
+import { ORDER_STATUS_META } from './purchase-order-meta';
 import { useAllocateStockRequestMutation } from './stock-request.queries';
 import { formatDayVn, REQUEST_LINE_STATUS_META } from './stock-request-meta';
 
@@ -40,6 +43,11 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
   const [remainderFor, setRemainderFor] = useState<{ line: StockRequestLine; action: 'WAIT' | 'REJECT' } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "Đặt NCC cho phần thiếu" (#298 giai đoạn 2): chỉ hiện khi có dòng đang chờ hàng về, người dùng được lập đơn và chi nhánh này được đặt hàng riêng.
+  const canCreateOrder = useHasPermission('purchase_order', 'create');
+  const orderOptions = usePurchaseOrderOptionsQuery(canCreateOrder);
+  const hasWaitingLine = request.lines.some((l) => l.fulfilStatus === 'WAITING_STOCK' && l.remainingQty > 0);
+  const showOrderButton = canCreateOrder && orderOptions.data?.canOrderHere === true && hasWaitingLine;
 
   function missingOf(line: StockRequestLine): number {
     const qty = Number(state[line.id]?.qty || 0);
@@ -214,10 +222,18 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
 
       {footSlot &&
         createPortal(
-          <Button type="button" onClick={startConfirm} loading={mutation.isPending}>
-            <ArrowsLeftRight size={16} weight="bold" aria-hidden="true" />
-            Chuyển thành phiếu điều chuyển
-          </Button>,
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {showOrderButton && (
+              <Button type="button" variant="secondary" onClick={() => navigate(`/inventory/purchase-orders/new?fromRequest=${request.id}`)}>
+                <ShoppingCart size={16} weight="bold" aria-hidden="true" />
+                Đặt NCC cho phần thiếu
+              </Button>
+            )}
+            <Button type="button" onClick={startConfirm} loading={mutation.isPending}>
+              <ArrowsLeftRight size={16} weight="bold" aria-hidden="true" />
+              Chuyển thành phiếu điều chuyển
+            </Button>
+          </div>,
           footSlot,
         )}
 
@@ -227,6 +243,8 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
           missing={missingOf(remainderFor.line)}
           initialAction={remainderFor.action}
           initial={state[remainderFor.line.id]?.remainder ?? null}
+          supplyingWarehouseId={request.supplyingWarehouseId}
+          currentOrderId={remainderFor.line.waitPurchaseOrderId}
           onSave={(remainder) => {
             setState((prev) => ({ ...prev, [remainderFor.line.id]: { qty: prev[remainderFor.line.id]?.qty ?? '0', remainder } }));
             setError(null);
@@ -269,6 +287,8 @@ function RemainderDialog({
   missing,
   initialAction,
   initial,
+  supplyingWarehouseId,
+  currentOrderId,
   onSave,
   onClose,
 }: {
@@ -276,9 +296,15 @@ function RemainderDialog({
   missing: number;
   initialAction: 'WAIT' | 'REJECT';
   initial: StockRequestRemainder | null;
+  supplyingWarehouseId: string;
+  currentOrderId: string | null;
   onSave: (remainder: StockRequestRemainder) => void;
   onClose: () => void;
 }) {
+  const canReadOrders = useHasPermission('purchase_order', 'read');
+  const ordersQuery = usePurchaseOrdersQuery({ view: 'mine', limit: 50, warehouseId: supplyingWarehouseId }, canReadOrders);
+  const openOrders = (ordersQuery.data?.items ?? []).filter((o) => ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'ORDERED', 'PARTIALLY_RECEIVED'].includes(o.status));
+  const [purchaseOrderId, setPurchaseOrderId] = useState<string>(initial?.purchaseOrderId ?? currentOrderId ?? '');
   const [action, setAction] = useState<'WAIT' | 'REJECT'>(initialAction);
   const [reason, setReason] = useState(initial?.reason ?? '');
   const [expectedDate, setExpectedDate] = useState(initial?.expectedDate ?? '');
@@ -290,7 +316,7 @@ function RemainderDialog({
       setError('Phải nhập lý do.');
       return;
     }
-    onSave({ action, reason: reason.trim(), expectedDate: action === 'WAIT' && expectedDate ? expectedDate : null });
+    onSave({ action, reason: reason.trim(), expectedDate: action === 'WAIT' && expectedDate ? expectedDate : null, purchaseOrderId: action === 'WAIT' && purchaseOrderId ? purchaseOrderId : null });
   }
 
   return (
@@ -350,6 +376,26 @@ function RemainderDialog({
                 Ngày dự kiến có hàng
               </label>
               <DateInput id="remainder-date" value={expectedDate} onChange={setExpectedDate} />
+            </div>
+          )}
+          {action === 'WAIT' && canReadOrders && openOrders.length > 0 && (
+            <div>
+              <p className="mb-1 block text-sm font-semibold text-slate-800">Đơn đặt hàng NCC đang chờ (tuỳ chọn)</p>
+              <div className="space-y-1.5" role="radiogroup" aria-label="Đơn đặt hàng NCC đang chờ">
+                {[{ id: '', label: 'Không liên kết', sub: '' }, ...openOrders.map((o) => ({ id: o.id, label: `${o.orderNo} — ${o.supplierName}`, sub: ORDER_STATUS_META[o.status].label }))].map((o) => (
+                  <button
+                    key={o.id || 'none'}
+                    type="button"
+                    role="radio"
+                    aria-checked={purchaseOrderId === o.id}
+                    onClick={() => setPurchaseOrderId(o.id)}
+                    className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold ${purchaseOrderId === o.id ? 'bg-brand-teal text-white' : 'bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'}`}
+                  >
+                    <span className="truncate">{o.label}</span>
+                    {o.sub && <span className="ml-2 flex-shrink-0 text-xs font-medium opacity-80">{o.sub}</span>}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

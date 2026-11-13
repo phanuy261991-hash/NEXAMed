@@ -58,6 +58,10 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'stock_request.read': ['stock_receipt.read', 'stock_transfer.read', 'drug.read'],
   'stock_request.create': ['stock_receipt.read', 'stock_transfer.read', 'drug.read'],
   'stock_request.approve': ['stock_receipt.read', 'stock_transfer.read', 'drug.read'],
+  // Đơn đặt hàng NCC (#298 giai đoạn 2): chọn NCC/mặt hàng/kho + mở Phiếu nhập kho liên kết.
+  'purchase_order.read': ['stock_receipt.read', 'supplier.read', 'drug.read'],
+  'purchase_order.create': ['stock_receipt.read', 'supplier.read', 'drug.read'],
+  'purchase_order.approve': ['stock_receipt.read', 'supplier.read', 'drug.read'],
   'system_backup.manage': ['system_backup.read'],
   'lab_result.enter': ['result_template.read'],
   'imaging_result.enter': ['result_template.read'],

@@ -90,6 +90,8 @@ export const stockRequestRemainderSchema = z.object({
   action: z.enum(['WAIT', 'REJECT']),
   reason: reasonText('Phải nhập lý do cho phần chưa cấp.'),
   expectedDate: isoDate.nullable().optional(),
+  /** Đơn đặt hàng NCC mà phần chờ này đang chờ (tuỳ chọn, chỉ khi `action='WAIT'`; #298 giai đoạn 2). */
+  purchaseOrderId: z.string().uuid().nullable().optional(),
 });
 export type StockRequestRemainder = z.infer<typeof stockRequestRemainderSchema>;
 
@@ -152,6 +154,13 @@ export const stockRequestLineSchema = z.object({
   waitExpectedDate: z.string().nullable(),
   waitChildRequestId: z.string().uuid().nullable(),
   waitChildRequestNo: z.string().nullable(),
+  /** Đơn đặt hàng NCC mà dòng chờ hàng về đang chờ (#298 giai đoạn 2). */
+  waitPurchaseOrderId: z.string().uuid().nullable(),
+  waitPurchaseOrderNo: z.string().nullable(),
+  waitPurchaseOrderStatus: z.enum(['DRAFT', 'PENDING_APPROVAL', 'REJECTED', 'APPROVED', 'ORDERED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CLOSED', 'CANCELLED']).nullable(),
+  /** Bên xin đã gửi "Yêu cầu rút" (đơn đã đặt NCC) và đang chờ kho cấp xác nhận. */
+  withdrawRequestedAt: z.string().nullable(),
+  withdrawRequestReason: z.string().nullable(),
   addedAfterAccept: z.boolean(),
   withdrawReason: z.string().nullable(),
   withdrawnAt: z.string().nullable(),
@@ -281,3 +290,35 @@ export type GetStockRequestLowStockResponse = z.infer<typeof getStockRequestLowS
 /** Kết quả "Xin phần thiếu": phiếu con vừa tạo. */
 export const escalateStockRequestResponseSchema = z.object({ child: stockRequestDetailSchema, parent: stockRequestDetailSchema });
 export type EscalateStockRequestResponse = z.infer<typeof escalateStockRequestResponseSchema>;
+
+/** Một mặt hàng ở tab "Hàng cần bổ sung" (mockup màn 4): tồn và mức tối thiểu của kho chính chi nhánh, số các phòng ban đang chờ cấp, số gợi ý cần bổ sung. */
+export const stockRequestRestockItemSchema = z.object({
+  drugId: z.string().uuid(),
+  drugCode: z.string(),
+  drugName: z.string(),
+  unitCode: z.string().nullable(),
+  onHand: z.number().int(),
+  minStock: z.number().int(),
+  /** Tổng số các phiếu yêu cầu của phòng ban đang chờ kho này cấp (chưa giao), cùng đơn vị cơ sở. */
+  deptWaitingQty: z.number().int(),
+  deptWaitingRequestNos: z.array(z.string()),
+  /** Gợi ý = mức tối thiểu trừ tồn cộng phần phòng ban đang chờ; người dùng sửa trước khi xin/đặt. */
+  suggestedQty: z.number().int(),
+});
+export type StockRequestRestockItem = z.infer<typeof stockRequestRestockItemSchema>;
+
+/** `GET /inventory/requests/restock` — tab "Hàng cần bổ sung" của kho chính chi nhánh đang làm. */
+export const getStockRequestRestockResponseSchema = z.object({
+  warehouseId: z.string().uuid().nullable(),
+  warehouseName: z.string().nullable(),
+  /** Kho chính này có kho cấp trên để "Xin chi nhánh chính" không. */
+  canRequestUp: z.boolean(),
+  stats: z.object({
+    belowMin: z.number().int().nonnegative(),
+    deptWaiting: z.number().int().nonnegative(),
+    waitingArrival: z.number().int().nonnegative(),
+    requestedUp: z.number().int().nonnegative(),
+  }),
+  items: z.array(stockRequestRestockItemSchema),
+});
+export type GetStockRequestRestockResponse = z.infer<typeof getStockRequestRestockResponseSchema>;

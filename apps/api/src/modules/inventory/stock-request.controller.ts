@@ -9,6 +9,7 @@ import {
   getStockRequestLowStockQuerySchema,
   listStockRequestsQuerySchema,
   rejectStockRequestRequestSchema,
+  resolveStockRequestWithdrawRequestSchema,
   updateStockRequestNoteRequestSchema,
   updateStockRequestRequestSchema,
   versionedStockRequestRequestSchema,
@@ -69,6 +70,14 @@ export class StockRequestController {
     return this.stockRequestService.getLowStock(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto.warehouseId);
   }
 
+  /** Tab "Hàng cần bổ sung" (mockup màn 4) của kho chính chi nhánh đang làm. */
+  @Get('restock')
+  @RequirePermission('stock_request', 'create')
+  async restock(@Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.stockRequestService.getRestock(tenantId, requireBranchId(req.user!), userId, req.dataScope!);
+  }
+
   /** "Xuất Excel" danh sách — cùng quyền xem, ghi nhật ký xuất. */
   @Get('export')
   @RequirePermission('stock_request', 'read')
@@ -109,6 +118,16 @@ export class StockRequestController {
     const dto = updateStockRequestRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.stockRequestService.update(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** Kho cấp xác nhận / từ chối "Yêu cầu rút" của bên xin (đơn đặt hàng NCC đã gửi nhà cung cấp). */
+  @Post(':id/withdraw-requests/resolve')
+  @RequirePermission('stock_request', 'approve')
+  @HttpCode(200)
+  async resolveWithdrawRequests(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = resolveStockRequestWithdrawRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.stockRequestService.resolveWithdrawRequests(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/submit')

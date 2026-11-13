@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY_LIST } from '../../shared/empty-list';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, DownloadSimple, Eye, EyeSlash, FirstAidKit, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, UploadSimple, WarningCircle, X } from '@phosphor-icons/react';
-import type { DoseMode, DrugControlType, DrugDosePresetInput, DrugIngredientInput, DrugItemType, DrugSummary, DrugSupplyUsageNature, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
+import type { DoseMode, DrugControlType, DrugDosePresetInput, DrugIngredientInput, DrugItemType, DrugSummary, DrugSupplyUsageNature, DrugUnitInput, StockLedgerEntry } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { useDrugBatchBalancesQuery, useDrugLedgerQuery } from '../inventory/inventory.queries';
@@ -31,6 +31,7 @@ import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { useCatalogCombobox, type CatalogCombobox } from '../reference-catalog/useCatalogCombobox';
 import { appendSentence } from '../../shared/format/append-sentence';
 import { DrugDoseConfigSection } from './DrugDoseConfigSection';
 import { buildDosePresets, presetRowsFromItem, summarizePreset, validateDoseConfig, type DosePresetRow } from './drug-dose-config';
@@ -79,21 +80,6 @@ function ControlTypeBadge({ controlType, className = 'ml-2' }: { controlType: Dr
   return <span className={`${className} inline-block shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{CONTROL_TYPE_LABEL[controlType]}</span>;
 }
 
-/** Gộp query + "thêm nhanh" (mở rộng #151, chủ dự án yêu cầu trực tiếp) cho 1 category
- * `reference_catalog` dùng trong Combobox `allowCreate` — tránh lặp lại 5 lần cho Dạng bào chế/
- * Điều kiện bảo quản/Hãng sản xuất/Nước sản xuất/Vị trí lưu kho. */
-function useCatalogCombobox(category: ReferenceCatalogCategory) {
-  const query = useReferenceCatalogQuery(category);
-  const createMutation = useCreateReferenceCatalogItemMutation(category);
-  const options: ComboboxOption[] = (query.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
-  const nameByCode = new Map(options.map((o) => [o.value, o.label]));
-  async function onCreateOption(name: string): Promise<ComboboxOption> {
-    const created = await createMutation.mutateAsync({ category, name, sortOrder: 0 });
-    return { value: created.code, label: created.name };
-  }
-  return { options, nameByCode, onCreateOption };
-}
-type CatalogCombobox = ReturnType<typeof useCatalogCombobox>;
 
 /** Định dạng chuỗi quy đổi TUẦN TỰ — mỗi bậc so với ĐÚNG bậc liền kề nhỏ hơn (vd "1 Hộp = 5 Vỉ ·
  * 1 Vỉ = 20 Viên"), KHÔNG quy đổi thẳng về đơn vị nhỏ nhất như bản trước (chủ dự án phản hồi trực

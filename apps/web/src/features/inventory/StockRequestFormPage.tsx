@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ListPlus, MagnifyingGlass, Trash } from '@phosphor-icons/react';
 import type { CreateStockRequestRequest, DrugSummary, StockRequestPriority } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
@@ -27,6 +27,7 @@ import {
   useUpdateStockRequestMutation,
 } from './stock-request.queries';
 import { requesterActionsFor } from './stock-request-meta';
+import type { RestockPrefillLine } from './StockRequestRestockTab';
 
 interface DraftLine {
   key: string;
@@ -48,6 +49,7 @@ interface DraftLine {
 export function StockRequestFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEdit = Boolean(id);
   const user = useAuthStore((s) => s.user);
   const multiBranch = showBranchInfo(user);
@@ -101,6 +103,28 @@ export function StockRequestFormPage() {
     );
     setLoadedForId(r.id);
   }, [requestQuery.data, loadedForId]);
+
+  // "Xin chi nhánh chính" từ tab "Hàng cần bổ sung" (#298, mockup màn 4): điền sẵn kho xin và các mặt hàng đã chọn với số cần bổ sung; chỉ một lần lúc vào trang tạo mới.
+  useEffect(() => {
+    if (isEdit) return;
+    const state = location.state as { restockLines?: RestockPrefillLine[]; requestingWarehouseId?: string | null } | null;
+    if (!state?.restockLines?.length) return;
+    if (state.requestingWarehouseId) setRequestingWarehouseId(state.requestingWarehouseId);
+    setLines(
+      state.restockLines.map((l) => ({
+        key: makeDraftId(),
+        drugId: l.drugId,
+        drugCode: l.drugCode,
+        drugName: l.drugName,
+        unitCode: l.unitCode ?? '',
+        onHand: l.onHand,
+        minStock: l.minStock,
+        requestedQty: String(l.quantity),
+        lineNote: '',
+      })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const debouncedDrugQuery = useDebouncedValue(drugQuery, 300);
   const isSearching = drugQuery.trim() !== '';

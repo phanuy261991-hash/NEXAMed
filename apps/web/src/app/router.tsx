@@ -120,6 +120,9 @@ const StockRequestListPage = lazy(() => import('../features/inventory/StockReque
 const StockRequestFormPage = lazy(() => import('../features/inventory/StockRequestFormPage').then((m) => ({ default: m.StockRequestFormPage })));
 const StockRequestDetailPage = lazy(() => import('../features/inventory/StockRequestDetailPage').then((m) => ({ default: m.StockRequestDetailPage })));
 import { StockRequestFeatureGate } from '../features/inventory/StockRequestFeatureGate';
+const PurchaseOrderListPage = lazy(() => import('../features/inventory/PurchaseOrderListPage').then((m) => ({ default: m.PurchaseOrderListPage })));
+const PurchaseOrderFormPage = lazy(() => import('../features/inventory/PurchaseOrderFormPage').then((m) => ({ default: m.PurchaseOrderFormPage })));
+const PurchaseOrderDetailPage = lazy(() => import('../features/inventory/PurchaseOrderDetailPage').then((m) => ({ default: m.PurchaseOrderDetailPage })));
 // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" + "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170, kế
 // hoạch bright-bubbling-axolotl.md mục 4+5, mockup NVC5A4uZsmX9kFsAk5Td88 đã duyệt).
 const StockIssueFormPage = lazy(() => import('../features/inventory/StockIssueFormPage').then((m) => ({ default: m.StockIssueFormPage })));
@@ -266,6 +269,11 @@ export const router = createBrowserRouter([
       { path: 'inventory/requests/new', element: <RequirePermissionRoute module="stock_request" action="create"><StockRequestFeatureGate><StockRequestFormPage /></StockRequestFeatureGate></RequirePermissionRoute> },
       { path: 'inventory/requests/:id/edit', element: <RequirePermissionRoute module="stock_request" action="create"><StockRequestFeatureGate><StockRequestFormPage /></StockRequestFeatureGate></RequirePermissionRoute> },
       { path: 'inventory/requests/:id', element: <RequirePermissionRoute module="stock_request" action="read"><StockRequestFeatureGate><StockRequestDetailPage /></StockRequestFeatureGate></RequirePermissionRoute> },
+      // Đơn đặt hàng NCC (#298 giai đoạn 2): `new` đứng TRƯỚC `:id`.
+      { path: 'inventory/purchase-orders', element: <RequirePermissionRoute module="purchase_order" action="read"><PurchaseOrderListPage /></RequirePermissionRoute> },
+      { path: 'inventory/purchase-orders/new', element: <RequirePermissionRoute module="purchase_order" action="create"><PurchaseOrderFormPage /></RequirePermissionRoute> },
+      { path: 'inventory/purchase-orders/:id/edit', element: <RequirePermissionRoute module="purchase_order" action="create"><PurchaseOrderFormPage /></RequirePermissionRoute> },
+      { path: 'inventory/purchase-orders/:id', element: <RequirePermissionRoute module="purchase_order" action="read"><PurchaseOrderDetailPage /></RequirePermissionRoute> },
       { path: 'inventory/reports/stock-ledger', element: <RequirePermissionRoute module="stock_receipt" action="report"><StockLedgerReportPage /></RequirePermissionRoute> },
       // Báo cáo hao hụt điều chuyển nay là tab của trang Nhập-Xuất-Tồn (chủ dự án chốt Q4, #233); giữ đường dẫn cũ chuyển hướng cho dấu trang đã lưu.
       { path: 'inventory/reports/transfer-shrinkage', element: <Navigate to="/inventory/reports/stock-ledger?tab=shrinkage" replace /> },

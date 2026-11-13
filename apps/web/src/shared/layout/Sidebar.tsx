@@ -21,6 +21,7 @@ import {
   House,
   HandCoins,
   ListChecks,
+  ShoppingCart,
   Pill,
   Printer,
   Receipt,
@@ -66,6 +67,7 @@ import { useDoctorUnseenResultsQuery } from '../../features/reception/reception.
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
 import { useStockTransferPendingCountsQuery } from '../../features/inventory/inventory.queries';
 import { useStockRequestPendingCountsQuery } from '../../features/inventory/stock-request.queries';
+import { usePurchaseOrderOptionsQuery, usePurchaseOrderPendingCountsQuery } from '../../features/inventory/purchase-order.queries';
 import { usePrescriptionInteropStatusQuery } from '../../features/prescription-interop/prescription-interop.queries';
 import { SidebarBrand } from './SidebarBrand';
 import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
@@ -124,6 +126,7 @@ const WAREHOUSE_GROUP_PATHS = [
   '/inventory/counts',
   '/inventory/transfers',
   '/inventory/requests',
+  '/inventory/purchase-orders',
   '/inventory/reports',
 ];
 /** Đường dẫn thuộc nhóm "Quản lý nhà cung cấp" — tách "Nhà cung cấp" khỏi pill con của "Danh mục
@@ -302,6 +305,11 @@ export function Sidebar() {
   const canSeeStockRequest = stockRequestEnabled && hasStockRequestRead;
   const stockRequestPendingCounts = useStockRequestPendingCountsQuery(canSeeStockRequest);
   const stockRequestPendingCount = (stockRequestPendingCounts.data?.toAccept ?? 0) + (stockRequestPendingCounts.data?.updated ?? 0);
+  // "Đơn đặt hàng NCC" (docs/DECISIONS.md #298 giai đoạn 2) — cần quyền `purchase_order.read` VÀ chi nhánh đang làm được đặt hàng (chi nhánh phụ không thấy khi tắt "đặt hàng NCC riêng").
+  const hasPurchaseOrderRead = useHasPermission('purchase_order', 'read');
+  const purchaseOrderOptions = usePurchaseOrderOptionsQuery(hasPurchaseOrderRead);
+  const canSeePurchaseOrder = hasPurchaseOrderRead && purchaseOrderOptions.data?.canOrderHere === true;
+  const purchaseOrderPendingCount = usePurchaseOrderPendingCountsQuery(canSeePurchaseOrder && purchaseOrderOptions.data !== undefined).data?.toApprove ?? 0;
   // Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) — quyền RIÊNG `stock_receipt.report`
   // (chỉ `clinic_admin` mặc định), KHÁC `canSeeInventory` (`stock_receipt.read`, mọi vai trò kho).
   const canSeeStockLedgerReport = useHasPermission('stock_receipt', 'report');
@@ -665,7 +673,7 @@ export function Sidebar() {
               GĐ4 3 phần cuối #170): điều kiện hiện nhóm thiếu `canSeeStockTransfer` (Điều chuyển kho,
               #173 — vai trò CHỈ có quyền xem phần này trước đây sẽ không thấy nổi cả nhóm "Quản lý
               kho" dù mục con `canSeeStockTransfer` bên trong đã đúng), giờ thêm đủ cả 2 quyền mới. */}
-          {(canSeeCatalogPharmacy || canSeeInventory || canSeeDispenseQueue || canSeeStockCount || canSeeStockTransfer || canSeeStockRequest || canSeeStockLedgerReport) && (
+          {(canSeeCatalogPharmacy || canSeeInventory || canSeeDispenseQueue || canSeeStockCount || canSeeStockTransfer || canSeeStockRequest || canSeePurchaseOrder || canSeeStockLedgerReport) && (
             <li>
               <button
                 type="button"
@@ -714,6 +722,8 @@ export function Sidebar() {
                   {canSeeStockTransfer && <NavItem to="/inventory/transfers" label="Điều chuyển kho" icon={ArrowsLeftRight} collapsed={false} indent badge={transferPendingCount} />}
                   {/* Yêu cầu cấp hàng (docs/DECISIONS.md #298) — phòng ban xin kho chính, chi nhánh xin chi nhánh chính. */}
                   {canSeeStockRequest && <NavItem to="/inventory/requests" label="Yêu cầu cấp hàng" icon={ListChecks} collapsed={false} indent badge={stockRequestPendingCount} />}
+                  {/* Đơn đặt hàng NCC (docs/DECISIONS.md #298 giai đoạn 2). */}
+                  {canSeePurchaseOrder && <NavItem to="/inventory/purchase-orders" label="Đơn đặt hàng NCC" icon={ShoppingCart} collapsed={false} indent badge={purchaseOrderPendingCount} />}
                   {/* Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170). */}
                   {canSeeStockLedgerReport && <NavItem to="/inventory/reports/stock-ledger" label="Báo cáo Nhập-Xuất-Tồn" icon={ChartLine} collapsed={false} indent />}
                 </ul>

@@ -8,6 +8,7 @@ import type {
   GetStockRequestLowStockResponse,
   GetStockRequestOptionsResponse,
   GetStockRequestPendingCountsResponse,
+  GetStockRequestRestockResponse,
   ListStockRequestsQuery,
   ListStockRequestsResponse,
   RejectStockRequestRequest,
@@ -33,6 +34,10 @@ export async function getStockRequest(id: string): Promise<StockRequestDetail> {
 
 export async function getStockRequestPendingCounts(): Promise<GetStockRequestPendingCountsResponse> {
   return unwrap(await getApiClient().GET('/api/v1/inventory/requests/pending-counts', {})) as GetStockRequestPendingCountsResponse;
+}
+
+export async function getStockRequestRestock(): Promise<GetStockRequestRestockResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/requests/restock', {})) as GetStockRequestRestockResponse;
 }
 
 export async function getStockRequestOptions(): Promise<GetStockRequestOptionsResponse> {

@@ -78,6 +78,7 @@ export * from './inventory/compute-unit-conversion';
 export * from './inventory/compute-weighted-average-cost';
 export * from './inventory/select-fefo-batches';
 export * from './inventory/stock-request-state';
+export * from './inventory/purchase-order-state';
 export * from './supplier-debt/allocate-supplier-debt';
 export * from './supplier-debt/compute-reconciliation';
 export * from './supplier-debt/lab-partner-statement';

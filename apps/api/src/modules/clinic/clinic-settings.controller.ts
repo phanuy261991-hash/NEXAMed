@@ -200,6 +200,13 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /** 3 công tắc Đơn đặt hàng NCC (#298 giai đoạn 2) — tự-phục vụ, không gắn `@RequirePermission`: web cần để ẩn/hiện menu và dải "cần duyệt". */
+  @Get('purchase-order-settings')
+  async getPurchaseOrderSettings(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    return this.clinicSettingsService.getPurchaseOrderSettings(tenantId);
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

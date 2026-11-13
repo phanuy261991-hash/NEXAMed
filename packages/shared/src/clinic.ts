@@ -380,6 +380,13 @@ export const clinicSettingsSchema = z.object({
    * phiếu đã lập giữ nguyên, phiếu điều chuyển liên kết vẫn xử lý bình thường.
    */
   stockRequestEnabled: z.boolean(),
+  /**
+   * Đơn đặt hàng NCC (docs/DECISIONS.md #298 giai đoạn 2) — 3 công tắc chung cả công ty: chi nhánh phụ có được đặt hàng NCC riêng không (BẬT mặc định), đơn của chi nhánh phụ có cần chi nhánh chính duyệt không (TẮT mặc định),
+   * có cho nhận vượt số đặt không (TẮT mặc định, chặn).
+   */
+  branchPurchasingEnabled: z.boolean(),
+  branchPurchaseNeedsMainApproval: z.boolean(),
+  allowOverReceipt: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -428,6 +435,9 @@ export const updateClinicSettingsRequestSchema = z.object({
   doctorDashboardMoneyEnabled: z.boolean().optional(),
   labPartnerEnabled: z.boolean().optional(),
   stockRequestEnabled: z.boolean().optional(),
+  branchPurchasingEnabled: z.boolean().optional(),
+  branchPurchaseNeedsMainApproval: z.boolean().optional(),
+  allowOverReceipt: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 

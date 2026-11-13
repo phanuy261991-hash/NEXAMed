@@ -1,6 +1,6 @@
 # Kế hoạch — Yêu cầu cấp hàng + Đơn đặt hàng NCC theo cấp (chốt nghiệp vụ 12/11/2026)
 
-Trạng thái: **MOCKUP ĐÃ DUYỆT 12/11/2026; GĐ1 (Yêu cầu cấp hàng) ĐÃ LÀM, GĐ2 (Đơn đặt hàng NCC) CHƯA.** Quyết định: `docs/DECISIONS.md` #298.
+Trạng thái: **MOCKUP ĐÃ DUYỆT 12/11/2026; GĐ1 (Yêu cầu cấp hàng) ĐÃ LÀM; GĐ2 (Đơn đặt hàng NCC) ĐÃ LÀM 13/11/2026 (code + test xong, còn kiểm Chrome + commit).** Quyết định: `docs/DECISIONS.md` #298.
 
 ## 1. Bài toán (lời chủ dự án)
 

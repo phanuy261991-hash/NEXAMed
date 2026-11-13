@@ -37,6 +37,11 @@ import { StockRequestService } from './stock-request.service';
 import { StockRequestRepository } from './stock-request.repository';
 import { StockRequestSyncService } from './stock-request-sync.service';
 import { StockRequestExportService } from './stock-request-export.service';
+import { PurchaseOrderController } from './purchase-order.controller';
+import { PurchaseOrderService } from './purchase-order.service';
+import { PurchaseOrderRepository } from './purchase-order.repository';
+import { PurchaseOrderLinkService } from './purchase-order-link.service';
+import { PurchaseOrderExportService } from './purchase-order-export.service';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146). Module
@@ -103,6 +108,7 @@ import { StockRequestExportService } from './stock-request-export.service';
     StockCountController,
     StockTransferController,
     StockRequestController,
+    PurchaseOrderController,
     StockLedgerReportController,
     ServiceConsumptionController,
   ],
@@ -126,6 +132,11 @@ import { StockRequestExportService } from './stock-request-export.service';
     StockRequestRepository,
     StockRequestSyncService,
     StockRequestExportService,
+    // "Đơn đặt hàng NCC" (docs/DECISIONS.md #298 giai đoạn 2) — nhận hàng bằng Phiếu nhập kho liên kết qua `PurchaseOrderLinkService`.
+    PurchaseOrderService,
+    PurchaseOrderRepository,
+    PurchaseOrderLinkService,
+    PurchaseOrderExportService,
     StockLedgerReportService,
     StockLedgerReportExportService,
     ServiceConsumptionService,

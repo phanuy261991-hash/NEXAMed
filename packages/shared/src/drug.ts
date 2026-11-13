@@ -215,7 +215,8 @@ function checkMedicineRequiredFields(
 
 export const createDrugRequestSchema = z
   .object({
-    code: z.string().min(1),
+    /** Bỏ trống thì máy chủ tự sinh mã ("Thêm mặt hàng mới" nhanh, #298 bổ sung 2); Danh mục và Nhập Excel vẫn truyền mã. */
+    code: z.string().min(1).optional(),
     name: z.string().min(1),
     itemType: drugItemTypeSchema,
     isBatchManaged: z.boolean().default(true),

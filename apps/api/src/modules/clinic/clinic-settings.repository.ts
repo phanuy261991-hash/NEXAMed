@@ -32,6 +32,7 @@ import {
   DEFAULT_DOCTOR_DASHBOARD_MONEY_ENABLED,
   DEFAULT_LAB_PARTNER_ENABLED,
   DEFAULT_STOCK_REQUEST_ENABLED,
+  DEFAULT_PURCHASE_ORDER_SETTINGS,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
@@ -167,6 +168,11 @@ const LAB_PARTNER_ENABLED_KEY = 'lab_partner_enabled';
 const labPartnerEnabledSchema = z.boolean();
 const STOCK_REQUEST_ENABLED_KEY = 'stock_request_enabled';
 const stockRequestEnabledSchema = z.boolean();
+// Đơn đặt hàng NCC (#298 giai đoạn 2) — 3 công tắc chung cả công ty.
+const BRANCH_PURCHASING_ENABLED_KEY = 'branch_purchasing_enabled';
+const BRANCH_PURCHASE_NEEDS_MAIN_APPROVAL_KEY = 'branch_purchase_needs_main_approval';
+const ALLOW_OVER_RECEIPT_KEY = 'allow_over_receipt';
+const purchaseOrderFlagSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -657,6 +663,37 @@ export class ClinicSettingsRepository {
 
   upsertStockRequestEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, STOCK_REQUEST_ENABLED_KEY, value);
+  }
+
+  private async readPurchaseOrderFlag(tx: Prisma.TransactionClient, tenantId: string, key: string, fallback: boolean): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key } });
+    if (!setting) {
+      return fallback;
+    }
+    const parsed = purchaseOrderFlagSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : fallback;
+  }
+
+  /** 3 công tắc Đơn đặt hàng NCC (#298 giai đoạn 2); vắng/hỏng thì dùng mặc định đã chốt. */
+  async getPurchaseOrderSettings(tx: Prisma.TransactionClient, tenantId: string): Promise<{ branchPurchasingEnabled: boolean; branchPurchaseNeedsMainApproval: boolean; allowOverReceipt: boolean }> {
+    const [branchPurchasingEnabled, branchPurchaseNeedsMainApproval, allowOverReceipt] = await Promise.all([
+      this.readPurchaseOrderFlag(tx, tenantId, BRANCH_PURCHASING_ENABLED_KEY, DEFAULT_PURCHASE_ORDER_SETTINGS.branchPurchasingEnabled),
+      this.readPurchaseOrderFlag(tx, tenantId, BRANCH_PURCHASE_NEEDS_MAIN_APPROVAL_KEY, DEFAULT_PURCHASE_ORDER_SETTINGS.branchPurchaseNeedsMainApproval),
+      this.readPurchaseOrderFlag(tx, tenantId, ALLOW_OVER_RECEIPT_KEY, DEFAULT_PURCHASE_ORDER_SETTINGS.allowOverReceipt),
+    ]);
+    return { branchPurchasingEnabled, branchPurchaseNeedsMainApproval, allowOverReceipt };
+  }
+
+  upsertBranchPurchasingEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, BRANCH_PURCHASING_ENABLED_KEY, value);
+  }
+
+  upsertBranchPurchaseNeedsMainApproval(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, BRANCH_PURCHASE_NEEDS_MAIN_APPROVAL_KEY, value);
+  }
+
+  upsertAllowOverReceipt(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, ALLOW_OVER_RECEIPT_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc

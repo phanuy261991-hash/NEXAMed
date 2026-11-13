@@ -25,7 +25,11 @@ import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
 import { useCashAccountsQuery } from '../cash-book/cash-account.queries';
+import { BaseQuantityHint } from '../drug/BaseQuantityHint';
 import { useDrugsQuery } from '../drug/drug.queries';
+import { QuickAddItemDialog } from '../drug/QuickAddItemDialog';
+import { QuickAddItemRow } from '../drug/QuickAddItemRow';
+import { isNoItemMatch } from '../drug/quick-add-search';
 import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
@@ -39,6 +43,7 @@ import {
   useUpdateStockReceiptMutation,
 } from './inventory.queries';
 import { StockReceiptPrintView } from './StockReceiptPrintView';
+import { usePurchaseOrderQuery } from './purchase-order.queries';
 
 interface DraftLine {
   key: string;
@@ -60,6 +65,8 @@ interface DraftLine {
   /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170) — CHỈ
    * có ý nghĩa khi `receiptType='PURCHASE'` VÀ chế độ chiết khấu đang là "Từng dòng". */
   discountValue: string;
+  /** Dòng của Đơn đặt hàng NCC mà dòng nhận này đáp ứng (#298 giai đoạn 2); rỗng với phiếu lập tay. */
+  purchaseOrderLineId?: string | null;
 }
 
 const STATUS_META: Record<string, { label: string; tone: StatusBadgeTone }> = {
@@ -125,6 +132,17 @@ export function StockReceiptFormPage() {
   const canApprove = useHasPermission('stock_receipt', 'approve');
 
   const receiptQuery = useStockReceiptQuery(id ?? '', isEdit);
+  // Nhận hàng theo Đơn đặt hàng NCC (#298 giai đoạn 2): `?fromOrder=<id>` mồi sẵn NCC, kho, mặt hàng và số còn thiếu từ đơn.
+  const fromOrderId = new URLSearchParams(location.search).get('fromOrder') ?? '';
+  const fromOrderQuery = usePurchaseOrderQuery(fromOrderId, !isEdit && fromOrderId !== '');
+  const [purchaseOrderId, setPurchaseOrderId] = useState('');
+  // Đơn đang liên kết: cho cột "Còn thiếu theo đơn" và số đợt nhận (mockup màn 9b); dùng chung bộ nhớ đệm với `fromOrderQuery`.
+  const linkedOrderQuery = usePurchaseOrderQuery(purchaseOrderId, purchaseOrderId !== '');
+  const showOrderCol = purchaseOrderId !== '';
+  const orderRemainingOf = (lineId: string | null | undefined): number | null => (lineId ? (linkedOrderQuery.data?.lines.find((ol) => ol.id === lineId)?.remainingQty ?? null) : null);
+  const receiptRound = (linkedOrderQuery.data?.receipts.filter((r) => !r.voided && r.status === 'POSTED').length ?? 0) + 1;
+  const [purchaseOrderNo, setPurchaseOrderNo] = useState('');
+  const [orderSeeded, setOrderSeeded] = useState(false);
   const warehousesQuery = useWarehousesQuery();
   // Phân quyền theo Khoa/Phòng (retrofit #173/#177) — đúng khuôn `StockCountFormPage.tsx`. Backend
   // LUÔN enforce lại (404 nếu chọn sai kho) — lọc ở đây thuần UX, tránh hiện lựa chọn chắc chắn bị chặn.
@@ -179,7 +197,7 @@ export function StockReceiptFormPage() {
   // Popup "Thông tin phiếu nhập kho" (phản hồi trực tiếp — tách khỏi trang chính để nhường không gian
   // cho khu vực thao tác nhập kho, xem `StockReceiptHeaderDialog.tsx`). Mở NGAY khi tạo phiếu mới
   // (`!isEdit`, chưa có gì để hiển thị tóm tắt); khi sửa/xem phiếu đã có, chỉ mở lại qua nút "Sửa".
-  const [headerDialogOpen, setHeaderDialogOpen] = useState(!isEdit);
+  const [headerDialogOpen, setHeaderDialogOpen] = useState(!isEdit && fromOrderId === '');
 
   useBreadcrumb([
     { label: 'Quản lý kho' },
@@ -198,6 +216,8 @@ export function StockReceiptFormPage() {
     setNote(r.note ?? '');
     setSupplierInvoiceNo(r.supplierInvoiceNo ?? '');
     setSourceIssueId(r.sourceIssueId ?? '');
+    setPurchaseOrderId(r.purchaseOrderId ?? '');
+    setPurchaseOrderNo(r.purchaseOrderNo ?? '');
     setLines(
       r.lines.map((l: StockReceiptLine) => ({
         key: l.id,
@@ -213,6 +233,7 @@ export function StockReceiptFormPage() {
         manufactureDate: l.manufactureDate ?? '',
         expiryDate: l.expiryDate ?? '',
         discountValue: l.discountValue != null ? String(l.discountValue) : '',
+        purchaseOrderLineId: l.purchaseOrderLineId,
       })),
     );
     setDiscountMode(r.discountMode === 'TOTAL' ? 'TOTAL' : 'PER_LINE');
@@ -256,6 +277,40 @@ export function StockReceiptFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Mồi từ đơn đặt hàng: chỉ các dòng còn thiếu, đơn vị khoá theo đơn (máy chủ bắt buộc cùng đơn vị), số nhận mặc định = số còn thiếu.
+  useEffect(() => {
+    const o = fromOrderQuery.data;
+    if (isEdit || !o || orderSeeded) return;
+    setReceiptType('PURCHASE');
+    setWarehouseId(o.warehouseId);
+    setSupplierId(o.supplierId);
+    setPurchaseOrderId(o.id);
+    setPurchaseOrderNo(o.orderNo);
+    // Số nhận do người dùng nhập ở cột "Nhận đợt này" của chi nhánh (nếu có), ngược lại mặc định số còn thiếu; dòng nhận 0 bị bỏ.
+    const chosen = (location.state as { receiveQty?: Record<string, number> } | null)?.receiveQty;
+    setLines(
+      o.lines
+        .filter((l) => (chosen ? (chosen[l.id] ?? 0) > 0 : l.remainingQty > 0))
+        .map((l) => ({
+          key: makeKey(),
+          drugId: l.drugId,
+          drugCode: l.drugCode,
+          drugName: l.drugName,
+          isBatchManaged: false,
+          unitOptions: [l.unitCode],
+          unitCode: l.unitCode,
+          quantity: String(chosen?.[l.id] ?? l.remainingQty),
+          unitCost: l.expectedUnitCost ?? undefined,
+          batchNo: '',
+          manufactureDate: '',
+          expiryDate: '',
+          discountValue: '',
+          purchaseOrderLineId: l.id,
+        })),
+    );
+    setOrderSeeded(true);
+  }, [fromOrderQuery.data, isEdit, orderSeeded, location.state]);
+
   const debouncedDrugQuery = useDebouncedValue(drugQuery, 300);
   // Gate hiện/ẩn dropdown theo `drugQuery` (tức thời), KHÔNG theo `debouncedDrugQuery` — bug thật
   // phát hiện lúc chủ dự án dùng thử: `addLine()` xoá `drugQuery` ngay nhưng `debouncedDrugQuery`
@@ -264,6 +319,10 @@ export function StockReceiptFormPage() {
   const isSearchingDrug = drugQuery.trim() !== '';
   const drugSearchQuery = useDrugsQuery({ q: debouncedDrugQuery.trim() || undefined });
   const searchResults = isSearchingDrug ? (drugSearchQuery.data?.items ?? []) : [];
+  // Chỉ coi là "không có mặt hàng nào" khi kết quả của ĐÚNG chuỗi đang gõ đã về và rỗng; phiếu nhận theo đơn đặt hàng không thêm được mặt hàng ngoài đơn nên không mở hộp thêm nhanh.
+  const noItemMatches = isNoItemMatch({ query: drugQuery, debouncedQuery: debouncedDrugQuery, isSuccess: drugSearchQuery.isSuccess, isFetching: drugSearchQuery.isFetching, rawResultCount: searchResults.length });
+  const canCreateDrug = useHasPermission('drug', 'create');
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const totalAmount = useMemo(() => lines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (l.unitCost ?? 0), 0), [lines]);
 
@@ -309,6 +368,11 @@ export function StockReceiptFormPage() {
   }, [lines]);
 
   function addLine(drug: DrugSummary) {
+    if (purchaseOrderId) {
+      setFormError('Phiếu nhận theo đơn đặt hàng chỉ gồm các mặt hàng của đơn. Muốn nhập thêm hàng khác, hãy lập Phiếu nhập kho riêng.');
+      setDrugQuery('');
+      return;
+    }
     const alreadyAdded = lines.some((l) => l.drugId === drug.id);
     if (alreadyAdded && !drug.isBatchManaged) {
       // Hàng KHÔNG quản lý theo lô — không có gì phân biệt 2 dòng cùng mã, bỏ qua thay vì tạo dòng
@@ -360,6 +424,7 @@ export function StockReceiptFormPage() {
           manufactureDate: '',
           expiryDate: '',
           discountValue: '',
+          purchaseOrderLineId: template.purchaseOrderLineId,
         },
       ];
     });
@@ -469,6 +534,7 @@ export function StockReceiptFormPage() {
       discountValue: useTotalDiscount && totalDiscountValue ? totalDiscountValue : undefined,
       discountReason: useTotalDiscount && totalDiscountValue ? totalDiscountReason.trim() : undefined,
       sourceIssueId: receiptType === 'RETURN_FROM_USE' && sourceIssueId ? sourceIssueId : undefined,
+      purchaseOrderId: purchaseOrderId || undefined,
       prepaidAmount: usePrepaid ? prepaidAmount : undefined,
       prepaidPaymentMethodCode: usePrepaid ? prepaidPaymentMethodCode : undefined,
       prepaidCashAccountId: usePrepaid ? prepaidCashAccountId : undefined,
@@ -480,6 +546,7 @@ export function StockReceiptFormPage() {
         batchNo: l.batchNo || undefined,
         expiryDate: l.expiryDate || undefined,
         manufactureDate: l.manufactureDate || undefined,
+        purchaseOrderLineId: purchaseOrderId ? l.purchaseOrderLineId : undefined,
         discountType: receiptType === 'PURCHASE' && discountMode === 'PER_LINE' && Number(l.discountValue) > 0 ? ('PERCENT' as const) : undefined,
         discountValue: receiptType === 'PURCHASE' && discountMode === 'PER_LINE' && Number(l.discountValue) > 0 ? Number(l.discountValue) : undefined,
       })),
@@ -534,9 +601,9 @@ export function StockReceiptFormPage() {
   // khi khung trái hẹp (cột phải 380px cạnh tranh không gian, #194), NHƯNG không ép cả bảng phải
   // rộng hơn mức cần thiết như `minWidth` cố định cũ (gây lệch, đẩy cột phải ra ngoài màn hình) —
   // bảng tự vừa khít khi đủ chỗ, chỉ cuộn ngang khi thật sự không đủ 180px cho cột tên.
-  const lineGridCols = ['minmax(130px, 1.8fr)', '84px', '84px', '104px', '104px', '128px', '128px', ...(showLineDiscountCol ? ['100px'] : []), '120px', ...(!readOnly ? ['44px'] : [])].join(' ');
+  const lineGridCols = ['minmax(130px, 1.8fr)', '84px', ...(showOrderCol ? ['110px'] : []), '84px', '104px', '104px', '128px', '128px', ...(showLineDiscountCol ? ['100px'] : []), '120px', ...(!readOnly ? ['44px'] : [])].join(' ');
   // Tổng bề ngang TỐI THIỂU của mọi cột + lề `px-4` — khung bảng nhỏ hơn mức này thì CUỘN NGANG cả tiêu đề lẫn thân bảng (thân có `overflow-x-hidden` nên trước đây cắt mất cột "Thành tiền" ở màn ≤1024px).
-  const lineMinWidth = 130 + 84 + 84 + 104 * 2 + 128 * 2 + (showLineDiscountCol ? 100 : 0) + 120 + (!readOnly ? 44 : 0) + 32;
+  const lineMinWidth = 130 + 84 + (showOrderCol ? 110 : 0) + 84 + 104 * 2 + 128 * 2 + (showLineDiscountCol ? 100 : 0) + 120 + (!readOnly ? 44 : 0) + 32;
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -579,6 +646,7 @@ export function StockReceiptFormPage() {
             <SummaryField label="Nhà cung cấp" value={suppliersQuery.data?.items.find((s) => s.id === supplierId)?.name ?? '—'} />
           )}
           {receiptType === 'PURCHASE' && supplierInvoiceNo && <SummaryField label="Mã hoá đơn NCC" value={supplierInvoiceNo} />}
+          {purchaseOrderId && <SummaryField label="Từ đơn đặt hàng" value={`${purchaseOrderNo || purchaseOrderId}${linkedOrderQuery.data ? ` (đợt nhận ${receiptRound})` : ''}`} />}
           {receiptType === 'RETURN_FROM_USE' && sourceIssueId && (
             <SummaryField label="Phiếu xuất gốc" value={receiptQuery.data?.sourceIssueNo ?? sourceIssueLabel ?? sourceIssueId} />
           )}
@@ -618,13 +686,25 @@ export function StockReceiptFormPage() {
                   type="search"
                   value={drugQuery}
                   onChange={(e) => setDrugQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    if (noItemMatches && canCreateDrug && !purchaseOrderId) setQuickAddOpen(true);
+                  }}
                   placeholder="Gõ tên/mã/mã vạch thuốc, vật tư để thêm dòng hàng..."
                   className="w-full rounded-md border border-blue-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               {isSearchingDrug && (
                 <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto scroll-hover">
-                  {searchResults.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Không tìm thấy thuốc/vật tư nào khớp.</p>}
+                  {searchResults.length === 0 && noItemMatches && !purchaseOrderId && (
+                    <div className="overflow-hidden rounded-md border border-slate-200">
+                      <QuickAddItemRow query={drugQuery} canCreate={canCreateDrug} onOpen={() => setQuickAddOpen(true)} />
+                    </div>
+                  )}
+                  {searchResults.length === 0 && (!noItemMatches || purchaseOrderId) && (
+                    <p className="px-1 py-2 text-xs text-slate-400">{drugSearchQuery.isError ? 'Không tìm được mặt hàng, vui lòng thử lại.' : !noItemMatches && (drugSearchQuery.isFetching || debouncedDrugQuery.trim() !== drugQuery.trim()) ? 'Đang tìm...' : 'Không tìm thấy thuốc/vật tư nào khớp.'}</p>
+                  )}
                   {searchResults.map((d) => (
                     <button
                       key={d.id}
@@ -662,6 +742,7 @@ export function StockReceiptFormPage() {
               >
                 <div role="columnheader" className="py-2.5 text-left">Thuốc / vật tư</div>
                 <div role="columnheader" className="py-2.5 text-center">Đơn vị</div>
+                {showOrderCol && <div role="columnheader" className="py-2.5 text-center">Còn thiếu theo đơn</div>}
                 <div role="columnheader" className="py-2.5 text-center">Số lượng</div>
                 <div role="columnheader" className="py-2.5 text-center">Giá vốn</div>
                 <div role="columnheader" className="py-2.5 text-center">Số lô</div>
@@ -700,7 +781,7 @@ export function StockReceiptFormPage() {
                           </span>
                           {collapsible && <span className="flex-shrink-0 text-xs font-semibold text-blue-600">· {group.length} lô</span>}
                         </div>
-                        <div role="cell" style={{ gridColumn: `span ${showLineDiscountCol ? 8 : 7}` }} />
+                        <div role="cell" style={{ gridColumn: `span ${(showLineDiscountCol ? 8 : 7) + (showOrderCol ? 1 : 0)}` }} />
                         {!readOnly && (
                           <div role="cell" className="text-center">
                             {head.isBatchManaged && (
@@ -737,6 +818,9 @@ export function StockReceiptFormPage() {
                               />
                             )}
                           </div>
+                          {showOrderCol && (
+                            <div role="cell" className="px-1 text-center font-medium tabular-nums text-slate-600">{orderRemainingOf(l.purchaseOrderLineId) ?? '—'}</div>
+                          )}
                           <div role="cell" className="px-1">
                             {readOnly ? (
                               <div className="text-center tabular-nums">{l.quantity}</div>
@@ -749,6 +833,7 @@ export function StockReceiptFormPage() {
                                 className="w-full rounded-md border border-slate-300 px-1.5 py-1.5 text-center text-sm font-semibold text-slate-900"
                               />
                             )}
+                            <BaseQuantityHint drugId={l.drugId} unitCode={l.unitCode} quantity={l.quantity} className="mt-0.5 text-center text-xs font-medium tabular-nums text-slate-500" />
                           </div>
                           <div role="cell" className="px-1">
                             {readOnly ? (
@@ -1029,9 +1114,22 @@ export function StockReceiptFormPage() {
           warehouseOptions={warehouseOptions}
           supplierOptions={supplierOptions}
           hasLines={lines.length > 0}
+          lockedByOrder={purchaseOrderId !== ''}
           allowSimpleClose={isEdit || Boolean(warehouseId)}
           onCancel={handleHeaderCancel}
           onSave={handleHeaderSave}
+        />
+      )}
+
+      {quickAddOpen && (
+        <QuickAddItemDialog
+          initialName={drugQuery.trim()}
+          submitLabel="Thêm vào phiếu"
+          onClose={() => setQuickAddOpen(false)}
+          onCreated={(drug) => {
+            addLine(drug);
+            setQuickAddOpen(false);
+          }}
         />
       )}
     </div>

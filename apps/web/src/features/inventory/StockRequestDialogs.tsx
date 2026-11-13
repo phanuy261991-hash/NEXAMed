@@ -236,15 +236,21 @@ export function StockRequestAddLinesDialog({ request, onClose }: { request: Stoc
 export function StockRequestWithdrawDialog({ request, lineIds, onClose }: { request: StockRequestDetail; lineIds: string[]; onClose: () => void }) {
   const mutation = useWithdrawStockRequestLinesMutation();
   const lines = request.lines.filter((l) => lineIds.includes(l.id));
+  // Dòng chờ đơn đặt hàng NCC đã gửi nhà cung cấp: không rút thẳng được, chỉ gửi "Yêu cầu rút" cho kho cấp xác nhận (#298 giai đoạn 2).
+  const placed = lines.filter((l) => l.waitPurchaseOrderStatus === 'ORDERED' || l.waitPurchaseOrderStatus === 'PARTIALLY_RECEIVED' || l.waitPurchaseOrderStatus === 'RECEIVED');
   return (
     <ReasonConfirmDialog
-      title="Rút dòng chưa có hàng"
+      title={placed.length > 0 ? 'Rút dòng chờ hàng (gửi yêu cầu rút)' : 'Rút dòng chưa có hàng'}
       rows={[
         { label: 'Phiếu', value: request.requestNo },
         { label: 'Mặt hàng', value: lines.map((l) => l.drugName).join(', ') },
       ]}
-      note="Phần đã cấp giữ nguyên. Kho cấp được báo."
-      confirmLabel="Xác nhận rút"
+      note={
+        placed.length > 0
+          ? `${placed.map((l) => l.waitPurchaseOrderNo).join(', ')} đã đặt nhà cung cấp, nên rút yêu cầu không huỷ đơn: hàng về vẫn nhập kho cấp. Bạn gửi yêu cầu rút và chờ kho cấp xác nhận; trong lúc chờ phiếu vẫn Đang xử lý.`
+          : 'Phần đã cấp giữ nguyên. Kho cấp được báo.'
+      }
+      confirmLabel={placed.length > 0 ? 'Gửi yêu cầu rút' : 'Xác nhận rút'}
       confirmVariant="danger"
       onConfirm={(reason) => mutation.mutateAsync({ id: request.id, body: { version: request.version, lineIds, reason } })}
       onDone={onClose}

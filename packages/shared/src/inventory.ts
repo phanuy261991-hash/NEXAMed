@@ -43,6 +43,8 @@ export const stockReceiptLineInputSchema = z.object({
    * khấu cấp header (Service kiểm mutual-exclusion, đúng tinh thần `computeInvoiceDiscount()`). */
   discountType: discountTypeSchema.nullable().optional(),
   discountValue: z.number().int().positive().nullable().optional(),
+  /** Dòng của Đơn đặt hàng NCC mà dòng nhận này đáp ứng (#298 giai đoạn 2) — chỉ có ý nghĩa khi phiếu có `purchaseOrderId`. */
+  purchaseOrderLineId: z.string().uuid().nullable().optional(),
 });
 export type StockReceiptLineInput = z.infer<typeof stockReceiptLineInputSchema>;
 
@@ -73,6 +75,8 @@ const stockReceiptHeaderFieldsSchema = z.object({
    * gửi kèm ở loại khác, cùng cách `discountType` xử lý). Chủ động KHÔNG bắt buộc (docs/DECISIONS.md
    * #195, chủ dự án yêu cầu) — không tìm ra/không có phiếu xuất gốc vẫn phải lập được phiếu trả hàng. */
   sourceIssueId: z.string().uuid().nullable().optional(),
+  /** Đơn đặt hàng NCC (#298 giai đoạn 2) — CHỈ có ý nghĩa khi `receiptType='PURCHASE'`; mọi dòng phải gắn `purchaseOrderLineId` của đơn đó, NCC/kho phải khớp đơn (Service kiểm). */
+  purchaseOrderId: z.string().uuid().nullable().optional(),
   lines: z.array(stockReceiptLineInputSchema).min(1, 'Phải có ít nhất 1 dòng hàng.'),
 });
 
@@ -89,6 +93,20 @@ function checkStockReceiptPrepaidRules(v: z.infer<typeof stockReceiptHeaderField
       ctx.addIssue({ code: 'custom', message: 'Phải chọn Quỹ chi khi có Trả ngay.', path: ['prepaidCashAccountId'] });
     }
   }
+}
+
+function checkStockReceiptPurchaseOrderRules(v: z.infer<typeof stockReceiptHeaderFieldsSchema>, ctx: z.RefinementCtx): void {
+  if (v.purchaseOrderId && v.receiptType !== 'PURCHASE') {
+    ctx.addIssue({ code: 'custom', message: 'Chỉ phiếu "Nhập nhà cung cấp" mới nhận theo đơn đặt hàng.', path: ['purchaseOrderId'] });
+  }
+  v.lines.forEach((l, i) => {
+    if (v.purchaseOrderId && !l.purchaseOrderLineId) {
+      ctx.addIssue({ code: 'custom', message: 'Dòng nhận theo đơn phải gắn dòng của đơn đặt hàng.', path: ['lines', i, 'purchaseOrderLineId'] });
+    }
+    if (!v.purchaseOrderId && l.purchaseOrderLineId) {
+      ctx.addIssue({ code: 'custom', message: 'Dòng gắn đơn đặt hàng thì phiếu phải có đơn đặt hàng.', path: ['lines', i, 'purchaseOrderLineId'] });
+    }
+  });
 }
 
 function checkStockReceiptDiscountRules(v: z.infer<typeof stockReceiptHeaderFieldsSchema>, ctx: z.RefinementCtx): void {
@@ -129,6 +147,7 @@ export const createStockReceiptRequestSchema = stockReceiptHeaderFieldsSchema.su
   if (v.receiptType !== 'RETURN_FROM_USE' && v.sourceIssueId) {
     ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Phiếu xuất gốc.', path: ['sourceIssueId'] });
   }
+  checkStockReceiptPurchaseOrderRules(v, ctx);
   checkStockReceiptDiscountRules(v, ctx);
   checkStockReceiptPrepaidRules(v, ctx);
 });
@@ -146,6 +165,7 @@ export const updateStockReceiptRequestSchema = stockReceiptHeaderFieldsSchema
     if (v.receiptType !== 'RETURN_FROM_USE' && v.sourceIssueId) {
       ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Phiếu xuất gốc.', path: ['sourceIssueId'] });
     }
+    checkStockReceiptPurchaseOrderRules(v, ctx);
     checkStockReceiptDiscountRules(v, ctx);
     checkStockReceiptPrepaidRules(v, ctx);
   });
@@ -184,6 +204,7 @@ export const stockReceiptLineSchema = z.object({
   discountType: discountTypeSchema.nullable(),
   discountValue: z.number().int().nullable(),
   discountAmount: z.number().int(),
+  purchaseOrderLineId: z.string().uuid().nullable(),
 });
 export type StockReceiptLine = z.infer<typeof stockReceiptLineSchema>;
 
@@ -222,6 +243,9 @@ export const stockReceiptSummarySchema = z.object({
    * VÀ người lập có chọn (tuỳ chọn, không bắt buộc). */
   sourceIssueId: z.string().uuid().nullable(),
   sourceIssueNo: z.string().nullable(),
+  /** Đơn đặt hàng NCC mà phiếu nhận theo (#298 giai đoạn 2); `null` với phiếu lập tay. */
+  purchaseOrderId: z.string().uuid().nullable(),
+  purchaseOrderNo: z.string().nullable(),
   lineCount: z.number().int(),
   createdByName: z.string(),
   approvedByName: z.string().nullable(),
@@ -257,6 +281,9 @@ export const listStockReceiptsQuerySchema = z.object({
    * này với `GET /supplier-debt/:supplierId/receipts` theo `stockReceiptId` để hiện đủ receiptNo/
    * occurredAt/voided cạnh trạng thái công nợ, tránh `supplier-debt` phải phụ thuộc ngược `inventory`. */
   supplierId: z.string().uuid().optional(),
+  /** Bộ lọc "Từ đơn" (#298 giai đoạn 2): `yes` = phiếu nhận theo đơn đặt hàng, `no` = phiếu lập tay. */
+  fromOrder: z.enum(['yes', 'no']).optional(),
+  purchaseOrderId: z.string().uuid().optional(),
 });
 export type ListStockReceiptsQuery = z.infer<typeof listStockReceiptsQuerySchema>;
 

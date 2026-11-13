@@ -31,7 +31,7 @@ export function SystemFailureDialog() {
   const content = SYSTEM_FAILURE_CONTENT[kind];
   const HeaderIcon = HEADER_ICON[content.icon];
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="system-failure-title">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="system-failure-title">
       <div className="relative w-full max-w-[420px] rounded-[18px] border border-slate-200 bg-white p-6 shadow-2xl">
         <button
           type="button"

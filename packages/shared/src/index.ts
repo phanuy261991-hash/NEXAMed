@@ -50,6 +50,7 @@ export * from './encryption-key';
 export * from './backup-config';
 export * from './inventory';
 export * from './stock-request';
+export * from './purchase-order';
 export * from './service-consumption';
 export * from './report-service-consumption';
 export * from './supplier-debt';

@@ -139,6 +139,12 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.stockTransfer.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // Yêu cầu cấp hàng (#298): `stock_transfer.request_id`/`stock_transfer_line.request_line_id` trỏ về đây nên xoá SAU phiếu điều chuyển; phiếu con trỏ phiếu gốc
       // (`parent_request_id`, FK RESTRICT) và dòng chờ trỏ phiếu con (`wait_child_request_id`) nên gỡ liên kết trước khi xoá.
+      // Đơn đặt hàng NCC (#298 giai đoạn 2): dòng yêu cầu chờ đơn (wait_purchase_order_id) và phiếu nhập liên kết (purchase_order_id) trỏ về đơn → gỡ liên kết, xoá dòng/đơn.
+      await prisma.stockRequestLine.updateMany({ where: { tenantId: { in: tenantIds } }, data: { waitPurchaseOrderId: null } });
+      await prisma.stockReceiptLine.updateMany({ where: { tenantId: { in: tenantIds } }, data: { purchaseOrderLineId: null } });
+      await prisma.stockReceipt.updateMany({ where: { tenantId: { in: tenantIds } }, data: { purchaseOrderId: null } });
+      await prisma.purchaseOrderLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.purchaseOrder.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockRequestEvent.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockRequestLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockRequest.updateMany({ where: { tenantId: { in: tenantIds } }, data: { parentRequestId: null } });

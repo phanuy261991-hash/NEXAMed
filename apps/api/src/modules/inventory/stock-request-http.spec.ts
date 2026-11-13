@@ -647,4 +647,48 @@ describe('HTTP e2e — /api/v1/inventory/requests (Yêu cầu cấp hàng)', () 
       expect((await http().get(`/api/v1/inventory/transfers/${transferId}`).set(authed(adminBToken))).status).toBe(200);
     });
   });
+  describe('tab "Hàng cần bổ sung" (mockup màn 4)', () => {
+    type Restock = { warehouseId: string | null; canRequestUp: boolean; stats: { belowMin: number; deptWaiting: number; waitingArrival: number; requestedUp: number }; items: { drugId: string; onHand: number; minStock: number; deptWaitingQty: number; deptWaitingRequestNos: string[]; suggestedQty: number }[] };
+    const restock = async (token: string) => {
+      const res = await http().get('/api/v1/inventory/requests/restock').set(authed(token));
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      return res.body.data as Restock;
+    };
+
+    it('kho chính chi nhánh chính: tồn dưới mức tối thiểu kèm phần chi nhánh/phòng ban đang chờ, gợi ý = tối thiểu - tồn + đang chờ', async () => {
+      const drugId = await createDrug(adminAToken, 'Hàng cần bổ sung');
+      await stockIn(adminAToken, whA, drugId, 4);
+      const d = await submitted(adminBToken, whB, [{ drugId, requestedQty: 8 }]);
+      const view = await restock(adminAToken);
+      expect(view.warehouseId).toBe(whA);
+      // Chi nhánh chính không có cấp trên để xin.
+      expect(view.canRequestUp).toBe(false);
+      const item = view.items.find((i) => i.drugId === drugId)!;
+      expect(item).toMatchObject({ onHand: 4, minStock: 20, deptWaitingQty: 8, suggestedQty: 24 });
+      expect(item.deptWaitingRequestNos).toContain(d.requestNo);
+      expect(view.stats.belowMin).toBe(view.items.length);
+      expect(view.stats.deptWaiting).toBeGreaterThanOrEqual(1);
+    });
+
+    it('phần đã giao không tính là đang chờ; mặt hàng đủ tồn không xuất hiện', async () => {
+      const drugId = await createDrug(adminAToken, 'Hàng đủ tồn');
+      await stockIn(adminAToken, whA, drugId, 100);
+      expect((await restock(adminAToken)).items.some((i) => i.drugId === drugId)).toBe(false);
+    });
+
+    it('kho chính chi nhánh phụ: có cấp trên để xin, chỉ thấy kho của mình; công ty khác và lễ tân không vào được', async () => {
+      const drugId = await createDrug(adminAToken, 'Hàng chi nhánh B');
+      await stockIn(adminBToken, whB, drugId, 3);
+      const view = await restock(adminBToken);
+      expect(view.warehouseId).toBe(whB);
+      expect(view.canRequestUp).toBe(true);
+      expect(view.items.find((i) => i.drugId === drugId)).toMatchObject({ onHand: 3, suggestedQty: 17 });
+      const other = await restock(adminAToken);
+      expect(other.items.find((i) => i.drugId === drugId)?.onHand).toBe(0);
+      const tenantB = await http().get('/api/v1/inventory/requests/restock').set(authed(tenantBAdminToken));
+      expect(tenantB.status).toBe(200);
+      expect((tenantB.body.data as Restock).items.some((i) => i.drugId === drugId)).toBe(false);
+      expect((await http().get('/api/v1/inventory/requests/restock').set(authed(receptionistToken))).status).toBe(403);
+    });
+  });
 });

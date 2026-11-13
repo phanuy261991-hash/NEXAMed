@@ -71,6 +71,7 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       internalUseOnly: boolean;
       supplyUsageNature: 'SINGLE_USE' | 'REUSABLE' | null;
       omitPrice: boolean;
+      omitCode: boolean;
       omitSupplyRequired: boolean;
     }> = {},
   ) {
@@ -83,7 +84,7 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       .post('/api/v1/drugs')
       .set(authed(token))
       .send({
-        code: overrides.code ?? `DRG-${randomUUID().slice(0, 8)}`,
+        ...(overrides.omitCode ? {} : { code: overrides.code ?? `DRG-${randomUUID().slice(0, 8)}` }),
         name: overrides.name ?? 'Paracetamol 500mg',
         itemType,
         baseUnitCode: 'VIEN',
@@ -173,6 +174,18 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     const res = await createDrug(clinicAdminToken, { code });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('DRUG_DUPLICATE_CODE');
+  });
+
+  it('không truyền mã → máy chủ tự sinh mã MH... tăng dần, không trùng; mã tự đặt vẫn được giữ nguyên (#298 bổ sung 2)', async () => {
+    const a = await createDrug(clinicAdminToken, { name: 'Tự sinh mã A', omitCode: true });
+    const b = await createDrug(clinicAdminToken, { name: 'Tự sinh mã B', omitCode: true });
+    expect(a.status, JSON.stringify(a.body)).toBe(200);
+    expect(b.status).toBe(200);
+    expect(a.body.data.code).toMatch(/^MH/);
+    expect(b.body.data.code).toMatch(/^MH/);
+    expect(a.body.data.code).not.toBe(b.body.data.code);
+    const manual = await createDrug(clinicAdminToken, { code: 'TU-DAT-' + randomUUID().slice(0, 6) });
+    expect(manual.body.data.code).toMatch(/^TU-DAT-/);
   });
 
   it('bác sĩ (drug.read) tìm thuốc theo tên không dấu/phân biệt hoa thường → khớp', async () => {

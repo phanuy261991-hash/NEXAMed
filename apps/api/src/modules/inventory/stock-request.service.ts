@@ -9,6 +9,7 @@ import {
   StockRequestInvalidStateError,
   StockRequestNoSupplierError,
   computeLineProgress,
+  isPurchaseOrderPlaced,
   getVietnamDateString,
   requesterActions,
   resolveSupplyingWarehouseId,
@@ -30,9 +31,11 @@ import type {
   GetStockRequestLowStockResponse,
   GetStockRequestOptionsResponse,
   GetStockRequestPendingCountsResponse,
+  GetStockRequestRestockResponse,
   ListStockRequestsQuery,
   ListStockRequestsResponse,
   RejectStockRequestRequest,
+  ResolveStockRequestWithdrawRequest,
   StockRequestDetail,
   StockRequestStatus,
   StockRequestSummary,
@@ -240,6 +243,29 @@ export class StockRequestService {
     });
   }
 
+  /**
+   * Tab "Hàng cần bổ sung" (mockup màn 4): kho chính của chi nhánh đang làm — mặt hàng dưới mức tối thiểu kèm phần các phòng ban đang chờ cấp. Từ đây người dùng chọn xin chi nhánh chính hoặc đặt NCC
+   * (web điền sẵn form tương ứng). Chi nhánh không có kho chính (hiếm) trả danh sách rỗng.
+   */
+  async getRestock(tenantId: string, branchId: string, actorId: string, dataScope: DataScope): Promise<GetStockRequestRestockResponse> {
+    await this.assertEnabled(tenantId);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    const empty: GetStockRequestRestockResponse = { warehouseId: null, warehouseName: null, canRequestUp: false, stats: { belowMin: 0, deptWaiting: 0, waitingArrival: 0, requestedUp: 0 }, items: [] };
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const main = await this.warehouseRepository.findDefault(tx, tenantId, branchId);
+      if (!main) return empty;
+      assertWarehouseInScope(main.departmentId, dataScope, actorDepartmentId);
+      const [needs, upper] = await Promise.all([this.stockRequestRepository.listRestockNeeds(tx, tenantId, main.id), this.resolveSupplier(tx, tenantId, { id: main.id, branchId })]);
+      return {
+        warehouseId: main.id,
+        warehouseName: main.name,
+        canRequestUp: upper !== null,
+        stats: { belowMin: needs.items.length, deptWaiting: needs.items.filter((i) => i.deptWaitingQty > 0).length, waitingArrival: needs.waitingArrival, requestedUp: needs.requestedUp },
+        items: needs.items,
+      };
+    });
+  }
+
   // ============ Bên XIN ============
 
   async create(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CreateStockRequestRequest, meta: RequestMeta): Promise<StockRequestDetail> {
@@ -414,10 +440,18 @@ export class StockRequestService {
       if (targets.some((t) => !t)) throw new NotFoundException();
 
       const names: string[] = [];
+      const requested: string[] = [];
       for (const line of targets as StockRequestDetailRow['lines']) {
         const progress = computeLineProgress(toLineInput(line));
         const canWithdraw = actions.withdrawOnlyWaiting ? line.fulfilStatus === 'WAITING_STOCK' : line.fulfilStatus === 'PENDING' || line.fulfilStatus === 'WAITING_STOCK';
         if (!canWithdraw) throw new StockRequestInvalidStateError(`Dòng "${line.drug.name}" đã được xử lý, không rút được.`);
+        if (line.withdrawRequestedAt) throw new StockRequestInvalidStateError(`Dòng "${line.drug.name}" đã gửi yêu cầu rút, đang chờ kho cấp xác nhận.`);
+        // Đơn đặt hàng NCC đã gửi nhà cung cấp: kho cấp đã chịu chi phí nên bên xin chỉ gửi "Yêu cầu rút", kho cấp xác nhận (#298 giai đoạn 2). Đơn KHÔNG bị huỷ theo.
+        if (line.waitPurchaseOrder && isPurchaseOrderPlaced(line.waitPurchaseOrder.status)) {
+          await this.stockRequestRepository.updateLine(tx, tenantId, line.id, actorId, { withdrawRequestedAt: new Date(), withdrawRequestedBy: actorId, withdrawRequestReason: dto.reason });
+          requested.push(line.drug.name);
+          continue;
+        }
         const now = new Date();
         await this.stockRequestRepository.updateLine(tx, tenantId, line.id, actorId, {
           // Đã cấp một phần thì phần đã cấp giữ nguyên (đóng phần còn thiếu); chưa cấp gì thì dòng thành "Đã rút".
@@ -430,8 +464,14 @@ export class StockRequestService {
       }
       const count = await this.stockRequestRepository.transition(tx, tenantId, id, dto.version, [existing.status], actorId, { supplierUpdatePending: true });
       if (count === 0) throw new ConcurrentModificationError();
-      await this.syncService.refresh(tx, tenantId, actorId, id, { type: 'lines_withdrawn', message: `Rút ${names.length} dòng chờ hàng`, detail: `${names.join(', ')}. ${dto.reason}` });
-      await this.audit(tx, tenantId, actorId, id, 'stock_request.lines_withdrawn', { lineCount: names.length, reason: dto.reason }, meta);
+      if (names.length > 0) {
+        await this.syncService.refresh(tx, tenantId, actorId, id, { type: 'lines_withdrawn', message: `Rút ${names.length} dòng chờ hàng`, detail: `${names.join(', ')}. ${dto.reason}` });
+        await this.audit(tx, tenantId, actorId, id, 'stock_request.lines_withdrawn', { lineCount: names.length, reason: dto.reason }, meta);
+      }
+      if (requested.length > 0) {
+        await this.stockRequestRepository.addEvent(tx, tenantId, id, actorId, 'withdraw_requested', `Gửi yêu cầu rút ${requested.length} dòng đã đặt nhà cung cấp`, { detail: `${requested.join(', ')}. ${dto.reason}` });
+        await this.audit(tx, tenantId, actorId, id, 'stock_request.withdraw_requested', { lineCount: requested.length, reason: dto.reason }, meta);
+      }
     });
     return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
@@ -500,7 +540,7 @@ export class StockRequestService {
       if (count === 0) throw new ConcurrentModificationError();
 
       const transferLines: StockTransferLineData[] = [];
-      const decisions: { lineId: string; status: 'PENDING' | 'WAITING_STOCK' | 'ALLOCATED' | 'REJECTED'; reason: string | null; expectedDate: Date | null }[] = [];
+      const decisions: { lineId: string; status: 'PENDING' | 'WAITING_STOCK' | 'ALLOCATED' | 'REJECTED'; reason: string | null; expectedDate: Date | null; purchaseOrderId?: string | null }[] = [];
       const seen = new Set<string>();
       let allocatedLines = 0;
       for (const input of dto.lines) {
@@ -530,7 +570,15 @@ export class StockRequestService {
         if (stillMissing === 0) {
           decisions.push({ lineId: line.id, status: 'ALLOCATED', reason: null, expectedDate: null });
         } else if (input.remainder?.action === 'WAIT') {
-          decisions.push({ lineId: line.id, status: 'WAITING_STOCK', reason: input.remainder.reason, expectedDate: dateOnly(input.remainder.expectedDate) });
+          // Chờ đơn đặt hàng NCC: đơn phải thuộc kho cấp này và chưa bị từ chối/đóng/huỷ; không chọn thì giữ liên kết sẵn có (nếu lập đơn từ phiếu này).
+          let purchaseOrderId: string | null = line.waitPurchaseOrderId;
+          if (input.remainder.purchaseOrderId) {
+            const order = await this.stockRequestRepository.findOrderBrief(tx, tenantId, input.remainder.purchaseOrderId);
+            if (!order || order.warehouseId !== detail.supplyingWarehouseId) throw new StockRequestAllocationInvalidError('Đơn đặt hàng được chọn không thuộc kho cấp của phiếu này.');
+            if (['REJECTED', 'CLOSED', 'CANCELLED', 'RECEIVED'].includes(order.status)) throw new StockRequestAllocationInvalidError('Đơn đặt hàng được chọn đã đóng, huỷ hoặc đã nhận đủ.');
+            purchaseOrderId = order.id;
+          }
+          decisions.push({ lineId: line.id, status: 'WAITING_STOCK', reason: input.remainder.reason, expectedDate: dateOnly(input.remainder.expectedDate), purchaseOrderId });
         } else {
           // Từ chối phần còn thiếu: chưa cấp gì thì dòng "Từ chối", đã cấp một phần thì "Đã cấp" kèm lý do đóng phần thiếu.
           decisions.push({ lineId: line.id, status: progress.allocatedQty + input.allocateQty > 0 ? 'ALLOCATED' : 'REJECTED', reason: input.remainder?.reason ?? null, expectedDate: null });
@@ -553,7 +601,7 @@ export class StockRequestService {
       }
 
       for (const d of decisions) {
-        await this.stockRequestRepository.setLineStatus(tx, tenantId, d.lineId, actorId, d.status, { decisionReason: d.reason, waitExpectedDate: d.expectedDate });
+        await this.stockRequestRepository.setLineStatus(tx, tenantId, d.lineId, actorId, d.status, { decisionReason: d.reason, waitExpectedDate: d.expectedDate, waitPurchaseOrderId: d.purchaseOrderId ?? null });
       }
       const waitCount = decisions.filter((d) => d.status === 'WAITING_STOCK').length;
       const rejectCount = decisions.filter((d) => d.status === 'REJECTED').length;
@@ -621,6 +669,52 @@ export class StockRequestService {
     });
     const [child, parent] = await Promise.all([this.getById(tenantId, branchId, actorId, dataScope, childId), this.getById(tenantId, branchId, actorId, dataScope, id)]);
     return { child, parent };
+  }
+
+  /**
+   * Kho cấp xác nhận hoặc từ chối "Yêu cầu rút" của bên xin (dòng chờ hàng về đã gắn đơn đặt hàng NCC đã gửi nhà cung cấp, #298 giai đoạn 2).
+   * Xác nhận: dòng rút như rút thường (phần đã cấp giữ nguyên); Từ chối: dòng giữ Chờ hàng về. Đơn đặt hàng NCC không bị huỷ theo.
+   */
+  async resolveWithdrawRequests(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: ResolveStockRequestWithdrawRequest, meta: RequestMeta): Promise<StockRequestDetail> {
+    await this.assertEnabled(tenantId);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.requireSupplier(tx, tenantId, branchId, dataScope, actorDepartmentId, id);
+      const detail = await this.stockRequestRepository.findDetailByIdInternal(tx, tenantId, id);
+      if (!detail) throw new NotFoundException();
+      const byId = new Map(detail.lines.map((l) => [l.id, l]));
+      const names: string[] = [];
+      for (const lineId of dto.lineIds) {
+        const line = byId.get(lineId);
+        if (!line) throw new NotFoundException();
+        if (!line.withdrawRequestedAt) throw new StockRequestInvalidStateError(`Dòng "${line.drug.name}" không có yêu cầu rút nào đang chờ.`);
+        const clear = { withdrawRequestedAt: null, withdrawRequestedBy: null, withdrawRequestReason: null };
+        if (dto.action === 'CONFIRM') {
+          const progress = computeLineProgress(toLineInput(line));
+          await this.stockRequestRepository.updateLine(tx, tenantId, line.id, actorId, {
+            ...clear,
+            fulfilStatus: progress.allocatedQty > 0 ? 'ALLOCATED' : 'WITHDRAWN',
+            withdrawReason: line.withdrawRequestReason,
+            withdrawnAt: new Date(),
+            withdrawnBy: line.withdrawRequestedBy ?? actorId,
+          });
+        } else {
+          await this.stockRequestRepository.updateLine(tx, tenantId, line.id, actorId, clear);
+        }
+        names.push(line.drug.name);
+      }
+      const count = await this.stockRequestRepository.transition(tx, tenantId, id, dto.version, [existing.status], actorId, {});
+      if (count === 0) throw new ConcurrentModificationError();
+      const note = dto.note?.trim() || null;
+      await this.syncService.refresh(tx, tenantId, actorId, id, {
+        type: dto.action === 'CONFIRM' ? 'withdraw_confirmed' : 'withdraw_declined',
+        message: dto.action === 'CONFIRM' ? `Kho cấp xác nhận rút ${names.length} dòng` : `Kho cấp giữ lại ${names.length} dòng chờ hàng`,
+        detail: [names.join(', '), note].filter(Boolean).join('. ') || null,
+      });
+      await this.audit(tx, tenantId, actorId, id, 'stock_request.withdraw_request_resolved', { action: dto.action, lineCount: names.length, note }, meta);
+    });
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   // ============ Nội bộ ============
@@ -785,6 +879,11 @@ export class StockRequestService {
         waitExpectedDate: toDateString(line.waitExpectedDate),
         waitChildRequestId: line.waitChildRequestId,
         waitChildRequestNo: line.waitChildRequest?.requestNo ?? null,
+        waitPurchaseOrderId: line.waitPurchaseOrderId,
+        waitPurchaseOrderNo: line.waitPurchaseOrder?.orderNo ?? null,
+        waitPurchaseOrderStatus: line.waitPurchaseOrder?.status ?? null,
+        withdrawRequestedAt: line.withdrawRequestedAt?.toISOString() ?? null,
+        withdrawRequestReason: line.withdrawRequestReason,
         addedAfterAccept: line.addedAfterAccept,
         withdrawReason: line.withdrawReason,
         withdrawnAt: line.withdrawnAt?.toISOString() ?? null,

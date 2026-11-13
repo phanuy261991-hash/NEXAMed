@@ -25,8 +25,8 @@ import {
 } from './inventory.queries';
 import { ReasonConfirmDialog } from '../../shared/ui/ReasonConfirmDialog';
 
-const GRID_COLUMNS = '130px 150px 110px 130px 1.3fr 110px 80px 130px 1fr 170px';
-const TABLE_MIN_WIDTH_PX = 1300;
+const GRID_COLUMNS = '130px 150px 110px 130px 1.3fr 120px 110px 80px 130px 1fr 170px';
+const TABLE_MIN_WIDTH_PX = 1430;
 const ROW_HEIGHT_PX = 56;
 const PAGE_LIMIT = 50;
 
@@ -72,6 +72,8 @@ export function StockReceiptListPage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [receiptType, setReceiptType] = useState<StockReceiptType | ''>('');
   const [status, setStatus] = useState<StockReceiptStatus | ''>('');
+  // Bộ lọc "Từ đơn" (#298 giai đoạn 2): phiếu nhận theo Đơn đặt hàng NCC hay phiếu lập tay.
+  const [fromOrder, setFromOrder] = useState<'yes' | 'no' | ''>('');
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const [rejectTarget, setRejectTarget] = useState<StockReceiptSummary | null>(null);
   const [voidTarget, setVoidTarget] = useState<StockReceiptSummary | null>(null);
@@ -85,6 +87,7 @@ export function StockReceiptListPage() {
     warehouseId: warehouseId || undefined,
     receiptType: receiptType || undefined,
     status: status || undefined,
+    fromOrder: fromOrder || undefined,
     q: debouncedQ.trim() || undefined,
   });
   const warehousesQuery = useWarehousesQuery();
@@ -185,6 +188,19 @@ export function StockReceiptListPage() {
               { value: 'REJECTED', label: 'Từ chối' },
             ]}
           />
+          <Combobox
+            id="receipt-filter-from-order"
+            value={fromOrder}
+            onChange={(v) => {
+              setFromOrder(v as 'yes' | 'no' | '');
+              setCursorStack([]);
+            }}
+            options={[
+              { value: '', label: 'Từ đơn: Tất cả' },
+              { value: 'yes', label: 'Có đơn đặt hàng' },
+              { value: 'no', label: 'Không có đơn' },
+            ]}
+          />
         </div>
         {canCreate && (
           <Button type="button" onClick={() => navigate('/inventory/receipts/new')}>
@@ -220,6 +236,7 @@ export function StockReceiptListPage() {
                 <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
                 <div role="columnheader" className="py-2.5 text-center">Kho</div>
                 <div role="columnheader" className="py-2.5 text-left">Nhà cung cấp</div>
+                <div role="columnheader" className="py-2.5 text-center">Từ đơn</div>
                 <div role="columnheader" className="py-2.5 text-center">Ngày nhập</div>
                 <div role="columnheader" className="py-2.5 text-center">Số dòng</div>
                 <div role="columnheader" className="py-2.5 text-center">Tổng tiền</div>
@@ -254,6 +271,7 @@ export function StockReceiptListPage() {
                     </div>
                     <div role="cell" className="truncate text-center font-medium text-slate-900">{warehouseName(item.warehouseId)}</div>
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900">{item.supplierName ?? '—'}</div>
+                    <div role="cell" className="min-w-0 truncate text-center font-semibold text-slate-800">{item.purchaseOrderNo ?? <span className="font-medium text-slate-400">Không có</span>}</div>
                     <div role="cell" className="text-center font-medium text-slate-600">{formatDateShort(item.occurredAt)}</div>
                     <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{item.lineCount}</div>
                     <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{formatVnd(item.totalAmount)}</div>

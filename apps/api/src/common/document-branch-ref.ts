@@ -8,4 +8,7 @@ export interface DocumentBranchRef {
   documentNo: string;
   branchId: string;
   branchName: string;
+  /** Đơn đặt hàng NCC mà phiếu nhập này nhận theo (#298 giai đoạn 2) và đợt nhận thứ mấy của đơn; `null` với phiếu lập tay hoặc chứng từ khác. */
+  purchaseOrderNo?: string | null;
+  purchaseOrderRound?: number | null;
 }
