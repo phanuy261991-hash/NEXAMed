@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowsLeftRight, ClipboardText, ShoppingCart, Truck, WarningCircle } from '@phosphor-icons/react';
+import { ArrowsLeftRight, ClipboardText, ShoppingCart } from '@phosphor-icons/react';
 import type { StockRequestRestockItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
@@ -8,7 +8,6 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { Skeleton } from '../../shared/ui/Skeleton';
-import { StatCardRow } from '../../shared/ui/StatCard';
 import { useHasPermission } from '../auth/usePermission';
 import { unitLabel, useUnitNameByCode } from '../drug/useUnitNameByCode';
 import { usePurchaseOrderOptionsQuery } from './purchase-order.queries';
@@ -81,14 +80,20 @@ export function StockRequestRestockTab() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2.5">
       <div className="flex-shrink-0 px-1">
-        <StatCardRow
-          items={[
-            { icon: WarningCircle, label: 'Mặt hàng dưới mức tối thiểu', value: String(data.stats.belowMin), tone: data.stats.belowMin > 0 ? 'rose' : 'slate' },
-            { icon: ClipboardText, label: 'Đang chờ cấp cho phòng ban', value: String(data.stats.deptWaiting), tone: 'amber' },
-            { icon: Truck, label: 'Đang chờ hàng về', value: String(data.stats.waitingArrival), tone: 'blue' },
-            { icon: ArrowsLeftRight, label: 'Đã xin chi nhánh chính', value: String(data.stats.requestedUp), tone: 'blue' },
-          ]}
-        />
+        {/* Dải số đúng mockup màn 4: nhãn nhỏ phía trên, số lớn phía dưới, cùng kiểu dải đếm của danh sách */}
+        <div className="grid grid-cols-2 overflow-hidden rounded-md border border-slate-200 bg-white sm:grid-cols-4">
+          {[
+            { label: 'Mặt hàng dưới mức tối thiểu', value: data.stats.belowMin },
+            { label: 'Đang chờ cấp cho phòng ban', value: data.stats.deptWaiting },
+            { label: 'Đang chờ hàng về', value: data.stats.waitingArrival },
+            { label: 'Đã xin chi nhánh chính', value: data.stats.requestedUp },
+          ].map((stat, index) => (
+            <div key={stat.label} className={`px-3.5 py-2 ${index > 0 ? 'sm:border-l sm:border-slate-200' : ''}`}>
+              <span className="block text-[13px] font-medium text-slate-600">{stat.label}</span>
+              <span className="text-xl font-semibold tabular-nums text-slate-900">{stat.value}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {items.length === 0 ? (

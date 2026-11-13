@@ -4,9 +4,10 @@ import type { StatusBadgeTone } from '../../shared/ui/StatusBadge';
 /** Nhãn + màu trạng thái "Yêu cầu cấp hàng" (docs/DECISIONS.md #298). Nền đặc theo `StatusBadge`. */
 export const REQUEST_STATUS_META: Record<StockRequestStatus, { label: string; tone: StatusBadgeTone }> = {
   DRAFT: { label: 'Nháp', tone: 'neutral' },
-  SUBMITTED: { label: 'Đã gửi', tone: 'info' },
-  ACCEPTED: { label: 'Đã tiếp nhận', tone: 'info' },
-  IN_PROGRESS: { label: 'Đang xử lý', tone: 'warning' },
+  // Màu theo mockup màn 2: Đã gửi vàng, Đã tiếp nhận tím, Đang xử lý xanh dương, Đã hoàn thành xanh lá, Từ chối đỏ.
+  SUBMITTED: { label: 'Đã gửi', tone: 'warning' },
+  ACCEPTED: { label: 'Đã tiếp nhận', tone: 'accent' },
+  IN_PROGRESS: { label: 'Đang xử lý', tone: 'info' },
   COMPLETED: { label: 'Đã hoàn thành', tone: 'success' },
   REJECTED: { label: 'Từ chối', tone: 'danger' },
   CANCELLED: { label: 'Đã huỷ', tone: 'neutral' },
@@ -67,6 +68,25 @@ export function formatDayVn(day: string | null): string {
 }
 
 /** Thời điểm ISO sang "dd-mm hh:mm" theo giờ Việt Nam (đủ cho diễn biến). */
+/**
+ * Tóm tắt những gì bên xin vừa thêm/rút/nhắn SAU lần tiếp nhận gần nhất, cho dải vàng "Bên xin vừa cập nhật phiếu lúc …: thêm 1 mặt hàng (…) và rút 1 dòng (…)" của kho cấp (mockup màn 5).
+ * Chỉ lấy tối đa hai cập nhật mới nhất; `null` khi không có cập nhật nào.
+ */
+export function summarizeRequesterUpdates(events: readonly { eventType: string; message: string | null; detail: string | null; occurredAt: string }[]): { at: string; text: string } | null {
+  let lastAccepted = -1;
+  events.forEach((e, i) => {
+    if (e.eventType === 'accepted') lastAccepted = i;
+  });
+  const updates = events.slice(lastAccepted + 1).filter((e) => ['lines_added', 'lines_withdrawn', 'note_updated'].includes(e.eventType)).slice(-2);
+  if (updates.length === 0) return null;
+  const parts = updates.map((e) => {
+    const message = (e.message ?? '').replace(/^Bên xin /, '');
+    const lower = message.charAt(0).toLowerCase() + message.slice(1);
+    return e.detail ? `${lower} (${e.detail})` : lower;
+  });
+  return { at: updates[updates.length - 1]!.occurredAt, text: parts.join(' và ') };
+}
+
 export function formatEventTime(iso: string): string {
   const d = new Date(new Date(iso).getTime() + 7 * 60 * 60_000);
   const p = (n: number) => String(n).padStart(2, '0');

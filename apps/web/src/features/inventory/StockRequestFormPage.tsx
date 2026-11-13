@@ -279,7 +279,8 @@ export function StockRequestFormPage() {
         <ErrorBanner message="Kho của bạn không có kho cấp trên để xin hàng (kho chính của chi nhánh chính). Hãy nhập hàng từ nhà cung cấp." />
       )}
 
-      <div className="grid flex-shrink-0 grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-4">
+      <div className="relative mt-2 grid flex-shrink-0 grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 pt-6 shadow-sm sm:grid-cols-4">
+        <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">Thông tin yêu cầu</span>
         <div>
           <label htmlFor="request-warehouse" className="mb-1 block text-sm font-semibold text-slate-800">
             Kho xin <span className="text-rose-500">*</span>
@@ -332,6 +333,9 @@ export function StockRequestFormPage() {
         </div>
       </div>
 
+      {/* Khung "Mặt hàng cần xin" (mockup màn 3, khuôn Boxed Section ui-guidelines 9b): ô thêm mặt hàng + bảng dòng cùng nằm trong một khung có nhãn */}
+      <section className="relative mt-2 flex min-h-0 flex-1 flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 pt-6 shadow-sm" aria-label="Mặt hàng cần xin">
+      <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">Mặt hàng cần xin</span>
       <div className="flex flex-shrink-0 flex-wrap items-end gap-2.5 rounded-lg border-2 border-blue-200 bg-blue-50 p-3 shadow-sm">
         <div className="relative min-w-60 flex-1">
           <label htmlFor="request-drug-search" className="mb-1.5 block text-sm font-semibold text-slate-800">
@@ -435,6 +439,8 @@ export function StockRequestFormPage() {
           </div>
         )}
       </div>
+
+      </section>
 
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
         {formError ? <p role="alert" className="text-sm font-medium text-rose-600">{formError}</p> : <p className="text-xs text-slate-500">{lines.length} mặt hàng</p>}

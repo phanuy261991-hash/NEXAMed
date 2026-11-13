@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeLineProgress,
+  computeReadyRequestIds,
   deriveStockRequestStatus,
   hasAllocation,
   requesterActions,
@@ -146,5 +147,39 @@ describe('resolveSupplyingWarehouseId', () => {
   });
   it('chi nhánh chưa có kho mặc định: không tự bịa cấp trên cùng chi nhánh', () => {
     expect(resolveSupplyingWarehouseId({ id: 'w-x', branchId: 'b-td' }, null, main)).toBe('w-main-q3');
+  });
+});
+
+describe('computeReadyRequestIds (giữ chỗ tồn theo thứ tự phiếu)', () => {
+  const line = (requestId: string, day: number, remainingQty: number, drugId = 'd1', warehouseId = 'w1') => ({ requestId, requestCreatedAt: new Date(2026, 10, day), warehouseId, drugId, remainingQty });
+
+  it('tồn đủ cho một phiếu thì chỉ phiếu cũ nhất được "đã về"', () => {
+    const ready = computeReadyRequestIds([line('B', 12, 8), line('A', 10, 8)], new Map([['w1:d1', 10]]));
+    expect([...ready]).toEqual(['A']);
+  });
+
+  it('tồn đủ cho cả hai thì cả hai đều "đã về"', () => {
+    const ready = computeReadyRequestIds([line('A', 10, 8), line('B', 12, 8)], new Map([['w1:d1', 16]]));
+    expect([...ready].sort()).toEqual(['A', 'B']);
+  });
+
+  it('phiếu cũ chưa đủ tồn thì không giữ chỗ: phiếu mới nhỏ hơn vẫn "đã về" nếu đủ', () => {
+    const ready = computeReadyRequestIds([line('A', 10, 50), line('B', 12, 5)], new Map([['w1:d1', 10]]));
+    expect([...ready]).toEqual(['B']);
+  });
+
+  it('khác kho cấp hoặc khác mặt hàng không tranh tồn của nhau', () => {
+    const ready = computeReadyRequestIds([line('A', 10, 8, 'd1', 'w1'), line('B', 12, 8, 'd1', 'w2'), line('C', 13, 8, 'd2', 'w1')], new Map([['w1:d1', 8], ['w2:d1', 8], ['w1:d2', 8]]));
+    expect([...ready].sort()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('dòng không còn thiếu hoặc hết tồn thì không "đã về"', () => {
+    expect(computeReadyRequestIds([line('A', 10, 0)], new Map([['w1:d1', 5]])).size).toBe(0);
+    expect(computeReadyRequestIds([line('A', 10, 3)], new Map()).size).toBe(0);
+  });
+
+  it('một phiếu có nhiều dòng: chỉ cần một dòng đủ hàng', () => {
+    const ready = computeReadyRequestIds([line('A', 10, 5, 'd1'), line('A', 10, 99, 'd2')], new Map([['w1:d1', 5], ['w1:d2', 1]]));
+    expect([...ready]).toEqual(['A']);
   });
 });

@@ -14,7 +14,7 @@ import { ORDER_STATUS_META } from './purchase-order-meta';
 import { useAllocateStockRequestMutation } from './stock-request.queries';
 import { formatDayVn, REQUEST_LINE_STATUS_META } from './stock-request-meta';
 
-const GRID = 'minmax(150px,1.2fr) 56px 84px 76px 84px 84px minmax(170px,1.1fr)';
+const GRID = 'minmax(150px,1.2fr) 56px 84px 64px 76px 84px 84px minmax(170px,1.1fr)';
 
 interface LineState {
   qty: string;
@@ -35,7 +35,7 @@ function defaultQty(line: StockRequestLine): number {
  * bắt buộc ghi lý do. Bấm "Chuyển thành phiếu điều chuyển" tạo MỘT phiếu điều chuyển nháp mang sẵn mặt hàng, số cấp và gợi ý lô theo hạn dùng; dòng chờ hàng về giữ mở để "Cấp tiếp".
  * Dùng `key={request.version}` ở nơi gọi để đặt lại trạng thái nhập sau mỗi lần cấp.
  */
-export function StockRequestProcessPanel({ request, footSlot }: { request: StockRequestDetail; footSlot: HTMLElement | null }) {
+export function StockRequestProcessPanel({ request, footSlot, onTransferCreated }: { request: StockRequestDetail; footSlot: HTMLElement | null; onTransferCreated: (transferId: string) => void }) {
   const navigate = useNavigate();
   const mutation = useAllocateStockRequestMutation();
   const open = useMemo(() => openLines(request), [request]);
@@ -81,6 +81,14 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
   }
 
   const preview = confirming ? buildPayload() : null;
+  // Các dòng còn thiếu sau lần cấp này và quyết định đã chọn cho phần thiếu — để câu xác nhận nói đúng điều sẽ xảy ra.
+  const pendingDecisions = confirming
+    ? open.flatMap((line) => {
+        const remainder = state[line.id]?.remainder;
+        const missing = missingOf(line);
+        return missing > 0 && remainder ? [{ id: line.id, name: line.drugName, missing, action: remainder.action }] : [];
+      })
+    : [];
 
   const reasonRows = request.lines.flatMap((line) => {
     const draft = state[line.id]?.remainder;
@@ -112,7 +120,8 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
       setConfirming(false);
       setError(null);
       const created = result.transfers.find((t) => !request.transfers.some((x) => x.id === t.id));
-      if (created && created.canOpen) navigate(`/inventory/transfers/${created.id}`);
+      // Mockup màn 5b: hiện kết quả (phiếu điều chuyển nháp vừa tạo + lô gợi ý) ngay tại trang, không chuyển đi nơi khác; người gửi "Sửa lô"/"Duyệt xuất" từ hộp đó.
+      if (created && created.canOpen) onTransferCreated(created.id);
     } catch (err) {
       setConfirming(false);
       setError(err instanceof ApiError ? err.message : 'Cấp hàng thất bại, vui lòng thử lại.');
@@ -123,11 +132,12 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
     <div className="flex flex-col gap-2.5 lg:min-h-0 lg:flex-1">
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:min-h-0 lg:flex-1">
         <div role="table" aria-label="Xử lý các dòng yêu cầu" className="scroll-hover overflow-x-auto lg:h-full">
-          <div className="flex flex-col lg:h-full" style={{ minWidth: 800 }}>
+          <div className="flex flex-col lg:h-full" style={{ minWidth: 870 }}>
             <div role="row" style={{ gridTemplateColumns: GRID }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
               <div role="columnheader" className="py-2.5 text-left">Mặt hàng</div>
               <div role="columnheader" className="py-2.5 text-center">Đơn vị</div>
               <div role="columnheader" className="py-2.5 text-center">Tồn bên xin lúc gửi</div>
+              <div role="columnheader" className="py-2.5 text-center">Số xin</div>
               <div role="columnheader" className="py-2.5 text-center">Còn thiếu</div>
               <div role="columnheader" className="py-2.5 text-center">Tồn kho tôi</div>
               <div role="columnheader" className="py-2.5 text-center">Số cấp</div>
@@ -152,6 +162,7 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
                     </div>
                     <div role="cell" className="text-center font-medium text-slate-600">{line.unitCode}</div>
                     <div role="cell" className="text-center font-medium tabular-nums text-slate-600">{line.requesterStockSnapshot ?? '—'}</div>
+                    <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{line.requestedQty}</div>
                     <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{isOpen ? line.remainingQty : line.requestedQty}</div>
                     <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{line.supplierStock ?? '—'}</div>
                     {isOpen ? (
@@ -245,6 +256,8 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
           initial={state[remainderFor.line.id]?.remainder ?? null}
           supplyingWarehouseId={request.supplyingWarehouseId}
           currentOrderId={remainderFor.line.waitPurchaseOrderId}
+          currentChildId={remainderFor.line.waitChildRequestId}
+          childRequests={request.childRequests}
           onSave={(remainder) => {
             setState((prev) => ({ ...prev, [remainderFor.line.id]: { qty: prev[remainderFor.line.id]?.qty ?? '0', remainder } }));
             setError(null);
@@ -257,13 +270,8 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
       {confirming && preview && !preview.error && (
         <ConfirmDialog
           icon={ArrowsLeftRight}
+          size="md"
           title="Chuyển thành phiếu điều chuyển"
-          rows={[
-            { label: 'Từ', value: request.supplyingWarehouseName, sub: request.supplyingBranchName },
-            { label: 'Đến', value: request.requestingWarehouseName, sub: request.requestingBranchName },
-            { label: 'Phiếu điều chuyển', value: preview.transferLineCount > 0 ? `${preview.transferLineCount} dòng, ${preview.totalQty} đơn vị` : 'Không tạo (chỉ ghi quyết định)' },
-          ]}
-          note="Phiếu điều chuyển được tạo ở trạng thái nháp; kho cấp chọn lô rồi Duyệt xuất."
           onClose={() => setConfirming(false)}
           actions={
             <>
@@ -271,11 +279,29 @@ export function StockRequestProcessPanel({ request, footSlot }: { request: Stock
                 Huỷ
               </Button>
               <Button type="button" loading={mutation.isPending} onClick={() => void submit()}>
-                Xác nhận
+                {preview.transferLineCount > 0 ? 'Tạo phiếu điều chuyển nháp' : 'Xác nhận'}
               </Button>
             </>
           }
-        />
+        >
+          <div className="mb-1 space-y-2 text-sm text-slate-700">
+            <p>
+              {preview.transferLineCount > 0 ? (
+                <>
+                  Tạo Phiếu điều chuyển {request.supplyingBranchId === request.requestingBranchId ? 'nội chi nhánh' : 'liên chi nhánh'} từ{' '}
+                  <b>{request.supplyingBranchName} / {request.supplyingWarehouseName}</b> đến <b>{request.requestingBranchName} / {request.requestingWarehouseName}</b> với {preview.transferLineCount} dòng ({preview.totalQty} đơn vị).
+                </>
+              ) : (
+                'Không tạo phiếu điều chuyển, chỉ ghi quyết định cho các dòng.'
+              )}
+            </p>
+            {pendingDecisions.map((d) => (
+              <p key={d.id}>
+                Dòng {d.name} còn thiếu {d.missing} {d.action === 'WAIT' ? <>sẽ giữ <b>Chờ hàng về</b>, không phải xin lại.</> : <>sẽ <b>bị từ chối</b>, bên xin thấy lý do.</>}
+              </p>
+            ))}
+          </div>
+        </ConfirmDialog>
       )}
     </div>
   );
@@ -289,6 +315,8 @@ function RemainderDialog({
   initial,
   supplyingWarehouseId,
   currentOrderId,
+  currentChildId,
+  childRequests,
   onSave,
   onClose,
 }: {
@@ -298,13 +326,21 @@ function RemainderDialog({
   initial: StockRequestRemainder | null;
   supplyingWarehouseId: string;
   currentOrderId: string | null;
+  currentChildId: string | null;
+  childRequests: StockRequestDetail['childRequests'];
   onSave: (remainder: StockRequestRemainder) => void;
   onClose: () => void;
 }) {
   const canReadOrders = useHasPermission('purchase_order', 'read');
   const ordersQuery = usePurchaseOrdersQuery({ view: 'mine', limit: 50, warehouseId: supplyingWarehouseId }, canReadOrders);
   const openOrders = (ordersQuery.data?.items ?? []).filter((o) => ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'ORDERED', 'PARTIALLY_RECEIVED'].includes(o.status));
-  const [purchaseOrderId, setPurchaseOrderId] = useState<string>(initial?.purchaseOrderId ?? currentOrderId ?? '');
+  // Liên kết đang chờ (mockup màn 5): một đơn đặt hàng NCC, hoặc một phiếu xin phần thiếu lên cấp trên, hoặc không liên kết. Giá trị dạng "order:<id>" / "child:<id>" / "".
+  const openChildren = childRequests.filter((c) => ['SUBMITTED', 'ACCEPTED', 'IN_PROGRESS'].includes(c.status));
+  const [link, setLink] = useState<string>(() => {
+    const orderId = initial ? initial.purchaseOrderId : currentOrderId;
+    const childId = initial ? initial.childRequestId : currentChildId;
+    return orderId ? `order:${orderId}` : childId ? `child:${childId}` : '';
+  });
   const [action, setAction] = useState<'WAIT' | 'REJECT'>(initialAction);
   const [reason, setReason] = useState(initial?.reason ?? '');
   const [expectedDate, setExpectedDate] = useState(initial?.expectedDate ?? '');
@@ -316,7 +352,14 @@ function RemainderDialog({
       setError('Phải nhập lý do.');
       return;
     }
-    onSave({ action, reason: reason.trim(), expectedDate: action === 'WAIT' && expectedDate ? expectedDate : null, purchaseOrderId: action === 'WAIT' && purchaseOrderId ? purchaseOrderId : null });
+    const wait = action === 'WAIT';
+    onSave({
+      action,
+      reason: reason.trim(),
+      expectedDate: wait && expectedDate ? expectedDate : null,
+      purchaseOrderId: wait && link.startsWith('order:') ? link.slice(6) : null,
+      childRequestId: wait && link.startsWith('child:') ? link.slice(6) : null,
+    });
   }
 
   return (
@@ -324,11 +367,7 @@ function RemainderDialog({
       <ConfirmDialog
         icon={action === 'WAIT' ? CalendarCheck : Prohibit}
         tone={action === 'WAIT' ? 'primary' : 'danger'}
-        title={action === 'WAIT' ? 'Chờ hàng về' : 'Từ chối phần chưa cấp'}
-        rows={[
-          { label: 'Mặt hàng', value: line.drugName },
-          { label: 'Phần chưa cấp', value: `${missing} ${line.unitCode ?? ''}` },
-        ]}
+        title={action === 'WAIT' ? `Chờ hàng về: ${line.drugName} (thiếu ${missing} ${line.unitCode ?? ''})` : `Từ chối phần chưa cấp: ${line.drugName} (thiếu ${missing} ${line.unitCode ?? ''})`}
         note={action === 'WAIT' ? 'Dòng giữ mở, khi hàng về bấm "Cấp tiếp" — bên xin không phải lập lại.' : 'Bên xin thấy lý do này và dòng được đóng.'}
         error={error}
         onClose={onClose}
@@ -359,7 +398,7 @@ function RemainderDialog({
           </div>
           <div>
             <label htmlFor="remainder-reason" className="mb-1 block text-sm font-semibold text-slate-800">
-              Lý do <span className="text-rose-500">*</span>
+              {action === 'WAIT' ? 'Lý do chờ' : 'Lý do từ chối'} <span className="text-rose-500">*</span>
             </label>
             <textarea
               id="remainder-reason"
@@ -378,21 +417,25 @@ function RemainderDialog({
               <DateInput id="remainder-date" value={expectedDate} onChange={setExpectedDate} />
             </div>
           )}
-          {action === 'WAIT' && canReadOrders && openOrders.length > 0 && (
+          {action === 'WAIT' && (
             <div>
-              <p className="mb-1 block text-sm font-semibold text-slate-800">Đơn đặt hàng NCC đang chờ (tuỳ chọn)</p>
-              <div className="space-y-1.5" role="radiogroup" aria-label="Đơn đặt hàng NCC đang chờ">
-                {[{ id: '', label: 'Không liên kết', sub: '' }, ...openOrders.map((o) => ({ id: o.id, label: `${o.orderNo} — ${o.supplierName}`, sub: ORDER_STATUS_META[o.status].label }))].map((o) => (
+              <p className="mb-1 block text-sm font-semibold text-slate-800">Liên kết đang chờ (tuỳ chọn)</p>
+              <div className="max-h-56 space-y-1.5 overflow-y-auto" role="radiogroup" aria-label="Liên kết đang chờ">
+                {[
+                  ...(canReadOrders ? openOrders.map((o) => ({ id: `order:${o.id}`, label: `Đơn đặt hàng NCC ${o.orderNo}`, sub: `${o.supplierName}, ${ORDER_STATUS_META[o.status].label.toLowerCase()}${o.expectedDate ? `, giao dự kiến ${formatDayVn(o.expectedDate).slice(0, 5)}` : ''}` })) : []),
+                  ...openChildren.map((c) => ({ id: `child:${c.id}`, label: `Yêu cầu ${c.requestNo} lên ${c.supplyingBranchName}`, sub: c.status === 'SUBMITTED' ? 'Đang chờ chi nhánh chính tiếp nhận' : 'Chi nhánh chính đã tiếp nhận, đang xử lý' })),
+                  { id: '', label: 'Không liên kết', sub: '' },
+                ].map((o) => (
                   <button
                     key={o.id || 'none'}
                     type="button"
                     role="radio"
-                    aria-checked={purchaseOrderId === o.id}
-                    onClick={() => setPurchaseOrderId(o.id)}
-                    className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold ${purchaseOrderId === o.id ? 'bg-brand-teal text-white' : 'bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'}`}
+                    aria-checked={link === o.id}
+                    onClick={() => setLink(o.id)}
+                    className={`flex w-full flex-col rounded-md px-3 py-2 text-left text-sm font-semibold ${link === o.id ? 'bg-brand-teal text-white' : 'bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'}`}
                   >
                     <span className="truncate">{o.label}</span>
-                    {o.sub && <span className="ml-2 flex-shrink-0 text-xs font-medium opacity-80">{o.sub}</span>}
+                    {o.sub && <span className="truncate text-xs font-medium opacity-80">{o.sub}</span>}
                   </button>
                 ))}
               </div>

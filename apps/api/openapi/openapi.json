@@ -118636,6 +118636,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -118962,6 +118986,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -119000,10 +119065,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -119409,6 +119481,30 @@
                               "readyToSupply": {
                                 "type": "boolean"
                               },
+                              "requestingDepartmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "activeLineCount": {
+                                "type": "integer"
+                              },
+                              "allocatedLineCount": {
+                                "type": "integer"
+                              },
+                              "waitingLineCount": {
+                                "type": "integer"
+                              },
+                              "pendingLineCount": {
+                                "type": "integer"
+                              },
+                              "earliestWaitDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -119441,6 +119537,12 @@
                               "parentRequestId",
                               "parentRequestNo",
                               "readyToSupply",
+                              "requestingDepartmentName",
+                              "activeLineCount",
+                              "allocatedLineCount",
+                              "waitingLineCount",
+                              "pendingLineCount",
+                              "earliestWaitDate",
                               "version"
                             ]
                           }
@@ -119828,6 +119930,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -120154,6 +120280,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -120192,10 +120359,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -120370,11 +120544,21 @@
                         "updated": {
                           "type": "integer",
                           "minimum": 0
+                        },
+                        "ready": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "actionable": {
+                          "type": "integer",
+                          "minimum": 0
                         }
                       },
                       "required": [
                         "toAccept",
-                        "updated"
+                        "updated",
+                        "ready",
+                        "actionable"
                       ]
                     },
                     "meta": {
@@ -121012,6 +121196,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -121338,6 +121546,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -121376,10 +121625,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -121760,6 +122016,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -122086,6 +122366,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -122124,10 +122445,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -122454,6 +122782,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -122780,6 +123132,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -122818,10 +123211,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -123154,6 +123554,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -123480,6 +123904,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -123518,10 +123983,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -123866,6 +124338,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -124192,6 +124688,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -124230,10 +124767,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -124589,6 +125133,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -124915,6 +125483,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -124953,10 +125562,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -125329,6 +125945,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -125655,6 +126295,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -125693,10 +126374,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -126023,6 +126711,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -126349,6 +127061,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -126387,10 +127140,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -126723,6 +127483,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -127049,6 +127833,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -127087,10 +127912,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -127400,6 +128232,30 @@
                         "readyToSupply": {
                           "type": "boolean"
                         },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -127726,6 +128582,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -127764,10 +128661,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -127988,6 +128892,13 @@
                                 "null"
                               ],
                               "format": "uuid"
+                            },
+                            "childRequestId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
                             }
                           },
                           "required": [
@@ -128153,6 +129064,30 @@
                         },
                         "readyToSupply": {
                           "type": "boolean"
+                        },
+                        "requestingDepartmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activeLineCount": {
+                          "type": "integer"
+                        },
+                        "allocatedLineCount": {
+                          "type": "integer"
+                        },
+                        "waitingLineCount": {
+                          "type": "integer"
+                        },
+                        "pendingLineCount": {
+                          "type": "integer"
+                        },
+                        "earliestWaitDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "version": {
                           "type": "integer"
@@ -128480,6 +129415,47 @@
                             ]
                           }
                         },
+                        "childRequests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requestNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "ACCEPTED",
+                                  "IN_PROGRESS",
+                                  "COMPLETED",
+                                  "REJECTED",
+                                  "CANCELLED",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "supplyingWarehouseName": {
+                                "type": "string"
+                              },
+                              "supplyingBranchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requestNo",
+                              "status",
+                              "supplyingWarehouseName",
+                              "supplyingBranchName"
+                            ]
+                          }
+                        },
                         "canActAsRequester": {
                           "type": "boolean"
                         },
@@ -128518,10 +129494,17 @@
                         "parentRequestId",
                         "parentRequestNo",
                         "readyToSupply",
+                        "requestingDepartmentName",
+                        "activeLineCount",
+                        "allocatedLineCount",
+                        "waitingLineCount",
+                        "pendingLineCount",
+                        "earliestWaitDate",
                         "version",
                         "lines",
                         "events",
                         "transfers",
+                        "childRequests",
                         "canActAsRequester",
                         "canActAsSupplier",
                         "canEscalate"
@@ -128891,6 +129874,30 @@
                             "readyToSupply": {
                               "type": "boolean"
                             },
+                            "requestingDepartmentName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "activeLineCount": {
+                              "type": "integer"
+                            },
+                            "allocatedLineCount": {
+                              "type": "integer"
+                            },
+                            "waitingLineCount": {
+                              "type": "integer"
+                            },
+                            "pendingLineCount": {
+                              "type": "integer"
+                            },
+                            "earliestWaitDate": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "version": {
                               "type": "integer"
                             },
@@ -129217,6 +130224,47 @@
                                 ]
                               }
                             },
+                            "childRequests": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "requestNo": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "DRAFT",
+                                      "SUBMITTED",
+                                      "ACCEPTED",
+                                      "IN_PROGRESS",
+                                      "COMPLETED",
+                                      "REJECTED",
+                                      "CANCELLED",
+                                      "WITHDRAWN"
+                                    ]
+                                  },
+                                  "supplyingWarehouseName": {
+                                    "type": "string"
+                                  },
+                                  "supplyingBranchName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "requestNo",
+                                  "status",
+                                  "supplyingWarehouseName",
+                                  "supplyingBranchName"
+                                ]
+                              }
+                            },
                             "canActAsRequester": {
                               "type": "boolean"
                             },
@@ -129255,10 +130303,17 @@
                             "parentRequestId",
                             "parentRequestNo",
                             "readyToSupply",
+                            "requestingDepartmentName",
+                            "activeLineCount",
+                            "allocatedLineCount",
+                            "waitingLineCount",
+                            "pendingLineCount",
+                            "earliestWaitDate",
                             "version",
                             "lines",
                             "events",
                             "transfers",
+                            "childRequests",
                             "canActAsRequester",
                             "canActAsSupplier",
                             "canEscalate"
@@ -129398,6 +130453,30 @@
                             "readyToSupply": {
                               "type": "boolean"
                             },
+                            "requestingDepartmentName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "activeLineCount": {
+                              "type": "integer"
+                            },
+                            "allocatedLineCount": {
+                              "type": "integer"
+                            },
+                            "waitingLineCount": {
+                              "type": "integer"
+                            },
+                            "pendingLineCount": {
+                              "type": "integer"
+                            },
+                            "earliestWaitDate": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "version": {
                               "type": "integer"
                             },
@@ -129724,6 +130803,47 @@
                                 ]
                               }
                             },
+                            "childRequests": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "requestNo": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "DRAFT",
+                                      "SUBMITTED",
+                                      "ACCEPTED",
+                                      "IN_PROGRESS",
+                                      "COMPLETED",
+                                      "REJECTED",
+                                      "CANCELLED",
+                                      "WITHDRAWN"
+                                    ]
+                                  },
+                                  "supplyingWarehouseName": {
+                                    "type": "string"
+                                  },
+                                  "supplyingBranchName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "requestNo",
+                                  "status",
+                                  "supplyingWarehouseName",
+                                  "supplyingBranchName"
+                                ]
+                              }
+                            },
                             "canActAsRequester": {
                               "type": "boolean"
                             },
@@ -129762,10 +130882,17 @@
                             "parentRequestId",
                             "parentRequestNo",
                             "readyToSupply",
+                            "requestingDepartmentName",
+                            "activeLineCount",
+                            "allocatedLineCount",
+                            "waitingLineCount",
+                            "pendingLineCount",
+                            "earliestWaitDate",
                             "version",
                             "lines",
                             "events",
                             "transfers",
+                            "childRequests",
                             "canActAsRequester",
                             "canActAsSupplier",
                             "canEscalate"

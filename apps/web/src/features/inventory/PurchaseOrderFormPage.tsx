@@ -363,7 +363,8 @@ export function PurchaseOrderFormPage() {
         <ErrorBanner message="Không tải được phiếu yêu cầu cấp hàng để điền sẵn. Bạn vẫn có thể nhập tay." onRetry={() => void sourceRequestQuery.refetch()} />
       )}
 
-      <div className="grid flex-shrink-0 grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-4">
+      <div className="relative mt-2 grid flex-shrink-0 grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 pt-6 shadow-sm sm:grid-cols-4">
+        <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">Thông tin đơn</span>
         <div>
           <label htmlFor="po-supplier" className="mb-1 block text-sm font-semibold text-slate-800">
             Nhà cung cấp <span className="text-rose-500">*</span>
@@ -397,6 +398,9 @@ export function PurchaseOrderFormPage() {
         </div>
       </div>
 
+      {/* Khung "Mặt hàng đặt" (mockup màn 8, khuôn Boxed Section ui-guidelines 9b): ô thêm mặt hàng + bảng dòng cùng nằm trong một khung có nhãn */}
+      <section className="relative mt-2 flex min-h-0 flex-1 flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 pt-6 shadow-sm" aria-label="Mặt hàng đặt">
+      <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">Mặt hàng đặt</span>
       <div className="flex flex-shrink-0 flex-wrap items-end gap-2.5 rounded-lg border-2 border-blue-200 bg-blue-50 p-3 shadow-sm">
         <div className="relative min-w-60 flex-1">
           <label htmlFor="po-drug-search" className="mb-1.5 block text-sm font-semibold text-slate-800">
@@ -498,6 +502,8 @@ export function PurchaseOrderFormPage() {
           </div>
         )}
       </div>
+
+      </section>
 
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div>

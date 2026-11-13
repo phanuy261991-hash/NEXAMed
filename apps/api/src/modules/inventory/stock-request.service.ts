@@ -9,6 +9,7 @@ import {
   StockRequestInvalidStateError,
   StockRequestNoSupplierError,
   computeLineProgress,
+  computeReadyRequestIds,
   isPurchaseOrderPlaced,
   getVietnamDateString,
   requesterActions,
@@ -189,10 +190,18 @@ export class StockRequestService {
 
   async getPendingCounts(tenantId: string, branchId: string, actorId: string, dataScope: DataScope): Promise<GetStockRequestPendingCountsResponse> {
     // Công tắc tắt thì chấm số trên menu cũng không cần — trả 0 thay vì 409 (menu đã ẩn theo công tắc, cuộc gọi này chỉ là phòng thủ).
-    if (!(await this.clinicConfigReader.getStockRequestEnabled(tenantId))) return { toAccept: 0, updated: 0 };
+    if (!(await this.clinicConfigReader.getStockRequestEnabled(tenantId))) return { toAccept: 0, updated: 0, ready: 0, actionable: 0 };
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
-    if (dataScope === 'department' && actorDepartmentId === null) return { toAccept: 0, updated: 0 };
-    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockRequestRepository.countPending(tx, tenantId, branchId, dataScope === 'department' ? (actorDepartmentId ?? undefined) : undefined));
+    if (dataScope === 'department' && actorDepartmentId === null) return { toAccept: 0, updated: 0, ready: 0, actionable: 0 };
+    const departmentId = dataScope === 'department' ? (actorDepartmentId ?? undefined) : undefined;
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const counts = await this.stockRequestRepository.countPending(tx, tenantId, branchId, departmentId);
+      const stubs = await this.stockRequestRepository.listActiveSupplierStubs(tx, tenantId, branchId, departmentId);
+      const readyIds = await this.readyRequestIds(tx, tenantId, stubs);
+      // Phiếu "chờ tiếp nhận" (SUBMITTED) và phiếu đã tiếp nhận có việc (cập nhật mới / hàng đã về) là hai tập rời nhau; trong tập thứ hai một phiếu chỉ đếm một lần.
+      const actionableAccepted = stubs.filter((s) => s.supplierUpdatePending || readyIds.has(s.id)).length;
+      return { ...counts, ready: readyIds.size, actionable: counts.toAccept + actionableAccepted };
+    });
   }
 
   /** Các kho người dùng được phép xin kèm kho cấp suy ra theo cấp — kho nào không có cấp trên thì không xuất hiện. */
@@ -540,7 +549,7 @@ export class StockRequestService {
       if (count === 0) throw new ConcurrentModificationError();
 
       const transferLines: StockTransferLineData[] = [];
-      const decisions: { lineId: string; status: 'PENDING' | 'WAITING_STOCK' | 'ALLOCATED' | 'REJECTED'; reason: string | null; expectedDate: Date | null; purchaseOrderId?: string | null }[] = [];
+      const decisions: { lineId: string; status: 'PENDING' | 'WAITING_STOCK' | 'ALLOCATED' | 'REJECTED'; reason: string | null; expectedDate: Date | null; purchaseOrderId?: string | null; childRequestId?: string | null }[] = [];
       const seen = new Set<string>();
       let allocatedLines = 0;
       for (const input of dto.lines) {
@@ -578,7 +587,15 @@ export class StockRequestService {
             if (['REJECTED', 'CLOSED', 'CANCELLED', 'RECEIVED'].includes(order.status)) throw new StockRequestAllocationInvalidError('Đơn đặt hàng được chọn đã đóng, huỷ hoặc đã nhận đủ.');
             purchaseOrderId = order.id;
           }
-          decisions.push({ lineId: line.id, status: 'WAITING_STOCK', reason: input.remainder.reason, expectedDate: dateOnly(input.remainder.expectedDate), purchaseOrderId });
+          // Chờ phiếu xin phần thiếu lên cấp trên: phải là phiếu con của chính phiếu này và còn mở; không chọn thì giữ liên kết sẵn có.
+          let childRequestId: string | null = line.waitChildRequestId;
+          if (input.remainder.childRequestId) {
+            const child = await this.stockRequestRepository.findChildBrief(tx, tenantId, id, input.remainder.childRequestId);
+            if (!child) throw new StockRequestAllocationInvalidError('Phiếu xin cấp trên được chọn không phải phiếu xin phần thiếu của phiếu này.');
+            if (['REJECTED', 'CANCELLED', 'WITHDRAWN', 'COMPLETED'].includes(child.status)) throw new StockRequestAllocationInvalidError('Phiếu xin cấp trên được chọn đã đóng.');
+            childRequestId = child.id;
+          }
+          decisions.push({ lineId: line.id, status: 'WAITING_STOCK', reason: input.remainder.reason, expectedDate: dateOnly(input.remainder.expectedDate), purchaseOrderId, childRequestId });
         } else {
           // Từ chối phần còn thiếu: chưa cấp gì thì dòng "Từ chối", đã cấp một phần thì "Đã cấp" kèm lý do đóng phần thiếu.
           decisions.push({ lineId: line.id, status: progress.allocatedQty + input.allocateQty > 0 ? 'ALLOCATED' : 'REJECTED', reason: input.remainder?.reason ?? null, expectedDate: null });
@@ -601,7 +618,7 @@ export class StockRequestService {
       }
 
       for (const d of decisions) {
-        await this.stockRequestRepository.setLineStatus(tx, tenantId, d.lineId, actorId, d.status, { decisionReason: d.reason, waitExpectedDate: d.expectedDate, waitPurchaseOrderId: d.purchaseOrderId ?? null });
+        await this.stockRequestRepository.setLineStatus(tx, tenantId, d.lineId, actorId, d.status, { decisionReason: d.reason, waitExpectedDate: d.expectedDate, waitPurchaseOrderId: d.purchaseOrderId ?? null, waitChildRequestId: d.childRequestId ?? null });
       }
       const waitCount = decisions.filter((d) => d.status === 'WAITING_STOCK').length;
       const rejectCount = decisions.filter((d) => d.status === 'REJECTED').length;
@@ -769,21 +786,26 @@ export class StockRequestService {
   }
 
   /** "Hàng đã về": phiếu có dòng chờ hàng về mà kho cấp nay đủ tồn cho phần còn thiếu của ít nhất một dòng. */
-  private async readyRequestIds(tx: Prisma.TransactionClient, tenantId: string, rows: StockRequestListRow[]): Promise<Set<string>> {
+  private async readyRequestIds(tx: Prisma.TransactionClient, tenantId: string, rows: { id: string; status: StockRequestStatus; supplyingWarehouseId: string }[]): Promise<Set<string>> {
     const candidates = rows.filter((r) => r.status === 'ACCEPTED' || r.status === 'IN_PROGRESS');
     if (candidates.length === 0) return new Set();
-    const waiting = await this.stockRequestRepository.listWaitingLines(tx, tenantId, candidates.map((r) => r.id));
+    const warehouseIds = [...new Set(candidates.map((r) => r.supplyingWarehouseId))];
+    const waiting = await this.stockRequestRepository.listWaitingLinesForSuppliers(tx, tenantId, warehouseIds);
     if (waiting.length === 0) return new Set();
-    const supplierByRequest = new Map(candidates.map((r) => [r.id, r.supplyingWarehouseId]));
-    const stock = await this.stockBalanceRepository.sumOnHandByWarehouseDrugs(tx, tenantId, [...new Set(supplierByRequest.values())], [...new Set(waiting.map((w) => w.drugId))]);
-    const ready = new Set<string>();
-    for (const w of waiting) {
-      const shipped = w.transferLines.filter((t) => t.transfer.status !== 'REJECTED').reduce((s, t) => s + t.quantityShipped, 0);
-      const remaining = w.requestedQty - shipped;
-      const onHand = stock.get(`${supplierByRequest.get(w.requestId)}:${w.drugId}`) ?? 0;
-      if (remaining > 0 && onHand >= remaining) ready.add(w.requestId);
-    }
-    return ready;
+    const stock = await this.stockBalanceRepository.sumOnHandByWarehouseDrugs(tx, tenantId, warehouseIds, [...new Set(waiting.map((w) => w.drugId))]);
+    // Giữ chỗ tồn theo thứ tự phiếu (cũ trước) trên MỌI phiếu cùng tranh kho cấp + mặt hàng, rồi chỉ lấy các phiếu đang xét.
+    const readyAll = computeReadyRequestIds(
+      waiting.map((w) => ({
+        requestId: w.requestId,
+        requestCreatedAt: w.request.createdAt,
+        warehouseId: w.request.supplyingWarehouseId,
+        drugId: w.drugId,
+        remainingQty: w.requestedQty - w.transferLines.filter((t) => t.transfer.status !== 'REJECTED').reduce((s, t) => s + t.quantityShipped, 0),
+      })),
+      stock,
+    );
+    const wanted = new Set(candidates.map((r) => r.id));
+    return new Set([...readyAll].filter((id) => wanted.has(id)));
   }
 
   private toFilter(branchId: string, dataScope: DataScope, actorDepartmentId: string | null, query: ListStockRequestsQuery, take: number) {
@@ -812,7 +834,9 @@ export class StockRequestService {
   }
 
   private toSummaryDto(row: StockRequestListRow | StockRequestDetailRow, names: Map<string, string>, readyToSupply: boolean): StockRequestSummary {
-    const lineCount = '_count' in row ? row._count.lines : row.lines.length;
+    const lines = row.lines;
+    const lineCount = lines.length;
+    const waitDates = lines.filter((l) => l.fulfilStatus === 'WAITING_STOCK' && l.waitExpectedDate).map((l) => toDateString(l.waitExpectedDate)).filter((d): d is string => d !== null).sort();
     return {
       id: row.id,
       requestNo: row.requestNo,
@@ -829,6 +853,12 @@ export class StockRequestService {
       supplyingBranchId: row.supplyingWarehouse.branchId,
       supplyingBranchName: row.supplyingWarehouse.branch.name,
       lineCount,
+      requestingDepartmentName: row.requestingWarehouse.department?.name ?? null,
+      activeLineCount: lines.filter((l) => l.fulfilStatus !== 'WITHDRAWN').length,
+      allocatedLineCount: lines.filter((l) => l.fulfilStatus === 'ALLOCATED').length,
+      waitingLineCount: lines.filter((l) => l.fulfilStatus === 'WAITING_STOCK').length,
+      pendingLineCount: lines.filter((l) => l.fulfilStatus === 'PENDING').length,
+      earliestWaitDate: waitDates[0] ?? null,
       createdByName: names.get(row.createdBy) ?? '',
       createdAt: row.createdAt.toISOString(),
       submittedAt: row.submittedAt?.toISOString() ?? null,
@@ -905,6 +935,7 @@ export class StockRequestService {
       transfers: row.transfers
         .filter((t) => t.status !== 'REJECTED')
         .map((t) => ({ id: t.id, transferNo: t.transferNo, status: t.status, lineCount: t._count.lines, fromBranchName: t.fromWarehouse.branch.name, toBranchName: t.toWarehouse.branch.name, fromWarehouseName: t.fromWarehouse.name, toWarehouseName: t.toWarehouse.name, canOpen: canOpen(t) })),
+      childRequests: row.childRequests.map((c) => ({ id: c.id, requestNo: c.requestNo, status: c.status, supplyingWarehouseName: c.supplyingWarehouse.name, supplyingBranchName: c.supplyingWarehouse.branch.name })),
       canActAsRequester,
       canActAsSupplier,
       canEscalate: ctx.canEscalate,

@@ -155,7 +155,7 @@ export function StockRequestAddLinesDialog({ request, onClose }: { request: Stoc
               Đóng
             </Button>
             <Button type="submit" loading={mutation.isPending}>
-              {afterAccept ? 'Lưu và báo kho cấp' : 'Lưu'}
+              {afterAccept ? 'Lưu và báo kho chính' : 'Lưu'}
             </Button>
           </>
         }

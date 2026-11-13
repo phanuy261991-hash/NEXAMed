@@ -724,6 +724,12 @@ export function StockReceiptFormPage() {
             </div>
           )}
 
+          {purchaseOrderId && (
+            <div role="status" className="flex-shrink-0 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Số nhận lớn hơn số còn thiếu theo đơn sẽ bị chặn khi lưu. Đơn sẽ chuyển <b>Nhận một phần</b> hoặc <b>Đã nhận đủ</b> sau khi phiếu này được <b>duyệt</b>.
+            </div>
+          )}
+
           <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             {lines.length === 0 ? (
               <EmptyState icon={Warning} title="Chưa có dòng hàng nào" description={readOnly ? 'Phiếu này không có dòng hàng.' : 'Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng.'} />
@@ -743,8 +749,8 @@ export function StockReceiptFormPage() {
                 <div role="columnheader" className="py-2.5 text-left">Thuốc / vật tư</div>
                 <div role="columnheader" className="py-2.5 text-center">Đơn vị</div>
                 {showOrderCol && <div role="columnheader" className="py-2.5 text-center">Còn thiếu theo đơn</div>}
-                <div role="columnheader" className="py-2.5 text-center">Số lượng</div>
-                <div role="columnheader" className="py-2.5 text-center">Giá vốn</div>
+                <div role="columnheader" className="py-2.5 text-center">{purchaseOrderId ? 'Số nhận' : 'Số lượng'}</div>
+                <div role="columnheader" className="py-2.5 text-center">{purchaseOrderId ? 'Đơn giá nhập' : 'Giá vốn'}</div>
                 <div role="columnheader" className="py-2.5 text-center">Số lô</div>
                 <div role="columnheader" className="py-2.5 text-center">Ngày SX</div>
                 <div role="columnheader" className="py-2.5 text-center">Hạn dùng</div>

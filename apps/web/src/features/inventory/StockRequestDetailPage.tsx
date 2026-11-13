@@ -29,16 +29,17 @@ import {
   formatDayVn,
   formatEventTime,
   REQUEST_LINE_STATUS_META,
-  REQUEST_PRIORITY_LABEL,
   REQUEST_STATUS_META,
   REQUEST_STEPS,
   requesterActionsFor,
   stepState,
+  summarizeRequesterUpdates,
   supplierActionsFor,
 } from './stock-request-meta';
 import { StockRequestAddLinesDialog, StockRequestNoteDialog, StockRequestWithdrawDialog } from './StockRequestDialogs';
 import { StockRequestPrintView } from './StockRequestPrintView';
 import { StockRequestProcessPanel } from './StockRequestProcessPanel';
+import { StockRequestTransferResult } from './StockRequestTransferResult';
 
 const REQUESTER_GRID = 'minmax(190px,1.4fr) 70px 70px 80px minmax(240px,1.6fr)';
 
@@ -68,6 +69,8 @@ export function StockRequestDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [escalating, setEscalating] = useState(false);
+  /** Phiếu điều chuyển nháp vừa tạo từ "Chuyển thành phiếu điều chuyển" — hiện hộp kết quả (mockup màn 5b). Giữ ở trang vì khối xử lý được dựng lại sau mỗi lần cấp. */
+  const [createdTransferId, setCreatedTransferId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const [footSlot, setFootSlot] = useState<HTMLDivElement | null>(null);
@@ -156,6 +159,7 @@ export function StockRequestDetailPage() {
   }
 
   const requesterFoot = asRequester;
+  const requesterUpdate = summarizeRequesterUpdates(request.events);
 
   const footButtons = (
     <>
@@ -248,6 +252,21 @@ export function StockRequestDetailPage() {
         </div>
       </div>
 
+      {/* Bên xin vừa cập nhật (mockup màn 5): dải vàng nằm TRÊN dải các bước, nói rõ bên xin vừa thêm/rút gì */}
+      {asSupplier && request.supplierUpdatePending && (
+        <div role="status" className="flex flex-shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <span>
+            <strong>Bên xin vừa cập nhật phiếu</strong>
+            {requesterUpdate ? ` lúc ${formatEventTime(requesterUpdate.at)}: ${requesterUpdate.text}.` : '.'} Xem dòng có nhãn &quot;Mới thêm&quot; rồi bấm
+          </span>
+          <Button type="button" variant="amber" className="px-3 py-1" loading={ackMutation.isPending} onClick={() => void runAction(() => ackMutation.mutateAsync(request.id), 'Không đánh dấu đã xem được, vui lòng thử lại.')}>
+            <Eye size={16} weight="bold" aria-hidden="true" />
+            Đã xem cập nhật
+          </Button>
+          <span>hoặc cứ tiếp tục xử lý.</span>
+        </div>
+      )}
+
       {/* Các bước (mockup màn 6): MỘT dải liền, bước đã qua nền xanh lá, bước hiện tại nền xanh đặc */}
       {request.status !== 'DRAFT' && (
         <ol className="flex flex-shrink-0 flex-wrap overflow-hidden rounded-md border border-slate-200 bg-white" aria-label="Tiến trình phiếu">
@@ -270,33 +289,13 @@ export function StockRequestDetailPage() {
         </ol>
       )}
 
-      {asSupplier && request.supplierUpdatePending && (
-        <div role="status" className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <span>
-            <strong>Bên xin vừa cập nhật phiếu.</strong> Xem các dòng có nhãn &quot;Mới thêm&quot; và phần Diễn biến bên cạnh.
-          </span>
-          <Button type="button" variant="amber" loading={ackMutation.isPending} onClick={() => void runAction(() => ackMutation.mutateAsync(request.id), 'Không đánh dấu đã xem được, vui lòng thử lại.')}>
-            <Eye size={16} weight="bold" aria-hidden="true" />
-            Đã xem cập nhật
-          </Button>
-        </div>
-      )}
       {actionError && <ErrorBanner message={actionError} onRetry={() => setActionError(null)} />}
       {asSupplier && request.lines.some((l) => l.withdrawRequestedAt) && <WithdrawRequestNotice request={request} onError={setActionError} />}
-
-      <dl className="grid flex-shrink-0 grid-cols-2 gap-x-6 gap-y-2 rounded-md border border-slate-200 bg-white px-4 py-3 sm:grid-cols-3 lg:grid-cols-6" aria-label="Thông tin phiếu">
-        <Info label="Từ (kho xin)" value={place(request.requestingBranchName, request.requestingWarehouseName)} />
-        <Info label="Đến (kho cấp)" value={place(request.supplyingBranchName, request.supplyingWarehouseName)} />
-        <Info label="Người xin" value={request.createdByName} />
-        <Info label="Mức khẩn" value={REQUEST_PRIORITY_LABEL[request.priority]} />
-        <Info label="Cần hàng" value={request.neededBy ? formatDayVn(request.neededBy) : '—'} />
-        <Info label="Ghi chú" value={request.note || '—'} />
-      </dl>
 
       <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-2.5 lg:min-h-0">
           {showProcess ? (
-            <StockRequestProcessPanel key={`${request.id}-${request.version}`} request={request} footSlot={footSlot} />
+            <StockRequestProcessPanel key={`${request.id}-${request.version}`} request={request} footSlot={footSlot} onTransferCreated={setCreatedTransferId} />
           ) : (
             <RequesterTable
               request={request}
@@ -309,6 +308,30 @@ export function StockRequestDetailPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-2.5 lg:min-h-0 lg:overflow-y-auto">
+
+          {/* "Thông tin phiếu" (mockup màn 5) ở cột phải thay cho dải thông tin ngang trước đây */}
+          <section className="rounded-md border border-slate-200 bg-white px-3.5 py-3" aria-label="Thông tin phiếu">
+            <h3 className="mb-2 text-[15px] font-semibold text-slate-900">Thông tin phiếu</h3>
+            <dl className="grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[13px]">
+              <dt className="text-slate-500">Từ</dt>
+              <dd className="break-words font-semibold text-slate-900">{place(request.requestingBranchName, request.requestingWarehouseName)}</dd>
+              <dt className="text-slate-500">Đến</dt>
+              <dd className="break-words font-semibold text-slate-900">{place(request.supplyingBranchName, request.supplyingWarehouseName)}</dd>
+              <dt className="text-slate-500">Người xin</dt>
+              <dd className="break-words font-semibold text-slate-900">{request.createdByName}</dd>
+              <dt className="text-slate-500">Mức khẩn</dt>
+              <dd>{request.priority === 'URGENT' ? <StatusBadge tone="danger">Khẩn</StatusBadge> : <StatusBadge tone="neutral">Thường</StatusBadge>}</dd>
+              <dt className="text-slate-500">Cần hàng</dt>
+              <dd className="font-semibold text-slate-900">{request.neededBy ? formatDayVn(request.neededBy) : '—'}</dd>
+              <dt className="text-slate-500">Ghi chú</dt>
+              <dd className="break-words font-semibold text-slate-900">{request.note || '—'}</dd>
+            </dl>
+            {showProcess && (
+              <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+                Bấm &quot;Chuyển thành phiếu điều chuyển&quot; sẽ tạo <b>1 Phiếu điều chuyển nháp</b> mang sẵn mặt hàng và số lượng ở cột &quot;Số cấp&quot;, không phải lập lại. Phần chờ hàng về được giữ mở, không phải lập lại yêu cầu.
+              </p>
+            )}
+          </section>
 
           <section className="rounded-md border border-slate-200 bg-white px-3.5 py-3" aria-label="Diễn biến">
             <h3 className="mb-2 text-[15px] font-semibold text-slate-900">Diễn biến</h3>
@@ -387,6 +410,7 @@ export function StockRequestDetailPage() {
         />
       )}
       {escalating && <EscalateDialog request={request} onClose={() => setEscalating(false)} />}
+      {createdTransferId && <StockRequestTransferResult transferId={createdTransferId} request={request} onClose={() => setCreatedTransferId(null)} />}
       {printing && <StockRequestPrintView request={request} />}
     </div>
   );
@@ -401,15 +425,6 @@ const TRANSFER_LABEL: Record<StockRequestDetail['transfers'][number]['status'], 
   RETURNING: 'Đang trả về',
   RETURNED: 'Đã trả về',
 };
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs font-medium text-slate-500">{label}</dt>
-      <dd className="break-words text-sm font-semibold text-slate-900">{value}</dd>
-    </div>
-  );
-}
 
 /** Bảng theo dõi từng dòng cho bên xin (mockup màn 6): số xin/đã cấp/còn thiếu căn giữa, "Trạng thái dòng" gồm nhãn + nút Kiểm nhận/Rút dòng ngay cạnh + dòng phụ lý do/phiếu điều chuyển. */
 function RequesterTable({

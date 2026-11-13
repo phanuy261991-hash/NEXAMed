@@ -48,8 +48,8 @@ export function PurchaseOrderPrintView({ order }: { order: PurchaseOrderDetail }
       <table className="mt-6 w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
-            <th className="w-8 py-1.5">#</th>
-            <th className="py-1.5">Tên hàng</th>
+            <th className="w-10 py-1.5">STT</th>
+            <th className="py-1.5">Mặt hàng</th>
             <th className="w-16 py-1.5">ĐVT</th>
             <th className="w-20 py-1.5 text-right">Số lượng</th>
             {hasPrices && <th className="w-28 py-1.5 text-right">Đơn giá dự kiến</th>}

@@ -514,7 +514,7 @@ function LedgerTable({ items, showBranch }: { items: SupplierDebtLedgerEntry[]; 
             <th className="px-3 py-2.5 text-center">Ghi sổ lúc</th>
             <th className="px-3 py-2.5 text-center">Loại</th>
             <th className="px-3 py-2.5 text-center">Chứng từ</th>
-            {showBranch && <th className="px-3 py-2.5 text-center">Chi nhánh</th>}
+            {showBranch && <th className="px-3 py-2.5 text-center">Chi nhánh nhập</th>}
             <th className="px-3 py-2.5 text-left">Diễn giải</th>
             <th className="px-3 py-2.5 text-center">Tăng nợ</th>
             <th className="px-3 py-2.5 text-center">Giảm nợ</th>

@@ -187,3 +187,39 @@ export function resolveSupplyingWarehouseId(
   if (mainBranchDefaultWarehouse && mainBranchDefaultWarehouse.branchId !== requesting.branchId) return mainBranchDefaultWarehouse.id;
   return null;
 }
+
+export interface WaitingLineForReadiness {
+  requestId: string;
+  /** Thời điểm lập phiếu — phiếu cũ được giữ chỗ tồn trước. */
+  requestCreatedAt: Date | string;
+  warehouseId: string;
+  drugId: string;
+  /** Phần còn thiếu của dòng (số xin trừ số đã đưa vào phiếu điều chuyển còn hiệu lực). */
+  remainingQty: number;
+}
+
+/**
+ * "Hàng đã về" có GIỮ CHỖ tồn theo thứ tự phiếu (chủ dự án chốt 13/11/2026): với mỗi cặp (kho cấp, mặt hàng), các dòng đang chờ hàng về được xếp từ phiếu cũ đến phiếu mới; mỗi dòng còn đủ tồn
+ * (sau khi trừ phần đã giữ cho các dòng cũ hơn) thì phiếu của nó "đã về" và phần tồn đó được giữ lại, dòng sau chỉ thấy phần còn lại. Dòng chưa đủ tồn không giữ chỗ (không chặn dòng nhỏ hơn đến sau).
+ * Trả tập mã phiếu có ít nhất một dòng đã đủ hàng.
+ */
+export function computeReadyRequestIds(lines: readonly WaitingLineForReadiness[], onHandByWarehouseDrug: ReadonlyMap<string, number>): Set<string> {
+  const ordered = [...lines].sort((a, b) => {
+    const diff = new Date(a.requestCreatedAt).getTime() - new Date(b.requestCreatedAt).getTime();
+    return diff !== 0 ? diff : a.requestId.localeCompare(b.requestId);
+  });
+  const available = new Map<string, number>();
+  const ready = new Set<string>();
+  for (const line of ordered) {
+    if (line.remainingQty <= 0) continue;
+    const key = `${line.warehouseId}:${line.drugId}`;
+    const left = available.get(key) ?? onHandByWarehouseDrug.get(key) ?? 0;
+    if (left >= line.remainingQty) {
+      ready.add(line.requestId);
+      available.set(key, left - line.remainingQty);
+    } else {
+      available.set(key, left);
+    }
+  }
+  return ready;
+}

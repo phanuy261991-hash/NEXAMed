@@ -27,9 +27,9 @@ import { ORDER_STEPS, orderActionsFor, orderStatusMeta, orderStepState } from '.
 import { PurchaseOrderPrintView } from './PurchaseOrderPrintView';
 import { formatDateTimeLongVn, formatDayVn } from './stock-request-meta';
 
-const GRID = 'minmax(200px,1.5fr) 80px 80px 80px 80px 110px 120px';
+const GRID = 'minmax(180px,1.5fr) 70px 70px 70px 70px 110px 120px';
 /** Có thêm cột "Nhận đợt này" (mockup màn 9) khi người xem nhận hàng được cho đơn này. */
-const GRID_RECEIVE = 'minmax(200px,1.5fr) 80px 80px 80px 80px 110px 120px 130px';
+const GRID_RECEIVE = 'minmax(180px,1.5fr) 70px 70px 70px 70px 120px 100px 120px';
 
 /**
  * Chi tiết "Đơn đặt hàng NCC" (docs/DECISIONS.md #298 giai đoạn 2, mockup màn 9). Nút theo trạng thái và theo phía người xem:
@@ -174,9 +174,9 @@ export function PurchaseOrderDetailPage() {
                   <div role="columnheader" className="py-2.5 text-center">Đã đặt</div>
                   <div role="columnheader" className="py-2.5 text-center">Đã nhận</div>
                   <div role="columnheader" className="py-2.5 text-center">Còn thiếu</div>
+                  {showReceiveColumn && <div role="columnheader" className="py-2.5 text-center">Nhận đợt này</div>}
                   <div role="columnheader" className="py-2.5 text-center">Đơn giá</div>
                   <div role="columnheader" className="py-2.5 text-center">Thành tiền</div>
-                  {showReceiveColumn && <div role="columnheader" className="py-2.5 text-center">Nhận đợt này</div>}
                 </div>
                 <div className="scroll-hover lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden">
                   {order.lines.map((l) => (
@@ -193,8 +193,6 @@ export function PurchaseOrderDetailPage() {
                       </div>
                       <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{l.receivedQty}</div>
                       <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{l.remainingQty}</div>
-                      <div role="cell" className="text-center font-medium tabular-nums text-slate-600">{l.expectedUnitCost !== null ? formatVnd(l.expectedUnitCost) : '—'}</div>
-                      <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{l.expectedUnitCost !== null ? formatVnd(l.lineAmount) : '—'}</div>
                       {showReceiveColumn && (
                         <div role="cell" className="text-center">
                           {l.remainingQty === 0 && !order.allowOverReceipt ? (
@@ -209,6 +207,8 @@ export function PurchaseOrderDetailPage() {
                               className="w-20 rounded-md border border-slate-300 px-1.5 py-1.5 text-center text-sm font-semibold text-slate-900 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
                           )}
+                      <div role="cell" className="text-center font-medium tabular-nums text-slate-600">{l.expectedUnitCost !== null ? formatVnd(l.expectedUnitCost) : '—'}</div>
+                      <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{l.expectedUnitCost !== null ? formatVnd(l.lineAmount) : '—'}</div>
                         </div>
                       )}
                     </div>

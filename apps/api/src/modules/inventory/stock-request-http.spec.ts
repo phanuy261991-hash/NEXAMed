@@ -209,7 +209,7 @@ describe('HTTP e2e — /api/v1/inventory/requests (Yêu cầu cấp hàng)', () 
       const res = await http().get('/api/v1/inventory/requests').set(authed(adminAToken));
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('STOCK_REQUEST_DISABLED');
-      expect((await http().get('/api/v1/inventory/requests/pending-counts').set(authed(adminAToken))).body.data).toEqual({ toAccept: 0, updated: 0 });
+      expect((await http().get('/api/v1/inventory/requests/pending-counts').set(authed(adminAToken))).body.data).toEqual({ toAccept: 0, updated: 0, ready: 0, actionable: 0 });
       const on = await http().patch('/api/v1/clinic-settings').set(authed(adminAToken)).send({ stockRequestEnabled: true });
       expect(on.status).toBe(200);
       expect((await http().get('/api/v1/inventory/requests').set(authed(adminAToken))).status).toBe(200);
@@ -689,6 +689,166 @@ describe('HTTP e2e — /api/v1/inventory/requests (Yêu cầu cấp hàng)', () 
       expect(tenantB.status).toBe(200);
       expect((tenantB.body.data as Restock).items.some((i) => i.drugId === drugId)).toBe(false);
       expect((await http().get('/api/v1/inventory/requests/restock').set(authed(receptionistToken))).status).toBe(403);
+    });
+  });
+
+  describe('mockup màn 2 và 5: tiến độ cấp, lọc, liên kết chờ hàng', () => {
+    type ListItem = { id: string; requestNo: string; activeLineCount: number; allocatedLineCount: number; waitingLineCount: number; pendingLineCount: number; earliestWaitDate: string | null; requestingDepartmentName: string | null; readyToSupply: boolean };
+    const listMine = async (token: string, query: Record<string, string> = {}) => {
+      const res = await http().get('/api/v1/inventory/requests').set(authed(token)).query({ view: 'mine', ...query });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      return res.body.data.items as ListItem[];
+    };
+    const allocate = (token: string, id: string, version: number, lines: Record<string, unknown>[]) => http().post(`/api/v1/inventory/requests/${id}/allocate`).set(authed(token)).send({ version, lines });
+
+    it('cột Tiến độ cấp: danh sách trả số dòng còn hiệu lực/đã cấp/chờ hàng về/chưa xử lý và ngày dự kiến sớm nhất; tìm theo mặt hàng; lọc theo kho xin', async () => {
+      const drugX = await createDrug(adminBToken, 'Khẩu trang tiến độ X');
+      const drugY = await createDrug(adminBToken, 'Khẩu trang tiến độ Y');
+      const drugZ = await createDrug(adminBToken, 'Khẩu trang tiến độ Z');
+      await stockIn(adminBToken, whB, drugX, 5);
+      const d = await submitted(adminBToken, whB2, [{ drugId: drugX, requestedQty: 5 }, { drugId: drugY, requestedQty: 4 }, { drugId: drugZ, requestedQty: 3 }]);
+      const acc = await accept(adminBToken, d);
+      const lineOf = (drugId: string) => acc.lines.find((l) => l.drugId === drugId)!.id;
+
+      // Mới tiếp nhận: 3 dòng còn hiệu lực, chưa dòng nào được cấp.
+      const before = (await listMine(adminBToken)).find((i) => i.id === d.id)!;
+      expect(before).toMatchObject({ activeLineCount: 3, allocatedLineCount: 0, waitingLineCount: 0, pendingLineCount: 3, earliestWaitDate: null });
+
+      // Cấp đủ X; Y chờ hàng về dự kiến 01-12; Z chờ hàng về dự kiến 15-11 (sớm hơn); không dòng nào còn chưa xử lý.
+      const res = await allocate(adminBToken, d.id, acc.version, [
+        { lineId: lineOf(drugX), allocateQty: 5 },
+        { lineId: lineOf(drugY), allocateQty: 0, remainder: { action: 'WAIT', reason: 'Đang đặt thêm', expectedDate: '2026-12-01' } },
+        { lineId: lineOf(drugZ), allocateQty: 0, remainder: { action: 'WAIT', reason: 'Đang đặt thêm', expectedDate: '2026-11-15' } },
+      ]);
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      const after = (await listMine(adminBToken)).find((i) => i.id === d.id)!;
+      expect(after).toMatchObject({ activeLineCount: 3, allocatedLineCount: 1, waitingLineCount: 2, pendingLineCount: 0, earliestWaitDate: '2026-11-15', requestingDepartmentName: null });
+
+      // Tìm theo tên mặt hàng (không chỉ số phiếu) và theo số phiếu.
+      expect((await listMine(adminBToken, { q: 'tiến độ Z' })).some((i) => i.id === d.id)).toBe(true);
+      expect((await listMine(adminBToken, { q: d.requestNo.slice(-6) })).some((i) => i.id === d.id)).toBe(true);
+      expect((await listMine(adminBToken, { q: 'không có mặt hàng nào tên thế này' })).length).toBe(0);
+
+      // Ô lọc kho của tab "Yêu cầu của tôi" là KHO XIN: đúng kho xin thấy phiếu, kho khác thì không.
+      expect((await listMine(adminBToken, { warehouseId: whB2 })).some((i) => i.id === d.id)).toBe(true);
+      expect((await listMine(adminBToken, { warehouseId: whB })).some((i) => i.id === d.id)).toBe(false);
+    });
+
+    it('hộp Chờ hàng về: phiếu chi tiết trả các phiếu xin phần thiếu (con); dòng có thể chờ phiếu con đó; phiếu lạ hoặc của phiếu khác bị từ chối', async () => {
+      const drugX = await createDrug(adminBToken, 'Liên kết con X');
+      const drugY = await createDrug(adminBToken, 'Liên kết con Y');
+      const d = await submitted(adminBToken, whB2, [{ drugId: drugX, requestedQty: 6 }, { drugId: drugY, requestedQty: 4 }]);
+      const acc = await accept(adminBToken, d);
+      const lineX = acc.lines.find((l) => l.drugId === drugX)!.id;
+      const lineY = acc.lines.find((l) => l.drugId === drugY)!.id;
+
+      // Chưa xin cấp trên: chưa có phiếu con.
+      expect((acc as unknown as { childRequests: unknown[] }).childRequests).toEqual([]);
+
+      // Xin phần thiếu của dòng X lên cấp trên → sinh phiếu con, dòng X tự gắn phiếu con.
+      const esc = await http().post(`/api/v1/inventory/requests/${d.id}/escalate`).set(authed(adminBToken)).send({ version: acc.version, lineIds: [lineX] });
+      expect(esc.status, JSON.stringify(esc.body)).toBe(200);
+      const parent = esc.body.data.parent as Detail & { childRequests: { id: string; requestNo: string; status: string; supplyingBranchName: string }[]; lines: { id: string; waitChildRequestId: string | null; waitChildRequestNo: string | null }[] };
+      const child = esc.body.data.child as Detail;
+      expect(parent.childRequests).toHaveLength(1);
+      expect(parent.childRequests[0]).toMatchObject({ id: child.id, status: 'SUBMITTED' });
+
+      // Dòng Y (chưa xử lý) chọn "chờ phiếu xin cấp trên" qua hộp Chờ hàng về → gắn đúng phiếu con.
+      const linked = await allocate(adminBToken, d.id, parent.version, [{ lineId: lineY, allocateQty: 0, remainder: { action: 'WAIT', reason: 'Chờ chi nhánh chính cấp', childRequestId: child.id } }]);
+      expect(linked.status, JSON.stringify(linked.body)).toBe(200);
+      const afterLink = linked.body.data as { lines: { id: string; waitChildRequestId: string | null; waitChildRequestNo: string | null }[] };
+      expect(afterLink.lines.find((l) => l.id === lineY)).toMatchObject({ waitChildRequestId: child.id, waitChildRequestNo: child.requestNo });
+      // Dòng X vẫn giữ liên kết cũ.
+      expect(afterLink.lines.find((l) => l.id === lineX)?.waitChildRequestId).toBe(child.id);
+
+      // Phiếu con không thuộc phiếu này → 422 (không gắn được phiếu của người khác).
+      const drugW = await createDrug(adminBToken, 'Liên kết con W');
+      const other = await submitted(adminBToken, whB2, [{ drugId: drugW, requestedQty: 2 }]);
+      const otherAcc = await accept(adminBToken, other);
+      const foreign = await allocate(adminBToken, other.id, otherAcc.version, [{ lineId: otherAcc.lines[0]!.id, allocateQty: 0, remainder: { action: 'WAIT', reason: 'x', childRequestId: child.id } }]);
+      expect(foreign.status).toBe(422);
+      expect(foreign.body.error.code).toBe('STOCK_REQUEST_ALLOCATION_INVALID');
+      const unknown = await allocate(adminBToken, other.id, otherAcc.version, [{ lineId: otherAcc.lines[0]!.id, allocateQty: 0, remainder: { action: 'WAIT', reason: 'x', childRequestId: randomUUID() } }]);
+      expect(unknown.status).toBe(422);
+    });
+
+    it('"Hàng đã về" giữ chỗ tồn theo thứ tự phiếu: tồn chỉ đủ cho phiếu cũ thì chỉ phiếu cũ nổi nhãn, nhập thêm đủ thì phiếu mới nổi nhãn', async () => {
+      const drugId = await createDrug(adminBToken, 'Giữ chỗ tồn');
+      const waitAll = async (token: string, lines: { lineId: string }[], version: number, id: string) => allocate(token, id, version, lines.map((l) => ({ lineId: l.lineId, allocateQty: 0, remainder: { action: 'WAIT', reason: 'Đang đặt thêm' } })));
+      // Phiếu cũ xin 8, phiếu mới xin 5, cùng kho cấp whB, cùng chờ hàng về (kho cấp chưa có tồn).
+      const older = await submitted(adminBToken, whB2, [{ drugId, requestedQty: 8 }]);
+      const olderAcc = await accept(adminBToken, older);
+      expect((await waitAll(adminBToken, [{ lineId: olderAcc.lines[0]!.id }], olderAcc.version, older.id)).status).toBe(200);
+      const newer = await submitted(adminBToken, whB2, [{ drugId, requestedQty: 5 }]);
+      const newerAcc = await accept(adminBToken, newer);
+      expect((await waitAll(adminBToken, [{ lineId: newerAcc.lines[0]!.id }], newerAcc.version, newer.id)).status).toBe(200);
+
+      const readyOf = async () => {
+        const res = await http().get('/api/v1/inventory/requests').set(authed(adminBToken)).query({ view: 'incoming', limit: 100 });
+        const items = res.body.data.items as ListItem[];
+        return { older: items.find((i) => i.id === older.id)!.readyToSupply, newer: items.find((i) => i.id === newer.id)!.readyToSupply };
+      };
+      expect(await readyOf()).toEqual({ older: false, newer: false });
+
+      // Tồn 10: đủ cho phiếu cũ (8), phần còn lại 2 không đủ cho phiếu mới (5) → chỉ phiếu cũ nổi nhãn.
+      await stockIn(adminBToken, whB, drugId, 10);
+      expect(await readyOf()).toEqual({ older: true, newer: false });
+
+      // Nhập thêm 3 (tổng 13 = 8 + 5): đủ cho cả hai.
+      await stockIn(adminBToken, whB, drugId, 3);
+      expect(await readyOf()).toEqual({ older: true, newer: true });
+    });
+
+    it('ma trận bên xin (mockup màn 6b): đổi ngày cần làm được khi còn mở; phiếu đã huỷ thì mọi nút của bên xin đều bị chặn 409', async () => {
+      const drugId = await createDrug(adminBToken, 'Ma trận bên xin');
+      const d = await submitted(adminBToken, whB2, [{ drugId, requestedQty: 3 }]);
+
+      // Đã gửi: đổi ngày cần hàng (không cần nhắn) được.
+      const dated = await http().post(`/api/v1/inventory/requests/${d.id}/note`).set(authed(adminBToken)).send({ version: d.version, neededBy: '2026-12-25' });
+      expect(dated.status, JSON.stringify(dated.body)).toBe(200);
+      expect(dated.body.data.neededBy).toBe('2026-12-25');
+
+      // Huỷ (kho cấp chưa tiếp nhận) rồi thử mọi thao tác của bên xin → 409.
+      const cancelled = await http().post(`/api/v1/inventory/requests/${d.id}/cancel`).set(authed(adminBToken)).send({ version: dated.body.data.version, reason: 'Không cần nữa' });
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const closed = cancelled.body.data as Detail;
+      const lineId = closed.lines[0]!.id;
+      const other = await createDrug(adminBToken, 'Ma trận bên xin thêm');
+      const attempts = [
+        http().post(`/api/v1/inventory/requests/${d.id}/note`).set(authed(adminBToken)).send({ version: closed.version, message: 'Nhắn thêm' }),
+        http().post(`/api/v1/inventory/requests/${d.id}/lines`).set(authed(adminBToken)).send({ version: closed.version, lines: [{ drugId: other, requestedQty: 1 }] }),
+        http().post(`/api/v1/inventory/requests/${d.id}/withdraw-lines`).set(authed(adminBToken)).send({ version: closed.version, lineIds: [lineId], reason: 'x' }),
+        http().post(`/api/v1/inventory/requests/${d.id}/cancel`).set(authed(adminBToken)).send({ version: closed.version, reason: 'x' }),
+        http().patch(`/api/v1/inventory/requests/${d.id}`).set(authed(adminBToken)).send({ version: closed.version, requestingWarehouseId: whB2, lines: [{ drugId, requestedQty: 1 }] }),
+      ];
+      for (const res of await Promise.all(attempts)) expect(res.status, JSON.stringify(res.body)).toBe(409);
+    });
+
+    it('chấm số "Cần duyệt": hàng đã về được đếm riêng, phiếu thuộc nhiều nhóm chỉ đếm một lần; chi nhánh khác không bị ảnh hưởng', async () => {
+      const drugId = await createDrug(adminBToken, 'Đếm hàng đã về');
+      await stockIn(adminBToken, whB, drugId, 3);
+      const d = await submitted(adminBToken, whB2, [{ drugId, requestedQty: 10 }]);
+      const acc = await accept(adminBToken, d);
+      const counts = async (token: string) => (await http().get('/api/v1/inventory/requests/pending-counts').set(authed(token))).body.data as { toAccept: number; updated: number; ready: number; actionable: number };
+      const base = await counts(adminBToken);
+
+      // Cấp 3, 7 còn lại chờ hàng về; kho cấp chưa đủ tồn nên CHƯA "hàng đã về".
+      const part = await allocate(adminBToken, d.id, acc.version, [{ lineId: acc.lines[0]!.id, allocateQty: 3, remainder: { action: 'WAIT', reason: 'Đang đặt thêm' } }]);
+      expect(part.status, JSON.stringify(part.body)).toBe(200);
+      expect((await counts(adminBToken)).ready).toBe(base.ready);
+
+      // Nhập thêm đủ 7: phiếu nổi "Hàng đã về" → ready tăng 1; actionable tăng đúng 1.
+      await stockIn(adminBToken, whB, drugId, 7);
+      const withReady = await counts(adminBToken);
+      expect(withReady.ready).toBe(base.ready + 1);
+      expect(withReady.actionable).toBe(base.actionable + 1);
+      expect(withReady.actionable).toBeGreaterThanOrEqual(withReady.toAccept);
+      const incoming = await http().get('/api/v1/inventory/requests').set(authed(adminBToken)).query({ view: 'incoming' });
+      expect((incoming.body.data.items as ListItem[]).find((i) => i.id === d.id)?.readyToSupply).toBe(true);
+
+      // Chi nhánh C không thấy phiếu của B: mọi số đếm của C không đổi vì B.
+      const c = await counts(adminCToken);
+      expect(c).toEqual({ toAccept: 0, updated: 0, ready: 0, actionable: 0 });
     });
   });
 });

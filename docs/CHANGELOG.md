@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 13/11/2026 (phần 3) — Rà soát và làm cho đúng 16 màn mockup Yêu cầu cấp hàng / Đơn đặt hàng NCC (`docs/DECISIONS.md` #298 bổ sung 4)
+
+- **Danh sách Yêu cầu cấp hàng**: cột "Tiến độ cấp", cột "Người xin" và "Việc cần làm" (Tiếp nhận/Cấp tiếp/Xử lý ngay ở hàng), dải đếm kiểu mockup, dải vàng nói rõ việc cần làm, tìm theo mặt hàng, lọc theo kho xin, màu trạng thái theo mockup.
+- **Kho cấp xử lý**: hộp "Chờ hàng về" liên kết được cả phiếu xin phần thiếu lên chi nhánh chính; xác nhận "Chuyển thành phiếu điều chuyển" nói rõ phiếu sẽ tạo; sau khi tạo hiện hộp kết quả với lô gợi ý để Sửa lô/Duyệt xuất; "Thông tin phiếu" ở cột phải; dải "Bên xin vừa cập nhật" nói rõ thêm/rút gì.
+- **"Hàng đã về" giữ chỗ tồn theo thứ tự phiếu**: tồn chỉ đủ cho phiếu cũ thì chỉ phiếu cũ nổi nhãn. Chấm số menu đếm phiếu khác nhau cần làm.
+- **Đơn đặt hàng NCC**: dải đếm, cột "Nhận đợt này" đúng chỗ, dải lưu ý nhận vượt ở phiếu nhập theo đơn; bản in thêm chữ ký "Trưởng phòng", đổi nhãn cột; khung có nhãn ở form lập phiếu/đơn.
+- Còn một số chỗ khác mockup chờ chủ dự án quyết (ghi ở `docs/TASK.md`). Không migration; khởi động lại API.
+
 ## 13/11/2026 (phần 2) — Thêm nhanh mặt hàng + làm bù mockup Đơn đặt hàng NCC (`docs/DECISIONS.md` #298 bổ sung 2)
 
 - **Thêm nhanh mặt hàng**: ở ô tìm hàng của Đơn đặt hàng NCC và Phiếu nhập kho, gõ tên chưa có thì hiện dòng "Thêm mặt hàng mới" (bấm hoặc Enter) mở hộp điền các mục bắt buộc của Thuốc hoặc Vật tư y tế; lưu xong dòng mới tự vào đơn/phiếu. Mã mặt hàng tự sinh (`MH…`). Cần quyền thêm thuốc/vật tư sẵn có; người không có quyền thấy gợi ý nhờ quản lý. Phiếu nhận theo đơn không mở hộp.

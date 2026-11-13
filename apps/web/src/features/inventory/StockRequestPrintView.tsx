@@ -23,6 +23,7 @@ export function StockRequestPrintView({ request }: { request: StockRequestDetail
       }
       signatures={[
         { label: 'Người lập phiếu', name: request.createdByName },
+        { label: 'Trưởng phòng', name: null },
         { label: 'Thủ kho cấp', name: request.acceptedByName },
         { label: 'Người nhận hàng', name: null },
       ]}
@@ -51,12 +52,12 @@ export function StockRequestPrintView({ request }: { request: StockRequestDetail
       <table className="mt-6 w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
-            <th className="w-8 py-1.5">#</th>
-            <th className="py-1.5">Tên hàng</th>
+            <th className="w-10 py-1.5">STT</th>
+            <th className="py-1.5">Mặt hàng</th>
             <th className="w-16 py-1.5">ĐVT</th>
             <th className="w-20 py-1.5 text-right">Tồn lúc gửi</th>
             <th className="w-16 py-1.5 text-right">Số xin</th>
-            <th className="w-16 py-1.5 text-right">Đã cấp</th>
+            <th className="w-16 py-1.5 text-right">Số cấp</th>
             <th className="py-1.5 text-left">Tình trạng / ghi chú</th>
           </tr>
         </thead>

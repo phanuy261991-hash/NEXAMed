@@ -304,7 +304,7 @@ export function Sidebar() {
   const hasStockRequestRead = useHasPermission('stock_request', 'read');
   const canSeeStockRequest = stockRequestEnabled && hasStockRequestRead;
   const stockRequestPendingCounts = useStockRequestPendingCountsQuery(canSeeStockRequest);
-  const stockRequestPendingCount = (stockRequestPendingCounts.data?.toAccept ?? 0) + (stockRequestPendingCounts.data?.updated ?? 0);
+  const stockRequestPendingCount = stockRequestPendingCounts.data?.actionable ?? 0;
   // "Đơn đặt hàng NCC" (docs/DECISIONS.md #298 giai đoạn 2) — cần quyền `purchase_order.read` VÀ chi nhánh đang làm được đặt hàng (chi nhánh phụ không thấy khi tắt "đặt hàng NCC riêng").
   const hasPurchaseOrderRead = useHasPermission('purchase_order', 'read');
   const purchaseOrderOptions = usePurchaseOrderOptionsQuery(hasPurchaseOrderRead);

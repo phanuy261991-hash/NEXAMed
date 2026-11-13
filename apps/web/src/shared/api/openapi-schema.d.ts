@@ -46272,6 +46272,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -46336,6 +46342,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -46484,6 +46499,12 @@ export interface paths {
                                     parentRequestId: string | null;
                                     parentRequestNo: string | null;
                                     readyToSupply: boolean;
+                                    requestingDepartmentName: string | null;
+                                    activeLineCount: number;
+                                    allocatedLineCount: number;
+                                    waitingLineCount: number;
+                                    pendingLineCount: number;
+                                    earliestWaitDate: string | null;
                                     version: number;
                                 }[];
                                 nextCursor: string | null;
@@ -46625,6 +46646,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -46689,6 +46716,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -46793,6 +46829,8 @@ export interface paths {
                             data: {
                                 toAccept: number;
                                 updated: number;
+                                ready: number;
+                                actionable: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -47108,6 +47146,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -47172,6 +47216,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -47324,6 +47377,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -47388,6 +47447,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -47531,6 +47599,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -47595,6 +47669,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -47743,6 +47826,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -47807,6 +47896,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -47958,6 +48056,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -48022,6 +48126,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -48175,6 +48288,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -48239,6 +48358,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -48403,6 +48531,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -48467,6 +48601,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -48614,6 +48757,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -48678,6 +48827,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -48826,6 +48984,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -48890,6 +49054,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -49031,6 +49204,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -49095,6 +49274,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -49206,6 +49394,8 @@ export interface paths {
                                 expectedDate?: string | null;
                                 /** Format: uuid */
                                 purchaseOrderId?: string | null;
+                                /** Format: uuid */
+                                childRequestId?: string | null;
                             } | null;
                         }[];
                     };
@@ -49255,6 +49445,12 @@ export interface paths {
                                 parentRequestId: string | null;
                                 parentRequestNo: string | null;
                                 readyToSupply: boolean;
+                                requestingDepartmentName: string | null;
+                                activeLineCount: number;
+                                allocatedLineCount: number;
+                                waitingLineCount: number;
+                                pendingLineCount: number;
+                                earliestWaitDate: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -49319,6 +49515,15 @@ export interface paths {
                                     fromWarehouseName: string;
                                     toWarehouseName: string;
                                     canOpen: boolean;
+                                }[];
+                                childRequests: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    requestNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                    supplyingWarehouseName: string;
+                                    supplyingBranchName: string;
                                 }[];
                                 canActAsRequester: boolean;
                                 canActAsSupplier: boolean;
@@ -49483,6 +49688,12 @@ export interface paths {
                                     parentRequestId: string | null;
                                     parentRequestNo: string | null;
                                     readyToSupply: boolean;
+                                    requestingDepartmentName: string | null;
+                                    activeLineCount: number;
+                                    allocatedLineCount: number;
+                                    waitingLineCount: number;
+                                    pendingLineCount: number;
+                                    earliestWaitDate: string | null;
                                     version: number;
                                     lines: {
                                         /** Format: uuid */
@@ -49547,6 +49758,15 @@ export interface paths {
                                         fromWarehouseName: string;
                                         toWarehouseName: string;
                                         canOpen: boolean;
+                                    }[];
+                                    childRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                        /** @enum {string} */
+                                        status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                        supplyingWarehouseName: string;
+                                        supplyingBranchName: string;
                                     }[];
                                     canActAsRequester: boolean;
                                     canActAsSupplier: boolean;
@@ -49588,6 +49808,12 @@ export interface paths {
                                     parentRequestId: string | null;
                                     parentRequestNo: string | null;
                                     readyToSupply: boolean;
+                                    requestingDepartmentName: string | null;
+                                    activeLineCount: number;
+                                    allocatedLineCount: number;
+                                    waitingLineCount: number;
+                                    pendingLineCount: number;
+                                    earliestWaitDate: string | null;
                                     version: number;
                                     lines: {
                                         /** Format: uuid */
@@ -49652,6 +49878,15 @@ export interface paths {
                                         fromWarehouseName: string;
                                         toWarehouseName: string;
                                         canOpen: boolean;
+                                    }[];
+                                    childRequests: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        requestNo: string;
+                                        /** @enum {string} */
+                                        status: "DRAFT" | "SUBMITTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
+                                        supplyingWarehouseName: string;
+                                        supplyingBranchName: string;
                                     }[];
                                     canActAsRequester: boolean;
                                     canActAsSupplier: boolean;

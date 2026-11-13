@@ -92,6 +92,8 @@ export const stockRequestRemainderSchema = z.object({
   expectedDate: isoDate.nullable().optional(),
   /** Đơn đặt hàng NCC mà phần chờ này đang chờ (tuỳ chọn, chỉ khi `action='WAIT'`; #298 giai đoạn 2). */
   purchaseOrderId: z.string().uuid().nullable().optional(),
+  /** Phiếu yêu cầu cấp hàng xin PHẦN THIẾU lên cấp trên mà phần chờ này đang chờ (tuỳ chọn, chỉ khi `action='WAIT'`; mockup màn 5). */
+  childRequestId: z.string().uuid().nullable().optional(),
 });
 export type StockRequestRemainder = z.infer<typeof stockRequestRemainderSchema>;
 
@@ -209,6 +211,14 @@ export const stockRequestSummarySchema = z.object({
   parentRequestNo: z.string().nullable(),
   /** "Hàng đã về": phiếu có dòng chờ hàng về mà kho cấp nay đủ tồn — chỉ tính cho bên cấp. */
   readyToSupply: z.boolean(),
+  /** Tên Khoa/Phòng của kho xin — cột "Người xin" của tab Cần duyệt (mockup màn 2). */
+  requestingDepartmentName: z.string().nullable(),
+  /** Tiến độ cấp (mockup màn 2): số dòng đang còn hiệu lực (không tính dòng đã rút), trong đó đã cấp / đang chờ hàng về / chưa xử lý; ngày dự kiến sớm nhất của các dòng chờ hàng về. */
+  activeLineCount: z.number().int(),
+  allocatedLineCount: z.number().int(),
+  waitingLineCount: z.number().int(),
+  pendingLineCount: z.number().int(),
+  earliestWaitDate: z.string().nullable(),
   version: z.number().int(),
 });
 export type StockRequestSummary = z.infer<typeof stockRequestSummarySchema>;
@@ -217,6 +227,8 @@ export const stockRequestDetailSchema = stockRequestSummarySchema.extend({
   lines: z.array(stockRequestLineSchema),
   events: z.array(stockRequestEventSchema),
   transfers: z.array(stockRequestTransferRefSchema),
+  /** Các phiếu xin phần thiếu lên cấp trên (sinh từ phiếu này) còn mở — để kho cấp chọn "đang chờ phiếu đó" ở hộp Chờ hàng về (mockup màn 5). */
+  childRequests: z.array(z.object({ id: z.string().uuid(), requestNo: z.string(), status: stockRequestStatusSchema, supplyingWarehouseName: z.string(), supplyingBranchName: z.string() })),
   /** Người xem thuộc phía nào (theo chi nhánh + Khoa/Phòng): quyết định hiện nút của bên xin hay của kho cấp. */
   canActAsRequester: z.boolean(),
   canActAsSupplier: z.boolean(),
@@ -232,7 +244,7 @@ export const listStockRequestsQuerySchema = z.object({
   view: z.enum(['mine', 'incoming']).default('mine'),
   status: stockRequestStatusSchema.optional(),
   priority: stockRequestPrioritySchema.optional(),
-  /** Lọc theo kho xin (view=incoming) hoặc kho cấp (view=mine). */
+  /** Lọc theo kho xin (cả hai tab, mockup màn 2). */
   warehouseId: z.string().uuid().optional(),
   from: isoDate.optional(),
   to: isoDate.optional(),
@@ -252,6 +264,10 @@ export type ListStockRequestsResponse = z.infer<typeof listStockRequestsResponse
 export const getStockRequestPendingCountsResponseSchema = z.object({
   toAccept: z.number().int().nonnegative(),
   updated: z.number().int().nonnegative(),
+  /** Phiếu có dòng chờ hàng về mà kho cấp nay đủ tồn ("Hàng đã về", chờ bấm Cấp tiếp). */
+  ready: z.number().int().nonnegative(),
+  /** Số phiếu KHÁC NHAU cần kho cấp làm gì đó (chờ tiếp nhận, hàng đã về hoặc bên xin vừa cập nhật) — một phiếu thuộc nhiều nhóm chỉ đếm một lần. */
+  actionable: z.number().int().nonnegative(),
 });
 export type GetStockRequestPendingCountsResponse = z.infer<typeof getStockRequestPendingCountsResponseSchema>;
 

@@ -3,7 +3,7 @@ import type { Prisma, StockRequest, StockRequestLine, StockRequestLineStatus, St
 
 /** Chỗ DUY NHẤT gọi Prisma cho `stock_request`/`stock_request_line`/`stock_request_event` (docs/DECISIONS.md #298). */
 
-const WAREHOUSE_BRIEF = { select: { id: true, name: true, branchId: true, departmentId: true, isDefault: true, branch: { select: { name: true, isDefault: true } } } } as const;
+const WAREHOUSE_BRIEF = { select: { id: true, name: true, branchId: true, departmentId: true, isDefault: true, branch: { select: { name: true, isDefault: true } }, department: { select: { name: true } } } } as const;
 
 const LINE_INCLUDE = {
   where: { deletedAt: null },
@@ -25,6 +25,11 @@ export const STOCK_REQUEST_DETAIL_INCLUDE = {
   parentRequest: { select: { requestNo: true } },
   lines: LINE_INCLUDE,
   events: { where: { deletedAt: null }, orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }] },
+  childRequests: {
+    where: { deletedAt: null },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, requestNo: true, status: true, supplyingWarehouse: { select: { name: true, branch: { select: { name: true } } } } },
+  },
   transfers: {
     where: { deletedAt: null },
     orderBy: { createdAt: 'asc' },
@@ -45,7 +50,8 @@ const LIST_INCLUDE = {
   requestingWarehouse: WAREHOUSE_BRIEF,
   supplyingWarehouse: WAREHOUSE_BRIEF,
   parentRequest: { select: { requestNo: true } },
-  _count: { select: { lines: { where: { deletedAt: null } } } },
+  // Danh sách chỉ cần đếm dòng theo trạng thái (cột "Tiến độ cấp") nên chọn đúng hai cột, không kéo cả dòng.
+  lines: { where: { deletedAt: null }, select: { fulfilStatus: true, waitExpectedDate: true } },
 } satisfies Prisma.StockRequestInclude;
 
 export type StockRequestListRow = Prisma.StockRequestGetPayload<{ include: typeof LIST_INCLUDE }>;
@@ -114,12 +120,16 @@ function listWhere(tenantId: string, filter: ListStockRequestsFilter, withStatus
   }
   const where: Prisma.StockRequestWhereInput = { tenantId, deletedAt: null, priority: filter.priority, AND: and };
   if (withStatus && filter.status) where.status = filter.status;
-  if (filter.warehouseId) {
-    if (filter.view === 'incoming') where.requestingWarehouseId = filter.warehouseId;
-    else where.supplyingWarehouseId = filter.warehouseId;
-  }
+  // Mockup màn 2: ô lọc kho của cả hai tab đều là "Kho xin" (tab "Yêu cầu của tôi" lọc trong các kho xin của chi nhánh đang làm).
+  if (filter.warehouseId) where.requestingWarehouseId = filter.warehouseId;
   if (filter.from || filter.to) where.createdAt = { gte: filter.from, lte: filter.to };
-  if (filter.q) where.requestNo = { contains: filter.q, mode: 'insensitive' };
+  // Ô tìm kiếm của mockup: "Tìm theo số phiếu, mặt hàng" — khớp số phiếu hoặc tên/mã của một mặt hàng trong phiếu.
+  if (filter.q) {
+    where.OR = [
+      { requestNo: { contains: filter.q, mode: 'insensitive' } },
+      { lines: { some: { deletedAt: null, drug: { OR: [{ name: { contains: filter.q, mode: 'insensitive' } }, { code: { contains: filter.q, mode: 'insensitive' } }] } } } },
+    ];
+  }
   return where;
 }
 
@@ -226,6 +236,15 @@ export class StockRequestRepository {
     return { toAccept, updated };
   }
 
+  /** Phiếu đã tiếp nhận còn mở của kho cấp thuộc chi nhánh này — chỉ cần id/kho cấp/cờ cập nhật để đếm "Hàng đã về" cho dải thông báo và chấm số. */
+  listActiveSupplierStubs(tx: Prisma.TransactionClient, tenantId: string, branchId: string, departmentId?: string): Promise<{ id: string; status: StockRequestStatus; supplyingWarehouseId: string; supplierUpdatePending: boolean }[]> {
+    const dept: Prisma.StockRequestWhereInput = departmentId ? { supplyingWarehouse: { departmentId } } : {};
+    return tx.stockRequest.findMany({
+      where: { tenantId, deletedAt: null, ...supplierWhere(branchId), ...dept, status: { in: ['ACCEPTED', 'IN_PROGRESS'] } },
+      select: { id: true, status: true, supplyingWarehouseId: true, supplierUpdatePending: true },
+    });
+  }
+
   /** Đổi trạng thái có điều kiện (optimistic lock + trạng thái hiện tại) — trả số dòng khớp. */
   async transition(
     tx: Prisma.TransactionClient,
@@ -273,6 +292,11 @@ export class StockRequestRepository {
     });
   }
 
+  /** Phiếu xin phần thiếu (con) mà dòng chờ hàng về muốn gắn vào — phải là con của ĐÚNG phiếu này. */
+  findChildBrief(tx: Prisma.TransactionClient, tenantId: string, parentId: string, id: string): Promise<{ id: string; status: StockRequestStatus } | null> {
+    return tx.stockRequest.findFirst({ where: { tenantId, id, parentRequestId: parentId, deletedAt: null }, select: { id: true, status: true } });
+  }
+
   /** Đơn đặt hàng NCC mà dòng chờ hàng về muốn gắn vào (#298 giai đoạn 2) — chỉ cần kho nhận + trạng thái để kiểm. */
   findOrderBrief(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<{ id: string; warehouseId: string; status: string } | null> {
     return tx.purchaseOrder.findFirst({ where: { tenantId, id, deletedAt: null }, select: { id: true, warehouseId: true, status: true } });
@@ -282,14 +306,18 @@ export class StockRequestRepository {
     await tx.stockRequestEvent.create({ data: { tenantId, requestId, eventType, actorId, message, meta, createdBy: actorId, updatedBy: actorId } });
   }
 
-  /** Dòng đang chờ hàng về của các phiếu — để dựng nhãn "Hàng đã về" ở danh sách (kho cấp đã đủ tồn chưa). */
-  listWaitingLines(tx: Prisma.TransactionClient, tenantId: string, requestIds: string[]) {
+  /**
+   * MỌI dòng đang chờ hàng về của các phiếu còn mở mà các kho cấp này đang phải cấp (kể cả phiếu của chi nhánh khác) — để dựng nhãn "Hàng đã về" có GIỮ CHỖ tồn theo thứ tự phiếu:
+   * các phiếu cùng tranh một kho cấp + mặt hàng nên phải xét chung, không chỉ phiếu đang hiện trên trang.
+   */
+  listWaitingLinesForSuppliers(tx: Prisma.TransactionClient, tenantId: string, supplyingWarehouseIds: string[]) {
     return tx.stockRequestLine.findMany({
-      where: { tenantId, requestId: { in: requestIds }, deletedAt: null, fulfilStatus: 'WAITING_STOCK' },
+      where: { tenantId, deletedAt: null, fulfilStatus: 'WAITING_STOCK', request: { deletedAt: null, status: { in: ['ACCEPTED', 'IN_PROGRESS'] }, supplyingWarehouseId: { in: supplyingWarehouseIds } } },
       select: {
         requestId: true,
         drugId: true,
         requestedQty: true,
+        request: { select: { createdAt: true, supplyingWarehouseId: true } },
         transferLines: { where: { deletedAt: null }, select: { quantityShipped: true, transfer: { select: { status: true } } } },
       },
     });

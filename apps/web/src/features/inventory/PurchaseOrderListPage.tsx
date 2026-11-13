@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, DownloadSimple, Eye, Hourglass, Package, PaperPlaneTilt, PencilSimple, Plus, Printer, Prohibit, ShoppingCart, X } from '@phosphor-icons/react';
+import { DownloadSimple, Eye, Package, PencilSimple, Plus, Printer, ShoppingCart, X } from '@phosphor-icons/react';
 import type { ListPurchaseOrdersQuery, PurchaseOrderDetail, PurchaseOrderStatus, PurchaseOrderSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -12,7 +12,6 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ReasonConfirmDialog } from '../../shared/ui/ReasonConfirmDialog';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
-import { StatCardRow } from '../../shared/ui/StatCard';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { TabBar } from '../../shared/ui/TabBar';
 import { PrintButton } from '../../shared/print/PrintButton';
@@ -205,15 +204,21 @@ export function PurchaseOrderListPage() {
 
       {statusCounts && view === 'mine' && (
         <div className="flex-shrink-0 px-1">
-          <StatCardRow
-            items={[
-              { icon: Hourglass, label: 'Chờ duyệt', value: String(statusCounts.PENDING_APPROVAL ?? 0), tone: 'amber' },
-              { icon: PaperPlaneTilt, label: 'Đã đặt NCC', value: String(statusCounts.ORDERED ?? 0), tone: 'blue' },
-              { icon: Package, label: 'Nhận một phần', value: String(statusCounts.PARTIALLY_RECEIVED ?? 0), tone: 'violet' },
-              { icon: CheckCircle, label: 'Đã nhận đủ', value: String(statusCounts.RECEIVED ?? 0), tone: 'emerald' },
-              { icon: Prohibit, label: 'Từ chối / Huỷ', value: String((statusCounts.REJECTED ?? 0) + (statusCounts.CANCELLED ?? 0)), tone: 'rose' },
-            ]}
-          />
+          {/* Dải đếm đúng mockup màn 7: nhãn nhỏ phía trên, số lớn tô màu phía dưới, cùng kiểu dải đếm của danh sách Yêu cầu cấp hàng */}
+          <div className="grid grid-cols-2 overflow-hidden rounded-md border border-slate-200 bg-white sm:grid-cols-5">
+            {[
+              { label: 'Chờ duyệt', value: statusCounts.PENDING_APPROVAL ?? 0, tone: 'text-amber-700' },
+              { label: 'Đã đặt NCC', value: statusCounts.ORDERED ?? 0, tone: 'text-blue-600' },
+              { label: 'Nhận một phần', value: statusCounts.PARTIALLY_RECEIVED ?? 0, tone: 'text-slate-900' },
+              { label: 'Đã nhận đủ', value: statusCounts.RECEIVED ?? 0, tone: 'text-emerald-600' },
+              { label: 'Từ chối / Huỷ', value: (statusCounts.REJECTED ?? 0) + (statusCounts.CANCELLED ?? 0), tone: 'text-rose-600' },
+            ].map((stat, index) => (
+              <div key={stat.label} className={`px-3.5 py-2 ${index > 0 ? 'sm:border-l sm:border-slate-200' : ''}`}>
+                <span className="block text-[13px] font-medium text-slate-600">{stat.label}</span>
+                <span className={`text-xl font-semibold tabular-nums ${stat.tone}`}>{stat.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
