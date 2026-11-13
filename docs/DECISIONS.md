@@ -363,3 +363,19 @@ Chủ dự án hỏi "đã làm hết mockup chưa" và dặn không được t�
 **Chủ dự án chốt (13/11/2026)**: giữ nguyên cả 7 chỗ khác mockup nêu trên (a–g), không đổi theo mockup; coi là quyết định chính thức, không còn là lệch cần sửa.
 
 **Kiểm**: API `stock-request-http.spec` 32 ca (tiến độ cấp, tìm theo mặt hàng, lọc kho xin, liên kết phiếu con + từ chối phiếu lạ, chấm số `ready/actionable`, giữ chỗ tồn theo thứ tự, ma trận bên xin 6b kể cả đổi ngày cần), core +6, web +3; Chrome IP LAN chụp từng màn đối chiếu. Không migration, không `db:seed`; khởi động lại API.
+
+## 299 — Tab "Hình ảnh & Tài liệu" ở hồ sơ bệnh nhân: phạm vi và mockup (13/11/2026)
+
+Chủ dự án yêu cầu một nơi tổng hợp phim chụp, ảnh lâm sàng (sau này cả ảnh răng) và hợp đồng/giấy tờ dịch vụ của từng bệnh nhân, xếp theo thư mục; ảnh cận lâm sàng cùng ngày gom vào thư mục tên ngày upload; mọi file của một bệnh nhân nằm trong một thư mục bệnh nhân. Kế hoạch: `docs/product/patient-documents-plan.md`. Mockup 14 màn https://claude.ai/artifact/3kjLBzNBhTNYjGwfJsRSRn (phiên bản 2) ĐÃ CHỐT.
+
+**Đã chốt**
+1. Tên tab "Hình ảnh & Tài liệu". Hai kiểu xem bấm chuyển: Theo ngày (mặc định, thư mục tên ngày upload theo giờ Việt Nam) và Theo loại.
+2. Thư mục là thư mục ảo trong DB; trên đĩa khoá `patient/<patientId>/documents/<uuid>.<ext>` (không đưa ngày hay tên thư mục tự tạo vào đường dẫn đĩa). Thư mục tự tạo không lồng nhau.
+3. Bốn loại: Kết quả cận lâm sàng, Ảnh lâm sàng, Hợp đồng và giấy tờ, Khác.
+4. Ảnh/PDF cận lâm sàng tự gộp vào tab, KHÔNG nhân đôi file (dòng tham chiếu chỉ đọc cùng `storage_key`; dữ liệu cũ nạp bù bằng migration). Ảnh thẻ BHYT và ảnh đại diện cũng hiện dạng tham chiếu chỉ đọc.
+5. Quyền tách riêng: hợp đồng/giấy tờ mặc định quản lý + thu ngân + lễ tân; ảnh lâm sàng theo `encounter.read_clinical` (lễ tân không thấy).
+6. Mặc định: 15 MB mỗi tệp (trình duyệt tự thu nhỏ ảnh quá lớn); ảnh thu nhỏ tạo ở trình duyệt; DICOM chỉ lưu và tải về; hợp đồng xem được ở mọi chi nhánh người dùng được gán (tệp chi nhánh khác nền xanh nhạt); công tắc "Dùng Hình ảnh & Tài liệu" mặc định bật; hiện dung lượng đã dùng ở Cấu hình chung.
+7. Hộp báo lỗi/cảnh báo dùng đúng component dùng chung (`ConfirmDialog`, `SystemFailureDialog`, `ErrorBanner`); lỗi nghiệp vụ 4xx hiện trong hộp.
+8. **Quy tắc thường trực**: tab là nơi tổng hợp DUY NHẤT của mọi hình ảnh/tài liệu gắn bệnh nhân. Chức năng làm sau có lưu file gắn bệnh nhân (nút "Đính ảnh" trong màn khám, gói Nha khoa/Sản khoa, DICOM/PACS, hợp đồng viện phí, phiếu đồng ý, giấy chuyển tuyến…) phải gộp về tab bằng một service dùng chung.
+
+**Chưa làm / ngoài mockup**: toàn bộ code (GĐ1 nền, GĐ2 gộp cận lâm sàng + nạp bù, GĐ3 ảnh thu nhỏ/lọc/công tắc/tài liệu); nút "Đính ảnh" trong màn khám; trình xem DICOM; gói Nha khoa. Cần ERD (`docs/ERD-2.md`), nhãn nhật ký tiếng Việt (#213), quyền mới + `db:seed`, 4 câu hỏi chi nhánh (#231) và test cô lập tenant B + chi nhánh khác khi build.
