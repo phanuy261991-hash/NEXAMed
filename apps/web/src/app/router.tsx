@@ -19,7 +19,7 @@ import { NotFoundPage } from './NotFoundPage';
  * **Cố ý GIỮ EAGER** (không lazy): `LoginPage` (màn hình đầu tiên của mọi phiên — lazy sẽ thêm
  * một nhịp chờ ngay lúc mở app), `RequireAuth`/`AppShell`/`DashboardPage` (luôn cần ngay sau khi
  * đăng nhập), `ChangePasswordPage` (chặn điều hướng lúc buộc đổi mật khẩu lần đầu),
- * `NotFoundPage`/`ComingSoonPage` (rất nhỏ, tách ra không đáng).
+ * `NotFoundPage` (rất nhỏ, tách ra không đáng).
  *
  * Component export dạng NAMED nên phải map `.then(m => ({ default: m.X }))` — `React.lazy` chỉ
  * nhận default export. Không đổi các file trang sang default export để giữ nguyên quy ước

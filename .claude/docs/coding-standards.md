@@ -69,7 +69,7 @@ Yêu cầu thường trực của chủ dự án: **luôn đảm bảo hiệu su
 ### Bundle web
 
 - **Chunk khởi động (`index-*.js`) không vượt 500 kB** (ngưỡng cảnh báo mặc định của Vite). Vượt là dấu hiệu phải tách chunk, không phải để nâng `chunkSizeWarningLimit` cho hết cảnh báo. Số đo tham chiếu 2026-08-22 sau khi tách: **440 kB** (gzip 132 kB).
-- **Mọi trang nghiệp vụ mới BẮT BUỘC thêm vào `app/router.tsx` dưới dạng `lazy(() => import(...))`**, không import tĩnh. Ngoại lệ cố ý (giữ eager, đã cân nhắc — không tự ý mở rộng danh sách này): `LoginPage`, `RequireAuth`, `AppShell`, `DashboardPage`, `ChangePasswordPage`, `NotFoundPage`/`ComingSoonPage`.
+- **Mọi trang nghiệp vụ mới BẮT BUỘC thêm vào `app/router.tsx` dưới dạng `lazy(() => import(...))`**, không import tĩnh. Ngoại lệ cố ý (giữ eager, đã cân nhắc — không tự ý mở rộng danh sách này): `LoginPage`, `RequireAuth`, `AppShell`, `DashboardPage`, `ChangePasswordPage`, `NotFoundPage`.
 - Component export **named** nên phải map `.then((m) => ({ default: m.X }))` — không đổi file trang sang default export chỉ để tiện lazy (phá quy ước named export của codebase).
 - `<Suspense>` đặt **quanh vùng nội dung trong `AppShell`**, không bọc cả app — Sidebar/TopBar phải còn nguyên trong lúc tải chunk. Fallback dùng chung: `shared/ui/PageFallback.tsx`.
 - Kiểm nhanh trước khi merge thay đổi lớn ở web: `pnpm --filter @nexamed/web run build` và đọc bảng chunk — không có cảnh báo "chunks larger than 500 kB".

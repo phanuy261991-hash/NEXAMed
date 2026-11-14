@@ -2,6 +2,12 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 14/11/2026 (phần 3) — Dọn nguồn, giảm khối lượng thư mục làm việc
+
+- Rà soát toàn bộ tệp được git theo dõi (46 MB): không có tệp trùng nội dung, không có phụ thuộc npm thừa. Gỡ **95 tệp bàn giao cũ** ở `docs/handoffs/` (chỉ giữ bản GĐ2 mới nhất; tra lịch sử bằng git) và 2 component không ai dùng (`PatientPicker.tsx`, `ComingSoonPage.tsx`); sửa các tham chiếu tới chúng ở `CURRENT.md`, `TASK.md`, `DECISIONS.md`, `ERD-2.md`, `coding-standards.md`, `router.tsx`.
+- Ngoài git: xoá `deploy/on-prem/package/` (4,4 GB ảnh Docker các bản cũ, dựng lại bằng `build-and-export.ps1`) và log ở gốc dự án.
+- Giữ nguyên có chủ đích: `docs/data/` (bản gốc dữ liệu y tế), `docs/archive/`, hai tệp OpenAPI sinh tự động (CI typecheck cần), `scripts/ui-audit/`.
+
 ## 14/11/2026 (phần 2) — Tab "Hình ảnh & Tài liệu", giai đoạn 2: tự gộp kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện (`docs/DECISIONS.md` #299 bổ sung 3)
 
 - **Máy chủ**: ảnh/PDF của kết quả cận lâm sàng ĐÃ DUYỆT (kể cả PDF của đối tác), ảnh thẻ BHYT (khi bật "Áp dụng BHYT") và ảnh đại diện tự hiện ở tab dạng dòng THAM CHIẾU chỉ đọc, dùng đúng khoá lưu của tệp gốc (không nhân đôi tệp). Tab tự đối chiếu với nguồn mỗi lần mở trang đầu (thêm dòng thiếu, cập nhật dòng đổi, gỡ mềm dòng mất nguồn) nên dữ liệu cũ tự xuất hiện, không cần nạp bù. Một PDF gắn nhiều dịch vụ của cùng bệnh nhân chỉ một dòng. Gộp hồ sơ không chuyển dòng tham chiếu (hồ sơ đích tự dựng lại). Dòng trả thêm `sourceLabel` (tên dịch vụ) và `sourceRef` (để mở đúng phiếu kết quả).

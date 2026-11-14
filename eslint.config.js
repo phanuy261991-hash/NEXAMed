@@ -21,7 +21,7 @@ const WEB_RESTRICTED_MESSAGE =
 
 /**
  * `apps/web` chỉ được import KIỂU từ `@nexamed/shared` (bản dist của nó là CommonJS, Vite không gộp giá trị của nó vào bundle
- * trình duyệt ổn định — docs/handoffs/HANDOFF-NestJS11-DoTaiGhi-DanhSachTheoLo-2026-10-22-p2.md mục 4). Hằng/hàm giá trị cần ở web thì khai riêng
+ * trình duyệt ổn định — HANDOFF-NestJS11-DoTaiGhi-DanhSachTheoLo-2026-10-22-p2.md mục 4). Hằng/hàm giá trị cần ở web thì khai riêng
  * ở `apps/web/src` (hoặc chuyển phần thuần sang một gói ESM). File `*.spec.*` được miễn vì chạy trong Node.
  */
 const WEB_SHARED_VALUE_IMPORT_MESSAGE =
