@@ -2,6 +2,13 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 14/11/2026 (phần 2) — Tab "Hình ảnh & Tài liệu", giai đoạn 2: tự gộp kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện (`docs/DECISIONS.md` #299 bổ sung 3)
+
+- **Máy chủ**: ảnh/PDF của kết quả cận lâm sàng ĐÃ DUYỆT (kể cả PDF của đối tác), ảnh thẻ BHYT (khi bật "Áp dụng BHYT") và ảnh đại diện tự hiện ở tab dạng dòng THAM CHIẾU chỉ đọc, dùng đúng khoá lưu của tệp gốc (không nhân đôi tệp). Tab tự đối chiếu với nguồn mỗi lần mở trang đầu (thêm dòng thiếu, cập nhật dòng đổi, gỡ mềm dòng mất nguồn) nên dữ liệu cũ tự xuất hiện, không cần nạp bù. Một PDF gắn nhiều dịch vụ của cùng bệnh nhân chỉ một dòng. Gộp hồ sơ không chuyển dòng tham chiếu (hồ sơ đích tự dựng lại). Dòng trả thêm `sourceLabel` (tên dịch vụ) và `sourceRef` (để mở đúng phiếu kết quả).
+- **Web**: cột Nguồn "Kết quả CLS · tên dịch vụ" / "Từ thẻ BHYT" / "Từ hồ sơ", nút "Mở kết quả" ở bảng và hộp xem lớn (mở phiếu kết quả của tab "Kết quả cận lâm sàng", chỉ người xem được kết quả cận lâm sàng mới có nút), dòng chỉ đọc không có Sửa/Xoá; ảnh thẻ/ảnh đại diện không hiện chi nhánh.
+- **Kiểm**: core +7, API 14 ca mới (kèm cô lập công ty khác/chi nhánh khác, lễ tân, đồng thời) + đột biến 9/9 bị bắt, web +2, Chrome thật qua IP LAN `scripts/ui-audit/patient-document-reference-check.cjs` 31/31. Cần `db:deploy` (migration `20261114120000_patient_document_reference_unique`) rồi khởi động lại API.
+- **Chưa làm** (giai đoạn 3): ảnh thu nhỏ riêng, lọc/tìm nâng cao, công tắc + dung lượng đã dùng ở Cấu hình chung.
+
 ## 14/11/2026 — Tab "Hình ảnh & Tài liệu" ở hồ sơ bệnh nhân, giai đoạn 1 (`docs/DECISIONS.md` #299, mockup đã chốt)
 
 - **Máy chủ**: module `patient-document` — tải lên MỘT tệp mỗi lần (JPG, PNG, PDF, DICOM; kiểm magic byte, tối đa 15 MB), danh sách mới nhất trước phân trang bằng con trỏ kèm tổng quan/thư mục/quyền của người xem, sửa tên/loại/thư mục/lượt khám/ghi chú (khoá lạc quan), xoá mềm bắt buộc lý do, thư mục tự tạo (tên không trùng, chỉ xoá được thư mục trống). Tệp lưu ở `patient/<id>/documents/`, thư mục "ngày" tính theo giờ Việt Nam. Hai nhóm quyền độc lập: `patient_document.*` (tệp lâm sàng) và `patient_contract.*` (hợp đồng và giấy tờ — lễ tân tải/xem được, không thấy ảnh lâm sàng). Gộp hồ sơ bệnh nhân chuyển cả tệp và thư mục. Nhật ký có nhãn tiếng Việt, không ghi tên tệp.

@@ -10,6 +10,7 @@ import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
 import { createTwoTenantFixture, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from '../../testing/tenant-fixture';
 import { createE2eHelpers } from '../../testing/e2e-helpers';
+import { seedClsResult } from '../../testing/cls-result-fixture';
 import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 
@@ -326,26 +327,11 @@ describe('HTTP e2e — Hình ảnh & Tài liệu của bệnh nhân (#299)', () 
 
     it('dòng tham chiếu từ nơi khác chỉ đọc: sửa hoặc xoá → 409 PATIENT_DOCUMENT_READ_ONLY', async () => {
       const patient = await createPatient();
-      const ref = await privileged.patientDocument.create({
-        data: {
-          tenantId: fixture.tenantA.id,
-          patientId: patient.id,
-          branchId: branchA,
-          category: 'PARACLINICAL',
-          sourceType: 'PARACLINICAL_IMAGE',
-          sourceId: randomUUID(),
-          storageKey: `paraclinical/${randomUUID()}/x.jpg`,
-          fileName: 'sa.jpg',
-          displayName: 'sa.jpg',
-          contentType: 'image/jpeg',
-          sizeBytes: 10,
-          uploadDate: new Date(getVietnamDateString(new Date())),
-          createdBy: SYSTEM_TEST_ACTOR,
-          updatedBy: SYSTEM_TEST_ACTOR,
-        },
-      });
+      // Từ giai đoạn 2 dòng tham chiếu do máy chủ tự dựng từ kết quả cận lâm sàng ĐÃ DUYỆT (không còn tự chèn tay một dòng mồ côi: nó sẽ bị dọn vì không có nguồn).
+      await seedClsResult(privileged, { tenantId: fixture.tenantA.id, branchId: branchA, patientId: patient.id, serviceName: 'Siêu âm ổ bụng', images: [{ storageKey: `paraclinical/${randomUUID()}/x.jpg`, fileName: 'sa.jpg' }] });
       const listed = (await list(adminToken, patient.id)).body.data.items[0];
-      expect(listed).toMatchObject({ id: ref.id, readOnly: true, source: 'PARACLINICAL_IMAGE' });
+      const ref = { id: listed.id as string };
+      expect(listed).toMatchObject({ readOnly: true, source: 'PARACLINICAL_IMAGE' });
       const patch = await http().patch(`/api/v1/patients/${patient.id}/documents/${ref.id}`).set(authed(adminToken)).send({ note: 'x', version: 1 });
       expect(patch.status).toBe(409);
       expect(patch.body.error.code).toBe('PATIENT_DOCUMENT_READ_ONLY');

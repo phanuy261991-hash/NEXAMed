@@ -1,6 +1,6 @@
 # Kế hoạch — Tab "Hình ảnh & Tài liệu" ở hồ sơ bệnh nhân
 
-Trạng thái: **mockup ĐÃ CHỐT (13/11/2026), CHƯA code.** Mockup 14 màn: https://claude.ai/artifact/3kjLBzNBhTNYjGwfJsRSRn (phiên bản 2). Quyết định ghi ở `docs/DECISIONS.md` #299. Bước kế tiếp: GĐ1 (mục 6). Khi build tuân thủ mockup tuyệt đối, không tự lược bỏ gì khi chưa hỏi (mục 8).
+Trạng thái: **mockup ĐÃ CHỐT (13/11/2026); GĐ1 và GĐ2 đã xong (14/11/2026, `docs/DECISIONS.md` #299 bổ sung 1–3), còn GĐ3.** Mockup 14 màn: https://claude.ai/artifact/3kjLBzNBhTNYjGwfJsRSRn (phiên bản 2). Quyết định ghi ở `docs/DECISIONS.md` #299. Bước kế tiếp: GĐ1 (mục 6). Khi build tuân thủ mockup tuyệt đối, không tự lược bỏ gì khi chưa hỏi (mục 8).
 
 ## 1. Mục tiêu
 
@@ -94,7 +94,7 @@ Khi code những chức năng trên: dùng chung một service ghi `patient_docu
 ## 6. Lộ trình
 
 - **GĐ1** — Nền: migration + bảng, quyền, API liệt kê/tải lên/sửa/xoá mềm, tab web (xem theo Ngày + Loại, thư mục tự tạo, xem lớn). Test API (cô lập tenant B + chi nhánh, đột biến), Chrome IP LAN.
-- **GĐ2** — Tự gộp ảnh/PDF cận lâm sàng + migration nạp bù + dòng tham chiếu chỉ đọc.
+- **GĐ2** — Tự gộp ảnh/PDF cận lâm sàng + thẻ BHYT + ảnh đại diện thành dòng tham chiếu chỉ đọc. **XONG 14/11/2026**; khác kế hoạch ban đầu: thay "ghi dòng trong transaction của nguồn + migration nạp bù" bằng tab tự đối chiếu nguồn mỗi lần mở trang đầu (#299 bổ sung 3).
 - **GĐ3** — Ảnh thu nhỏ, lọc/tìm nâng cao, ghi dung lượng, công tắc, tài liệu hướng dẫn (`docs/pilot-onboarding.md`).
 - **Sau**: xem DICOM, sơ đồ răng/ảnh theo vị trí răng (cùng gói Nha khoa, đang bị chặn bởi module viện phí).
 

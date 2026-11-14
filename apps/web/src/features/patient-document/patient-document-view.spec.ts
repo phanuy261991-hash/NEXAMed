@@ -3,6 +3,7 @@ import type { PatientDocument, PatientDocumentAccess } from '@nexamed/shared';
 import {
   canDeleteDocument,
   canEditDocument,
+  canOpenResult,
   formatBytes,
   formatIsoDateVi,
   groupByUploadDate,
@@ -20,6 +21,8 @@ const doc = (over: Partial<PatientDocument>): PatientDocument => ({
   category: 'CLINICAL_PHOTO',
   source: 'UPLOAD',
   readOnly: false,
+  sourceLabel: null,
+  sourceRef: null,
   fileName: 'a.jpg',
   displayName: 'a.jpg',
   contentType: 'image/jpeg',
@@ -73,7 +76,19 @@ describe('nhãn nguồn', () => {
     expect(sourceBadge('UPLOAD')).toBeNull();
     expect(sourceBadge('PARACLINICAL_IMAGE')).toBe('Từ kết quả CLS');
     expect(sourceBadge('INSURANCE_CARD')).toBe('Từ thẻ BHYT');
-    expect(sourceText({ source: 'UPLOAD', category: 'CONTRACT' })).toBe('Tải lên tay · Hợp đồng và giấy tờ');
+    expect(sourceText({ source: 'UPLOAD', category: 'CONTRACT', sourceLabel: null })).toBe('Tải lên tay · Hợp đồng và giấy tờ');
+  });
+
+  it('cột Nguồn của dòng tham chiếu theo mockup: Kết quả CLS · tên dịch vụ, Từ thẻ BHYT, Từ hồ sơ', () => {
+    expect(sourceText({ source: 'PARACLINICAL_IMAGE', category: 'PARACLINICAL', sourceLabel: 'Siêu âm ổ bụng' })).toBe('Kết quả CLS · Siêu âm ổ bụng');
+    expect(sourceText({ source: 'PARACLINICAL_IMAGE', category: 'PARACLINICAL', sourceLabel: null })).toBe('Kết quả CLS');
+    expect(sourceText({ source: 'INSURANCE_CARD', category: 'CONTRACT', sourceLabel: null })).toBe('Từ thẻ BHYT');
+    expect(sourceText({ source: 'PATIENT_PHOTO', category: 'OTHER', sourceLabel: null })).toBe('Từ hồ sơ');
+  });
+
+  it('chỉ dòng có tham chiếu kết quả mới mở được phiếu kết quả', () => {
+    expect(canOpenResult({ sourceRef: { orderItemId: 'i', encounterId: 'e', group: 'imaging' } })).toBe(true);
+    expect(canOpenResult({ sourceRef: null })).toBe(false);
   });
 });
 

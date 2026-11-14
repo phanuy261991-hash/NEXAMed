@@ -1,9 +1,9 @@
-import { DownloadSimple, Eye, PencilSimple, ArrowRight, Trash } from '@phosphor-icons/react';
+import { ArrowSquareOut, DownloadSimple, Eye, PencilSimple, ArrowRight, Trash } from '@phosphor-icons/react';
 import type { PatientDocument, PatientDocumentAccess } from '@nexamed/shared';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { RowActionMenu, type RowActionMenuItem } from '../../shared/ui/RowActionMenu';
 import { DocumentThumb } from './DocumentThumb';
-import { canDeleteDocument, canEditDocument, formatBytes, formatIsoDateVi, sourceText } from './patient-document-view';
+import { canDeleteDocument, canEditDocument, canOpenResult, formatBytes, formatIsoDateVi, sourceText } from './patient-document-view';
 import { downloadPatientDocument } from './patient-document.api';
 
 /**
@@ -16,6 +16,7 @@ export function DocumentTable({
   multiBranch,
   currentBranchId,
   onOpen,
+  onOpenResult,
   onEdit,
   onDelete,
 }: {
@@ -24,6 +25,8 @@ export function DocumentTable({
   multiBranch: boolean;
   currentBranchId: string;
   onOpen: (doc: PatientDocument) => void;
+  /** Mở phiếu kết quả cận lâm sàng của dòng tham chiếu (chỉ dòng có `sourceRef`). Bỏ trống khi người xem không có quyền xem kết quả cận lâm sàng. */
+  onOpenResult?: (doc: PatientDocument) => void;
   onEdit: (doc: PatientDocument) => void;
   onDelete: (doc: PatientDocument) => void;
 }) {
@@ -69,13 +72,22 @@ export function DocumentTable({
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">{formatIsoDateVi(doc.uploadDate)}</td>
                 {multiBranch && <td className="whitespace-nowrap px-3 py-2">{doc.branchName ?? '—'}</td>}
-                <td className="px-3 py-2 text-[13px] text-slate-600">{sourceText(doc)}</td>
+                <td className="px-3 py-2 text-[13px] text-slate-600">
+                  {canOpenResult(doc) && doc.sourceLabel ? (
+                    <>
+                      Kết quả CLS · <span className="font-semibold text-blue-700">{doc.sourceLabel}</span>
+                    </>
+                  ) : (
+                    sourceText(doc)
+                  )}
+                </td>
                 <td className="whitespace-nowrap px-3 py-2 text-slate-600">{doc.uploadedByName}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{formatBytes(doc.sizeBytes)}</td>
                 <td className="px-3 py-2">
                   <div className="flex items-center justify-center gap-1.5">
                     <RowActionButton icon={Eye} label="Xem" onClick={() => onOpen(doc)} />
                     <RowActionButton icon={DownloadSimple} label="Tải về" onClick={() => downloadPatientDocument(doc)} />
+                    {onOpenResult && canOpenResult(doc) && <RowActionButton icon={ArrowSquareOut} label="Mở kết quả" onClick={() => onOpenResult(doc)} />}
                     {menu.length > 2 && <RowActionMenu label="Thêm thao tác" items={menu} />}
                   </div>
                 </td>

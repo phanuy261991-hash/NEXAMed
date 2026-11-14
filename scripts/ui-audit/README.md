@@ -21,6 +21,7 @@ Tab/pill con trong trang, hộp thoại, trạng thái có dữ liệu lớn, tr
 ## Tab Hình ảnh & Tài liệu (#299, 14/11/2026)
 
 - `patient-document-check.cjs` — rỗng, tải lên nhiều tệp (kể cả tệp quá 15 MB), xem theo ngày/theo loại, thư mục tự tạo, xem lớn, xoá có lý do, lỗi tải danh sách, mất mạng khi tải lên, lễ tân chỉ thấy hợp đồng và giấy tờ. Cũng kiểm ảnh lớn tự thu nhỏ, trùng tên tệp và gửi lại sau mất mạng (không tạo tệp thứ hai). Kỳ vọng 32/32. Dữ liệu thử tiền tố KIEMTAILIEU.
+- `patient-document-reference-check.cjs` — giai đoạn 2: ảnh kết quả cận lâm sàng đã duyệt, thẻ BHYT, ảnh đại diện hiện dạng dòng tham chiếu chỉ đọc (nhãn nguồn, cột Nguồn, "Mở kết quả" kể cả khi mất mạng, không Sửa/Xoá), tắt "Áp dụng BHYT" thì ẩn, lễ tân chỉ thấy giấy tờ. Dữ liệu dựng bằng API thật (không ghi thẳng CSDL), tiền tố KIEMGD2. Kỳ vọng 31/31.
 
 ## Kiểm các trạng thái lỗi (#255, thêm 23/10/2026)
 

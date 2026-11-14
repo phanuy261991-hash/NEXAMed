@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { IdempotencyModule } from '../idempotency/idempotency.module';
 import { PatientModule } from '../patient/patient.module';
 import { PatientDocumentController } from './patient-document.controller';
+import { PatientDocumentReferenceRepository } from './patient-document-reference.repository';
+import { PatientDocumentReferenceSync } from './patient-document-reference-sync.service';
 import { PatientDocumentRepository } from './patient-document.repository';
 import { PatientDocumentService } from './patient-document.service';
 
@@ -12,7 +14,7 @@ import { PatientDocumentService } from './patient-document.service';
 @Module({
   imports: [PatientModule, IdempotencyModule],
   controllers: [PatientDocumentController],
-  providers: [PatientDocumentService, PatientDocumentRepository],
+  providers: [PatientDocumentService, PatientDocumentRepository, PatientDocumentReferenceRepository, PatientDocumentReferenceSync],
   exports: [PatientDocumentService, PatientDocumentRepository],
 })
 export class PatientDocumentModule {}

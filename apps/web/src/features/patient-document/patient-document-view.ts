@@ -60,19 +60,24 @@ export function sourceBadge(source: PatientDocumentSource): string | null {
   }
 }
 
-/** Cột "Nguồn" của bảng: "Tải lên tay · Ảnh lâm sàng", "Kết quả CLS", "Thẻ BHYT"... */
-export function sourceText(doc: Pick<PatientDocument, 'source' | 'category'>): string {
+/** Cột "Nguồn" của bảng (mockup màn 3, 11): "Tải lên tay · Ảnh lâm sàng", "Kết quả CLS · Siêu âm ổ bụng", "Từ thẻ BHYT", "Từ hồ sơ". */
+export function sourceText(doc: Pick<PatientDocument, 'source' | 'category' | 'sourceLabel'>): string {
   switch (doc.source) {
     case 'UPLOAD':
       return `Tải lên tay · ${PATIENT_DOCUMENT_CATEGORY_LABEL[doc.category]}`;
     case 'PARACLINICAL_IMAGE':
     case 'LAB_PARTNER_RESULT':
-      return 'Kết quả cận lâm sàng';
+      return doc.sourceLabel ? `Kết quả CLS · ${doc.sourceLabel}` : 'Kết quả CLS';
     case 'INSURANCE_CARD':
-      return 'Thẻ BHYT';
+      return 'Từ thẻ BHYT';
     case 'PATIENT_PHOTO':
-      return 'Ảnh đại diện';
+      return 'Từ hồ sơ';
   }
+}
+
+/** Dòng tham chiếu kết quả cận lâm sàng mở được phiếu kết quả (nút "Mở kết quả"); các dòng khác thì không. */
+export function canOpenResult(doc: Pick<PatientDocument, 'sourceRef'>): boolean {
+  return doc.sourceRef !== null;
 }
 
 export function tileMeta(doc: Pick<PatientDocument, 'category' | 'sizeBytes'>): string {

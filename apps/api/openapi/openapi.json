@@ -179594,6 +179594,40 @@
                               "readOnly": {
                                 "type": "boolean"
                               },
+                              "sourceLabel": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "sourceRef": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "orderItemId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "encounterId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "group": {
+                                    "type": "string",
+                                    "enum": [
+                                      "lab",
+                                      "imaging"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "orderItemId",
+                                  "encounterId",
+                                  "group"
+                                ]
+                              },
                               "fileName": {
                                 "type": "string"
                               },
@@ -179680,6 +179714,8 @@
                               "category",
                               "source",
                               "readOnly",
+                              "sourceLabel",
+                              "sourceRef",
                               "fileName",
                               "displayName",
                               "contentType",
@@ -180094,6 +180130,40 @@
                         "readOnly": {
                           "type": "boolean"
                         },
+                        "sourceLabel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sourceRef": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "orderItemId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "group": {
+                              "type": "string",
+                              "enum": [
+                                "lab",
+                                "imaging"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "orderItemId",
+                            "encounterId",
+                            "group"
+                          ]
+                        },
                         "fileName": {
                           "type": "string"
                         },
@@ -180180,6 +180250,8 @@
                         "category",
                         "source",
                         "readOnly",
+                        "sourceLabel",
+                        "sourceRef",
                         "fileName",
                         "displayName",
                         "contentType",

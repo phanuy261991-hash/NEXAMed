@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ArrowRight, CaretLeft, CaretRight, DownloadSimple, PencilSimple, Trash, X } from '@phosphor-icons/react';
+import { ArrowRight, ArrowSquareOut, CaretLeft, CaretRight, DownloadSimple, PencilSimple, Trash, X } from '@phosphor-icons/react';
 import {
   type PatientDocument,
   type PatientDocumentAccess,
@@ -8,7 +8,7 @@ import { PATIENT_DOCUMENT_CATEGORY_LABEL } from './patient-document-constants';
 import { resolveApiUrl } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { DocumentArt } from './DocumentThumb';
-import { canDeleteDocument, canEditDocument, formatBytes, formatDateTimeVi, sourceText } from './patient-document-view';
+import { canDeleteDocument, canEditDocument, canOpenResult, formatBytes, formatDateTimeVi, sourceText } from './patient-document-view';
 import { downloadPatientDocument } from './patient-document.api';
 
 /**
@@ -20,6 +20,7 @@ export function DocumentViewerDialog({
   index,
   access,
   onIndexChange,
+  onOpenResult,
   onEdit,
   onDelete,
   onClose,
@@ -28,6 +29,8 @@ export function DocumentViewerDialog({
   index: number;
   access: PatientDocumentAccess;
   onIndexChange: (index: number) => void;
+  /** Mở phiếu kết quả cận lâm sàng của dòng tham chiếu (nút "Mở kết quả"). Bỏ trống khi người xem không có quyền xem kết quả cận lâm sàng. */
+  onOpenResult?: (doc: PatientDocument) => void;
   onEdit: (doc: PatientDocument) => void;
   onDelete: (doc: PatientDocument) => void;
   onClose: () => void;
@@ -99,11 +102,20 @@ export function DocumentViewerDialog({
           {doc.encounterLabel && <Detail label="Lượt khám" value={doc.encounterLabel} />}
           {doc.note && <Detail label="Ghi chú" value={doc.note} />}
           {doc.readOnly && <Detail label="Nguồn" value={sourceText(doc)} />}
-          {doc.readOnly && <p className="text-xs font-medium text-slate-500">Tệp lấy từ nơi khác trong hồ sơ. Muốn sửa hoặc gỡ, hãy làm ở chỗ gốc.</p>}
+          {doc.readOnly && (
+            <p className="text-xs font-medium text-slate-500">
+              {canOpenResult(doc) ? 'Tệp thuộc kết quả đã duyệt. Muốn gỡ, đính chính ở kết quả.' : 'Tệp lấy từ nơi khác trong hồ sơ. Muốn sửa hoặc gỡ, hãy làm ở chỗ gốc.'}
+            </p>
+          )}
           <div className="mt-auto flex flex-wrap gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => downloadPatientDocument(doc)}>
               <DownloadSimple size={16} aria-hidden="true" /> Tải về
             </Button>
+            {onOpenResult && canOpenResult(doc) && (
+              <Button type="button" variant="primary" onClick={() => onOpenResult(doc)}>
+                <ArrowSquareOut size={16} aria-hidden="true" /> Mở kết quả
+              </Button>
+            )}
             {editable && (
               <>
                 <Button type="button" variant="secondary" onClick={() => onEdit(doc)}>

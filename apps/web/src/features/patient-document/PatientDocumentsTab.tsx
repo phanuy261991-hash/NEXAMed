@@ -25,6 +25,9 @@ import { DocumentTable } from './DocumentTable';
 import { DocumentTypeRoot } from './DocumentTypeRoot';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
+import { useCanSeePatientParaclinicalTab } from '../patient/PatientParaclinicalResultsTab';
+import { ParaclinicalResultViewDialog } from '../paraclinical-result/ParaclinicalResultViewDialog';
+import type { ParaclinicalGroup } from '../paraclinical-result/paraclinical-group';
 import { formatBytes, formatIsoDateVi, PERIOD_OPTIONS } from './patient-document-view';
 import { usePatientDocumentsQuery, useRemovePatientDocumentMutation } from './patient-document.queries';
 import { INPUT_CLASS } from './DocumentModal';
@@ -48,6 +51,16 @@ export function PatientDocumentsTab({ patientId, patientName, merged }: { patien
 
   const [uploading, setUploading] = useState(false);
   const [viewerId, setViewerId] = useState<string | null>(null);
+  // "Mở kết quả" của dòng tham chiếu cận lâm sàng (giai đoạn 2): chỉ người xem được kết quả cận lâm sàng mới có nút; hộp xem dùng lại đúng phiếu kết quả của tab "Kết quả cận lâm sàng".
+  const canSeeResults = useCanSeePatientParaclinicalTab();
+  const [resultView, setResultView] = useState<{ group: ParaclinicalGroup; itemId: string } | null>(null);
+  const openResult = canSeeResults
+    ? (d: PatientDocument) => {
+        if (!d.sourceRef) return;
+        setViewerId(null);
+        setResultView({ group: d.sourceRef.group, itemId: d.sourceRef.orderItemId });
+      }
+    : undefined;
   const [editing, setEditing] = useState<PatientDocument | null>(null);
   const [deleting, setDeleting] = useState<PatientDocument | null>(null);
   const [folderDialog, setFolderDialog] = useState<{ folder?: PatientDocumentFolder } | null>(null);
@@ -234,6 +247,7 @@ export function PatientDocumentsTab({ patientId, patientName, merged }: { patien
         multiBranch={multiBranch}
         currentBranchId={currentBranchId}
         onOpen={(d) => setViewerId(d.id)}
+        onOpenResult={openResult}
         onEdit={setEditing}
         onDelete={setDeleting}
       />
@@ -275,6 +289,7 @@ export function PatientDocumentsTab({ patientId, patientName, merged }: { patien
           index={viewerIndex}
           access={access}
           onIndexChange={(i) => setViewerId(items[i]?.id ?? null)}
+          onOpenResult={openResult}
           onEdit={(d) => {
             setViewerId(null);
             setEditing(d);
@@ -286,6 +301,7 @@ export function PatientDocumentsTab({ patientId, patientName, merged }: { patien
           onClose={() => setViewerId(null)}
         />
       )}
+      {resultView && <ParaclinicalResultViewDialog group={resultView.group} itemId={resultView.itemId} patientId={patientId} onClose={() => setResultView(null)} />}
       {editing && (
         <DocumentEditDialog
           patientId={patientId}

@@ -46,6 +46,8 @@ import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work
 import { signFileToken } from '../../infrastructure/storage/signed-url';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { PatientRepository } from '../patient/patient.repository';
+import { PatientDocumentReferenceRepository, type ResultImageContext } from './patient-document-reference.repository';
+import { PatientDocumentReferenceSync } from './patient-document-reference-sync.service';
 import { PatientDocumentRepository, type DocumentCursor, type PatientDocumentRow } from './patient-document.repository';
 
 /** Đường dẫn ký sống 15 phút, làm mới mỗi lần gọi lại danh sách (cùng thời hạn ảnh thẻ BHYT). */
@@ -99,6 +101,8 @@ export class PatientDocumentService {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly repository: PatientDocumentRepository,
+    private readonly referenceRepository: PatientDocumentReferenceRepository,
+    private readonly referenceSync: PatientDocumentReferenceSync,
     private readonly patientRepository: PatientRepository,
     private readonly configService: ConfigService,
     private readonly idempotency: IdempotencyService,
@@ -137,11 +141,17 @@ export class PatientDocumentService {
   async list(tenantId: string, userId: string, branchId: string, patientId: string, query: ListPatientDocumentsQuery): Promise<ListPatientDocumentsResponse> {
     const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      await this.assertPatientExists(tx, tenantId, patientId);
+      const patient = await this.patientRepository.findById(tx, tenantId, patientId);
+      if (!patient) throw new NotFoundException();
       const access = await this.resolveAccess(tx, tenantId, userId);
       const categories = this.allowedCategories(access);
       if (categories.length === 0) {
         throw new ForbiddenException({ code: 'PERMISSION_DENIED', message: 'Bạn không có quyền xem hình ảnh và tài liệu của bệnh nhân.' });
+      }
+      // Giai đoạn 2 (#299 bổ sung 3): trang ĐẦU của mỗi lần mở tab tự đối chiếu dòng tham chiếu với nguồn (kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện) rồi mới đếm và liệt kê,
+      // nên tổng quan và danh sách luôn khớp nhau. Các trang sau (có con trỏ) dùng lại kết quả đó. Hồ sơ đã gộp không còn nhận dòng mới.
+      if (!query.cursor && patient.mergedIntoId === null) {
+        await this.referenceSync.sync(tx, tenantId, userId, { patientId, photoKey: patient.photoKey, updatedAt: patient.updatedAt, updatedBy: patient.updatedBy });
       }
 
       const rows = await this.repository.listPage(
@@ -155,7 +165,7 @@ export class PatientDocumentService {
       const hasMore = rows.length > query.limit;
       const page = hasMore ? rows.slice(0, query.limit) : rows;
 
-      const [userNames, branchNames, encounterLabels, aggregates, folders, folderAggregates, multiBranch] = await Promise.all([
+      const [userNames, branchNames, encounterLabels, aggregates, folders, folderAggregates, multiBranch, resultContexts] = await Promise.all([
         this.repository.userNames(tx, tenantId, [...new Set(page.map((r) => r.createdBy))]),
         this.repository.branchNames(tx, tenantId, [...new Set(page.map((r) => r.branchId))]),
         this.encounterLabels(tx, tenantId, patientId, page.map((r) => r.encounterId).filter((id): id is string => id !== null)),
@@ -163,6 +173,7 @@ export class PatientDocumentService {
         this.repository.listFolders(tx, tenantId, patientId),
         this.repository.aggregateByFolder(tx, tenantId, patientId, categories),
         this.repository.hasMultipleBranches(tx, tenantId),
+        this.referenceRepository.resultImageContexts(tx, tenantId, page.filter((r) => r.sourceType === 'PARACLINICAL_IMAGE' && r.sourceId !== null).map((r) => r.sourceId as string)),
       ]);
 
       const sum = (pick: (a: (typeof aggregates)[number]) => number) => aggregates.reduce((acc, a) => acc + pick(a), 0);
@@ -189,7 +200,7 @@ export class PatientDocumentService {
       });
 
       return {
-        items: page.map((row) => this.toDocument(tenantId, row, encryptionKey, userNames, branchNames, encounterLabels)),
+        items: page.map((row) => this.toDocument(tenantId, row, encryptionKey, userNames, branchNames, encounterLabels, branchId, resultContexts)),
         nextCursor: hasMore ? encodeCursor(page[page.length - 1]!) : null,
         summary,
         folders: folderItems,
@@ -306,7 +317,7 @@ export class PatientDocumentService {
           this.repository.branchNames(tx, tenantId, [branchId]),
           this.encounterLabels(tx, tenantId, patientId, row.encounterId ? [row.encounterId] : []),
         ]);
-        return this.toDocument(tenantId, row, encryptionKey, userNames, branchNames, encounterLabels);
+        return this.toDocument(tenantId, row, encryptionKey, userNames, branchNames, encounterLabels, branchId, new Map());
       } catch (error) {
         await this.storage.delete(tenantId, key); // ghi DB lỗi thì dọn tệp vừa lưu, không để rác không ai trỏ tới
         // Hai yêu cầu cùng tên chạy song song: chỉ mục duy nhất chặn bản thứ hai (P2002) → cùng thông báo như kiểm trước.
@@ -475,14 +486,21 @@ export class PatientDocumentService {
     userNames: Map<string, string>,
     branchNames: Map<string, string>,
     encounterLabels: Map<string, string>,
+    currentBranchId: string,
+    resultContexts: Map<string, ResultImageContext>,
   ): PatientDocument {
     const exp = Math.floor(Date.now() / 1000) + URL_TTL_SECONDS;
+    // Ảnh thẻ BHYT và ảnh đại diện đi theo hồ sơ, không thuộc chi nhánh nào: không hiện tên chi nhánh và không tô nền "chi nhánh khác" (lưu tạm ở chi nhánh mặc định).
+    const unbranched = row.sourceType === 'INSURANCE_CARD' || row.sourceType === 'PATIENT_PHOTO';
+    const context = row.sourceType === 'PARACLINICAL_IMAGE' && row.sourceId ? resultContexts.get(row.sourceId) : undefined;
     return {
       id: row.id,
       patientId: row.patientId,
       category: row.category,
       source: row.sourceType,
       readOnly: row.sourceType !== 'UPLOAD',
+      sourceLabel: context?.serviceName ?? null,
+      sourceRef: context ? { orderItemId: context.orderItemId, encounterId: context.encounterId, group: context.group } : null,
       fileName: row.fileName,
       displayName: row.displayName,
       contentType: row.contentType,
@@ -496,8 +514,8 @@ export class PatientDocumentService {
       uploadedAt: row.uploadedAt.toISOString(),
       uploadDate: isoDate(row.uploadDate),
       uploadedByName: userNames.get(row.createdBy) ?? '—',
-      branchId: row.branchId,
-      branchName: branchNames.get(row.branchId) ?? null,
+      branchId: unbranched ? currentBranchId : row.branchId,
+      branchName: unbranched ? null : (branchNames.get(row.branchId) ?? null),
       url: `/api/v1/files/${signFileToken({ tenantId, key: row.storageKey, exp }, encryptionKey)}`,
       version: row.version,
     };

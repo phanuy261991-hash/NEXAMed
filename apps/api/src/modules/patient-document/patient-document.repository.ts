@@ -291,8 +291,14 @@ export class PatientDocumentRepository {
       }
       taken.add(name.toLowerCase());
     }
+    // Dòng THAM CHIẾU (kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện) không chuyển: các nguồn đó được gộp riêng (lượt khám, thẻ BHYT đi theo hồ sơ đích) nên hồ sơ đích tự dựng lại
+    // dòng của mình ở lần mở tab kế tiếp; chuyển nguyên còn đụng chỉ mục duy nhất `patient_document_reference_key` khi hai hồ sơ cùng trỏ một tệp.
+    await tx.patientDocument.updateMany({
+      where: { tenantId, patientId: fromPatientId, deletedAt: null, sourceType: { not: 'UPLOAD' } },
+      data: { deletedAt: new Date(), deletedReason: 'merged', updatedBy: actorId, version: { increment: 1 } },
+    });
     const result = await tx.patientDocument.updateMany({
-      where: { tenantId, patientId: fromPatientId, deletedAt: null },
+      where: { tenantId, patientId: fromPatientId, deletedAt: null, sourceType: 'UPLOAD' },
       data: { patientId: toPatientId, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;

@@ -68269,6 +68269,15 @@ export interface paths {
                                     /** @enum {string} */
                                     source: "UPLOAD" | "PARACLINICAL_IMAGE" | "LAB_PARTNER_RESULT" | "INSURANCE_CARD" | "PATIENT_PHOTO";
                                     readOnly: boolean;
+                                    sourceLabel: string | null;
+                                    sourceRef: {
+                                        /** Format: uuid */
+                                        orderItemId: string;
+                                        /** Format: uuid */
+                                        encounterId: string;
+                                        /** @enum {string} */
+                                        group: "lab" | "imaging";
+                                    } | null;
                                     fileName: string;
                                     displayName: string;
                                     contentType: string;
@@ -68428,6 +68437,15 @@ export interface paths {
                                 /** @enum {string} */
                                 source: "UPLOAD" | "PARACLINICAL_IMAGE" | "LAB_PARTNER_RESULT" | "INSURANCE_CARD" | "PATIENT_PHOTO";
                                 readOnly: boolean;
+                                sourceLabel: string | null;
+                                sourceRef: {
+                                    /** Format: uuid */
+                                    orderItemId: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    /** @enum {string} */
+                                    group: "lab" | "imaging";
+                                } | null;
                                 fileName: string;
                                 displayName: string;
                                 contentType: string;

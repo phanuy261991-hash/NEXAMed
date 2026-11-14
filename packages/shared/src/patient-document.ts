@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 /**
  * Tab "Hình ảnh & Tài liệu" của hồ sơ bệnh nhân (docs/DECISIONS.md #299, docs/product/patient-documents-plan.md).
- * Nơi tổng hợp DUY NHẤT mọi hình ảnh/tài liệu gắn bệnh nhân: tệp tải tay (UPLOAD) và, từ giai đoạn 2, dòng THAM CHIẾU chỉ đọc lấy từ nơi khác (cận lâm sàng, thẻ BHYT, ảnh đại diện).
+ * Nơi tổng hợp DUY NHẤT mọi hình ảnh/tài liệu gắn bệnh nhân: tệp tải tay (UPLOAD) và dòng THAM CHIẾU chỉ đọc lấy từ nơi khác (kết quả cận lâm sàng đã duyệt kể cả PDF đối tác,
+ * ảnh thẻ BHYT, ảnh đại diện) — giai đoạn 2, máy chủ tự đối chiếu với nguồn mỗi lần mở tab, không nhân đôi tệp.
  */
 
 /** Dung lượng tối đa mỗi tệp tải lên: 15 MB (trình duyệt tự thu nhỏ ảnh quá lớn trước khi gửi). */
@@ -48,6 +49,10 @@ export const patientDocumentSchema = z.object({
   source: patientDocumentSourceSchema,
   /** `true` với dòng tham chiếu (không phải tải tay): chỉ xem và tải về, sửa/xoá ở chỗ gốc. */
   readOnly: z.boolean(),
+  /** Dòng tham chiếu kết quả cận lâm sàng: tên dịch vụ ("Siêu âm ổ bụng") để hiện "Kết quả CLS · Siêu âm ổ bụng"; các dòng khác là `null`. */
+  sourceLabel: z.string().nullable(),
+  /** Dòng tham chiếu kết quả cận lâm sàng: dịch vụ và lượt khám chứa kết quả, để nút "Mở kết quả" tìm đúng; các dòng khác là `null`. */
+  sourceRef: z.object({ orderItemId: z.string().uuid(), encounterId: z.string().uuid(), group: z.enum(['lab', 'imaging']) }).nullable(),
   fileName: z.string(),
   displayName: z.string(),
   contentType: z.string(),
