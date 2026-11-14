@@ -5,6 +5,7 @@ export * from './branch';
 export * from './break-glass';
 export * from './patient';
 export * from './insurance-card';
+export * from './patient-document';
 export * from './appointment';
 export * from './encounter';
 export * from './user-account';

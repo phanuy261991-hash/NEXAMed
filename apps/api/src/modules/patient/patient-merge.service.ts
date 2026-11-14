@@ -10,6 +10,7 @@ import { PatientConditionRepository } from './patient-condition.repository';
 import { PatientFamilyHistoryRepository, type FamilyHistoryRowInput } from './patient-family-history.repository';
 import { PatientInsuranceCardRepository } from './patient-insurance-card.repository';
 import { EncounterRepository } from '../encounter/encounter.repository';
+import { PatientDocumentRepository } from '../patient-document/patient-document.repository';
 
 /**
  * Gộp hồ sơ trùng (S5-06, PAT-04) — module điều phối riêng (`patient-merge.module.ts`), không
@@ -28,6 +29,7 @@ export class PatientMergeService {
     private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
     private readonly insuranceCardRepository: PatientInsuranceCardRepository,
     private readonly encounterRepository: EncounterRepository,
+    private readonly documentRepository: PatientDocumentRepository,
   ) {}
 
   async mergePatients(tenantId: string, actorId: string, dto: MergePatientsRequest, meta: RequestMeta): Promise<MergePatientsResponse> {
@@ -75,6 +77,9 @@ export class PatientMergeService {
       // Thẻ BHYT (S2-04, #243) — chuyển MỌI thẻ của hồ sơ nguồn sang hồ sơ đích (không mất thẻ; trùng số chỉ là cảnh báo mềm).
       const movedInsuranceCardCount = await this.insuranceCardRepository.moveAll(tx, tenantId, dto.sourceId, dto.targetId, actorId);
 
+      // Hình ảnh & Tài liệu (#299) — chuyển MỌI tệp và thư mục tự tạo sang hồ sơ đích (tab là nơi tổng hợp duy nhất, không để tệp mồ côi ở hồ sơ đã gộp).
+      const movedDocumentCount = await this.documentRepository.moveAll(tx, tenantId, dto.sourceId, dto.targetId, actorId);
+
       const updatedCount = await this.patientRepository.updateIfVersionMatches(tx, tenantId, dto.sourceId, source.version, actorId, {
         mergedIntoId: dto.targetId,
       });
@@ -87,7 +92,7 @@ export class PatientMergeService {
         action: 'patient.merged',
         entityType: 'patient',
         entityId: dto.sourceId,
-        afterJson: { mergedIntoId: dto.targetId, movedEncounterCount, movedInsuranceCardCount },
+        afterJson: { mergedIntoId: dto.targetId, movedEncounterCount, movedInsuranceCardCount, movedDocumentCount },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });

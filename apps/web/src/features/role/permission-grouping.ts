@@ -46,6 +46,9 @@ export const MODULE_LABELS: Record<string, string> = {
   dashboard: 'Trang Tổng quan',
   // Trang "Hẹn tái khám" (#285) — nhãn thêm NGAY lúc tạo quyền.
   follow_up: 'Hẹn tái khám',
+  // Tab Hình ảnh & Tài liệu của hồ sơ bệnh nhân (#299) — nhãn thêm NGAY lúc tạo quyền.
+  patient_document: 'Hình ảnh và tài liệu lâm sàng',
+  patient_contract: 'Hợp đồng và giấy tờ của bệnh nhân',
   // Chi phí vật tư theo dịch vụ (#297 GĐ4) — nhãn thêm NGAY lúc tạo quyền.
   service_consumption: 'Chi phí vật tư theo dịch vụ',
   daily_report: 'Báo cáo ngày',
@@ -112,7 +115,7 @@ export function moduleLabel(module: string): string {
  * dưới, không có giá trị thông tin thêm.
  */
 const SECTIONS: { label: string; modules: string[] }[] = [
-  { label: 'Quản lý bệnh nhân', modules: ['patient'] },
+  { label: 'Quản lý bệnh nhân', modules: ['patient', 'patient_document', 'patient_contract'] },
   { label: 'Đặt lịch hẹn', modules: ['appointment', 'follow_up'] },
   { label: 'Tiếp nhận & Lượt khám', modules: ['encounter', 'vital_sign', 'diagnosis'] },
   { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription', 'prescription_template', 'advice_template'] },

@@ -11,5 +11,7 @@ import { IdempotencyService } from './idempotency.service';
  */
 @Module({
   providers: [IdempotencyKeyRepository, IdempotencyService, IdempotencyPurgeJob, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
+  // Chỉ để đường TẢI TỆP (multipart, tệp chỉ đọc được sau khi tới handler) tự dùng khoá chống ghi trùng — xem `PatientDocumentService.uploadOnce` (#299).
+  exports: [IdempotencyService],
 })
 export class IdempotencyModule {}

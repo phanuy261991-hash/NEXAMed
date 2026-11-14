@@ -68224,6 +68224,1011 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patientId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách hình ảnh và tài liệu của bệnh nhân (mới nhất trước, con trỏ) + tổng quan + thư mục tự tạo + quyền của người xem */
+        get: {
+            parameters: {
+                query?: {
+                    category?: "PARACLINICAL" | "CLINICAL_PHOTO" | "CONTRACT" | "OTHER";
+                    folderId?: string | "none";
+                    q?: string;
+                    dateFrom?: string;
+                    dateTo?: string;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    patientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    /** @enum {string} */
+                                    category: "PARACLINICAL" | "CLINICAL_PHOTO" | "CONTRACT" | "OTHER";
+                                    /** @enum {string} */
+                                    source: "UPLOAD" | "PARACLINICAL_IMAGE" | "LAB_PARTNER_RESULT" | "INSURANCE_CARD" | "PATIENT_PHOTO";
+                                    readOnly: boolean;
+                                    fileName: string;
+                                    displayName: string;
+                                    contentType: string;
+                                    /** @enum {string} */
+                                    kind: "image" | "pdf" | "dicom";
+                                    sizeBytes: number;
+                                    note: string | null;
+                                    /** Format: uuid */
+                                    folderId: string | null;
+                                    folderName: string | null;
+                                    /** Format: uuid */
+                                    encounterId: string | null;
+                                    encounterLabel: string | null;
+                                    uploadedAt: string;
+                                    uploadDate: string;
+                                    uploadedByName: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string | null;
+                                    url: string;
+                                    version: number;
+                                }[];
+                                nextCursor: string | null;
+                                summary: {
+                                    total: number;
+                                    totalBytes: number;
+                                    firstUploadDate: string | null;
+                                    lastUploadDate: string | null;
+                                    byCategory: {
+                                        /** @enum {string} */
+                                        category: "PARACLINICAL" | "CLINICAL_PHOTO" | "CONTRACT" | "OTHER";
+                                        count: number;
+                                        totalBytes: number;
+                                        lastUploadDate: string | null;
+                                    }[];
+                                };
+                                folders: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    fileCount: number;
+                                    totalBytes: number;
+                                    lastUploadDate: string | null;
+                                    version: number;
+                                }[];
+                                access: {
+                                    clinical: {
+                                        read: boolean;
+                                        upload: boolean;
+                                        delete: boolean;
+                                    };
+                                    contract: {
+                                        read: boolean;
+                                        upload: boolean;
+                                        delete: boolean;
+                                    };
+                                };
+                                multiBranch: boolean;
+                                /** Format: uuid */
+                                currentBranchId: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền với loại tệp này (patient_document / patient_contract) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tải lên MỘT tệp (JPG, PNG, PDF, DICOM; kiểm magic byte, tối đa 15 MB) kèm loại, thư mục, lượt khám, ghi chú */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description Tệp JPG, PNG, PDF hoặc DICOM
+                         */
+                        file: string;
+                        /** @enum {string} */
+                        category: "PARACLINICAL" | "CLINICAL_PHOTO" | "CONTRACT" | "OTHER";
+                        /** Format: uuid */
+                        folderId?: string;
+                        /** Format: uuid */
+                        encounterId?: string;
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tải lên thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                /** @enum {string} */
+                                category: "PARACLINICAL" | "CLINICAL_PHOTO" | "CONTRACT" | "OTHER";
+                                /** @enum {string} */
+                                source: "UPLOAD" | "PARACLINICAL_IMAGE" | "LAB_PARTNER_RESULT" | "INSURANCE_CARD" | "PATIENT_PHOTO";
+                                readOnly: boolean;
+                                fileName: string;
+                                displayName: string;
+                                contentType: string;
+                                /** @enum {string} */
+                                kind: "image" | "pdf" | "dicom";
+                                sizeBytes: number;
+                                note: string | null;
+                                /** Format: uuid */
+                                folderId: string | null;
+                                folderName: string | null;
+                                /** Format: uuid */
+                                encounterId: string | null;
+                                encounterLabel: string | null;
+                                uploadedAt: string;
+                                uploadDate: string;
+                                uploadedByName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string | null;
+                                url: string;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu hoặc tệp không hợp lệ (sai định dạng, rỗng, vượt 15 MB) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền với loại tệp này (patient_document / patient_contract) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/documents/encounter-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lượt khám gần đây của bệnh nhân để chọn "Gắn với lượt khám" */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    label: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền với loại tệp này (patient_document / patient_contract) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Xoá mềm tệp (bắt buộc ?reason= và ?version=); tệp trên đĩa giữ nguyên */
+        delete: {
+            parameters: {
+                query: {
+                    reason: string;
+                    version: number;
+                };
+                header?: never;
+                path: {
+                    patientId: string;
+                    documentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Xoá thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                removed: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu hoặc tệp không hợp lệ (sai định dạng, rỗng, vượt 15 MB) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền với loại tệp này (patient_document / patient_contract) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Sửa tên hiển thị, loại, thư mục, lượt khám, ghi chú của tệp tải tay (kèm version); tệp tham chiếu chỉ đọc */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                    documentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        displayName?: string;
+                        /** @enum {string} */
+                        category?: "PARACLINICAL" | "CLINICAL_PHOTO" | "CONTRACT" | "OTHER";
+                        /** Format: uuid */
+                        folderId?: string | null;
+                        /** Format: uuid */
+                        encounterId?: string | null;
+                        note?: string | null;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                ok: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu hoặc tệp không hợp lệ (sai định dạng, rỗng, vượt 15 MB) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền với loại tệp này (patient_document / patient_contract) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/documents/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tạo thư mục tự tạo (tên không trùng, không phân biệt hoa thường) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                fileCount: number;
+                                totalBytes: number;
+                                lastUploadDate: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu hoặc tệp không hợp lệ (sai định dạng, rỗng, vượt 15 MB) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền với loại tệp này (patient_document / patient_contract) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/documents/folders/{folderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Xoá mềm thư mục trống (kèm ?version=); thư mục còn tệp trả 409 */
+        delete: {
+            parameters: {
+                query: {
+                    version: number;
+                };
+                header?: never;
+                path: {
+                    patientId: string;
+                    folderId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Xoá thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                removed: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu hoặc tệp không hợp lệ (sai định dạng, rỗng, vượt 15 MB) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền với loại tệp này (patient_document / patient_contract) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Đổi tên thư mục (kèm version) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                    folderId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Đổi tên thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                ok: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu hoặc tệp không hợp lệ (sai định dạng, rỗng, vượt 15 MB) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền với loại tệp này (patient_document / patient_contract) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {

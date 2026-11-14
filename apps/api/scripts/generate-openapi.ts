@@ -208,6 +208,16 @@ import {
   diagnosisSuggestionResponseSchema,
   icd10SuggestionStatusSchema,
   createInsuranceCardRequestSchema,
+  createPatientDocumentFolderRequestSchema,
+  listPatientDocumentEncounterOptionsResponseSchema,
+  listPatientDocumentsQuerySchema,
+  listPatientDocumentsResponseSchema,
+  patientDocumentFolderSchema,
+  patientDocumentSchema,
+  removePatientDocumentFolderQuerySchema,
+  removePatientDocumentQuerySchema,
+  renamePatientDocumentFolderRequestSchema,
+  updatePatientDocumentRequestSchema,
   encounterInsuranceSchema,
   insuranceStatusSchema,
   followUpFeatureStatusSchema,
@@ -8492,6 +8502,123 @@ registry.registerPath({
     404: errorResponse('Phiếu không tồn tại'),
     409: errorResponse('Phiếu đã được đảo'),
   },
+});
+
+// ---- Hình ảnh & Tài liệu của bệnh nhân (#299) ----
+const patientDocumentParams = z.object({ patientId: z.string().uuid(), documentId: z.string().uuid() });
+const patientDocumentFolderParams = z.object({ patientId: z.string().uuid(), folderId: z.string().uuid() });
+const patientDocPatientParams = z.object({ patientId: z.string().uuid() });
+const documentErrors = {
+  400: errorResponse('Dữ liệu hoặc tệp không hợp lệ (sai định dạng, rỗng, vượt 15 MB)'),
+  401: errorResponse('Thiếu hoặc sai access token'),
+  403: errorResponse('Không có quyền với loại tệp này (patient_document / patient_contract)'),
+  404: errorResponse('Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám'),
+  409: errorResponse('version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp'),
+};
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/patients/{patientId}/documents',
+  tags: ['patient-document'],
+  summary: 'Danh sách hình ảnh và tài liệu của bệnh nhân (mới nhất trước, con trỏ) + tổng quan + thư mục tự tạo + quyền của người xem',
+  security: [{ bearerAuth: [] }],
+  request: { params: patientDocPatientParams, query: listPatientDocumentsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPatientDocumentsResponseSchema)),
+    401: documentErrors[401],
+    403: documentErrors[403],
+    404: documentErrors[404],
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/patients/{patientId}/documents/encounter-options',
+  tags: ['patient-document'],
+  summary: 'Lượt khám gần đây của bệnh nhân để chọn "Gắn với lượt khám"',
+  security: [{ bearerAuth: [] }],
+  request: { params: patientDocPatientParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPatientDocumentEncounterOptionsResponseSchema)),
+    401: documentErrors[401],
+    403: documentErrors[403],
+    404: documentErrors[404],
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/patients/{patientId}/documents',
+  tags: ['patient-document'],
+  summary: 'Tải lên MỘT tệp (JPG, PNG, PDF, DICOM; kiểm magic byte, tối đa 15 MB) kèm loại, thư mục, lượt khám, ghi chú',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: patientDocPatientParams,
+    body: {
+      content: {
+        'multipart/form-data': {
+          schema: z.object({
+            file: z.string().openapi({ format: 'binary', description: 'Tệp JPG, PNG, PDF hoặc DICOM' }),
+            category: z.enum(['PARACLINICAL', 'CLINICAL_PHOTO', 'CONTRACT', 'OTHER']),
+            folderId: z.string().uuid().optional(),
+            encounterId: z.string().uuid().optional(),
+            note: z.string().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: { 200: jsonResponse('Tải lên thành công', envelope(patientDocumentSchema)), ...documentErrors },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/patients/{patientId}/documents/{documentId}',
+  tags: ['patient-document'],
+  summary: 'Sửa tên hiển thị, loại, thư mục, lượt khám, ghi chú của tệp tải tay (kèm version); tệp tham chiếu chỉ đọc',
+  security: [{ bearerAuth: [] }],
+  request: { params: patientDocumentParams, body: { content: { 'application/json': { schema: updatePatientDocumentRequestSchema } } } },
+  responses: { 200: jsonResponse('Sửa thành công', envelope(z.object({ ok: z.boolean() }))), ...documentErrors },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/patients/{patientId}/documents/{documentId}',
+  tags: ['patient-document'],
+  summary: 'Xoá mềm tệp (bắt buộc ?reason= và ?version=); tệp trên đĩa giữ nguyên',
+  security: [{ bearerAuth: [] }],
+  request: { params: patientDocumentParams, query: removePatientDocumentQuerySchema },
+  responses: { 200: jsonResponse('Xoá thành công', envelope(z.object({ removed: z.boolean() }))), ...documentErrors },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/patients/{patientId}/documents/folders',
+  tags: ['patient-document'],
+  summary: 'Tạo thư mục tự tạo (tên không trùng, không phân biệt hoa thường)',
+  security: [{ bearerAuth: [] }],
+  request: { params: patientDocPatientParams, body: { content: { 'application/json': { schema: createPatientDocumentFolderRequestSchema } } } },
+  responses: { 200: jsonResponse('Tạo thành công', envelope(patientDocumentFolderSchema)), ...documentErrors },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/patients/{patientId}/documents/folders/{folderId}',
+  tags: ['patient-document'],
+  summary: 'Đổi tên thư mục (kèm version)',
+  security: [{ bearerAuth: [] }],
+  request: { params: patientDocumentFolderParams, body: { content: { 'application/json': { schema: renamePatientDocumentFolderRequestSchema } } } },
+  responses: { 200: jsonResponse('Đổi tên thành công', envelope(z.object({ ok: z.boolean() }))), ...documentErrors },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/patients/{patientId}/documents/folders/{folderId}',
+  tags: ['patient-document'],
+  summary: 'Xoá mềm thư mục trống (kèm ?version=); thư mục còn tệp trả 409',
+  security: [{ bearerAuth: [] }],
+  request: { params: patientDocumentFolderParams, query: removePatientDocumentFolderQuerySchema },
+  responses: { 200: jsonResponse('Xoá thành công', envelope(z.object({ removed: z.boolean() }))), ...documentErrors },
 });
 
 const generator = new OpenApiGeneratorV31(registry.definitions);

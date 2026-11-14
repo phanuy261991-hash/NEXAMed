@@ -209,6 +209,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
         const deleted = await prisma.prescription.deleteMany({ where: { tenantId: { in: tenantIds }, id: { notIn: referencedIds } } });
         if (deleted.count === 0) break;
       }
+      // patient_document (#299) tham chiếu encounter/patient/folder (FK RESTRICT) — xoá tệp rồi thư mục trước encounter và patient.
+      await prisma.patientDocument.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.patientDocumentFolder.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.encounter.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // appointment tham chiếu patient/user_account (FK RESTRICT, S2-05) — phải xoá trước cả hai.
       await prisma.appointment.deleteMany({ where: { tenantId: { in: tenantIds } } });

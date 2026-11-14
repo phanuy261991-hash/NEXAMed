@@ -379,3 +379,27 @@ Chủ dự án yêu cầu một nơi tổng hợp phim chụp, ảnh lâm sàng 
 8. **Quy tắc thường trực**: tab là nơi tổng hợp DUY NHẤT của mọi hình ảnh/tài liệu gắn bệnh nhân. Chức năng làm sau có lưu file gắn bệnh nhân (nút "Đính ảnh" trong màn khám, gói Nha khoa/Sản khoa, DICOM/PACS, hợp đồng viện phí, phiếu đồng ý, giấy chuyển tuyến…) phải gộp về tab bằng một service dùng chung.
 
 **Chưa làm / ngoài mockup**: toàn bộ code (GĐ1 nền, GĐ2 gộp cận lâm sàng + nạp bù, GĐ3 ảnh thu nhỏ/lọc/công tắc/tài liệu); nút "Đính ảnh" trong màn khám; trình xem DICOM; gói Nha khoa. Cần ERD (`docs/ERD-2.md`), nhãn nhật ký tiếng Việt (#213), quyền mới + `db:seed`, 4 câu hỏi chi nhánh (#231) và test cô lập tenant B + chi nhánh khác khi build.
+
+## 299 bổ sung 1 — Giai đoạn 1 đã làm; chỗ khác mockup (14/11/2026)
+
+Đã làm đủ 12 màn của giai đoạn 1 (mockup màn 1–12; màn 13 Cấu hình chung là giai đoạn 3). Kỹ thuật: `apps/web` chỉ import KIỂU từ `@nexamed/shared` nên hằng khai lại ở `features/patient-document/patient-document-constants.ts`, `patient-document-constants-drift.spec.ts` (ở API) giữ hai bản khớp nhau. Tải lên dùng XMLHttpRequest để có tiến độ từng tệp.
+
+**Chỗ khác mockup, cần chủ dự án xem**
+1. Hộp xoá tệp dùng `ReasonConfirmDialog` dùng chung nên nút trái là "Đóng" (mockup "Huỷ").
+2. Nút "Chuyển" ở xem lớn và mục "Chuyển thư mục" ở menu dòng mở CÙNG hộp "Sửa thông tin tệp" (mockup chỉ vẽ hộp Sửa, có ô Thư mục).
+3. PDF xem bằng trình xem PDF của trình duyệt trong khung; nhãn "trang 1/2" ở mockup không có.
+4. Thư mục tự tạo thêm nút "Xoá thư mục" cạnh "Đổi tên" (mockup có hộp xoá nhưng không vẽ chỗ bấm).
+5. ~~Ảnh lớn hơn 15 MB báo lỗi~~ — chủ dự án chọn TỰ THU NHỎ (14/11/2026), xem bổ sung 2.
+6. Hình thu nhỏ hiện đang là chính ảnh gốc (tải lười); ảnh thu nhỏ riêng làm ở giai đoạn 3.
+7. ~~Tải tệp chưa nằm trong cơ chế `Idempotency-Key`~~ — chủ dự án yêu cầu bổ sung (14/11/2026), xem bổ sung 2.
+8. Mất mạng khi tải lên hiện hộp lỗi hệ thống dùng chung, dòng tệp lỗi giữ nguyên trong hộp tải lên (đã kiểm Chrome thật).
+
+## 299 bổ sung 2 — Tự thu nhỏ ảnh lớn, chống ghi trùng khi tải tệp, không trùng tên tệp (14/11/2026)
+
+Chủ dự án chốt ba việc sau khi xem giai đoạn 1.
+
+1. **Ảnh JPG/PNG vượt 15 MB tự thu nhỏ ở trình duyệt** (`shrink-image.ts`): vẽ lại bằng canvas, lưu JPEG, thử từ nhẹ đến mạnh (cạnh dài tối đa 4096 px, chất lượng 0,85 rồi 0,7, rồi giảm kích thước ×0,8) tới khi nhỏ hơn 90% giới hạn; dòng tệp hiện "(đã thu nhỏ từ 16,0 MB)" và đổi đuôi .jpg, nút Tải lên khoá trong lúc đang thu nhỏ. PDF, DICOM vượt 15 MB và ảnh không giải mã được vẫn báo lỗi ngay tại dòng. Chạy được ở HTTP LAN (chỉ canvas + `createImageBitmap`).
+2. **Tải tệp có khoá chống ghi trùng** (mở rộng #257): interceptor toàn cục bỏ qua multipart vì chưa đọc được tệp, nên `PatientDocumentService.uploadOnce` tự giữ khoá SAU khi tệp tới handler; vân tay = bệnh nhân + người gửi + chi nhánh + mã băm nội dung tệp + các trường kèm theo. Cùng khoá và cùng nội dung gửi lại (mạng đứt sau khi máy chủ đã ghi) trả đúng kết quả cũ, không ghi tệp thứ hai; cùng khoá khác nội dung bị từ chối; lỗi nghiệp vụ nhả khoá. Giao diện gắn `Idempotency-Key` vào từng lần tải, giữ khoá cũ khi nội dung không đổi (gửi lại sau mất mạng), đổi khoá khi người dùng sửa loại/thư mục/lượt khám/ghi chú hoặc khi máy chủ đã từ chối (4xx). `IdempotencyModule` nay export `IdempotencyService`. Nhờ vậy câu "Bấm lại là an toàn" của hộp lỗi hệ thống đúng với tải lên.
+3. **Không cho trùng tên tệp trong cùng bệnh nhân**: không phân biệt hoa thường, chỉ tính tệp TẢI TAY chưa xoá mềm (xoá rồi dùng lại được tên; hồ sơ khác dùng cùng tên được; dòng tham chiếu từ nơi khác ở giai đoạn 2 không tham gia). Kiểm ở tải lên và đổi tên (409 `PATIENT_DOCUMENT_NAME_TAKEN`, câu lỗi nêu tên tệp), có chỉ mục duy nhất một phần `patient_document_upload_name_key` (migration `20261114100000_patient_document_name_unique`) chặn cả khi hai yêu cầu chạy song song. Gộp hồ sơ: tệp nguồn trùng tên ở hồ sơ đích được thêm hậu tố "(từ hồ sơ gộp)" thay vì làm hỏng lần gộp.
+
+**Kiểm**: API 26 ca của module + 3 ca đột biến bị bắt (bỏ phát lại khoá, bỏ đổi tên khi gộp, bỏ kiểm trùng khi đổi tên); web +4 (`shrink-image`); Chrome IP LAN `patient-document-check.cjs` 32/32 (ảnh nhiễu 17 MB tự thu nhỏ còn 3,9 MB, trùng tên báo ngay tại dòng, cắt phản hồi sau khi máy chủ đã ghi rồi gửi lại → chỉ MỘT tệp).

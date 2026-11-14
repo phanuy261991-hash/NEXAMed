@@ -7,6 +7,7 @@ import { StorageHttpModule } from './infrastructure/storage/storage-http.module'
 import { CommonModule } from './common/common.module';
 import { IamModule } from './modules/iam/iam.module';
 import { PatientModule } from './modules/patient/patient.module';
+import { PatientDocumentModule } from './modules/patient-document/patient-document.module';
 import { PatientMergeModule } from './modules/patient/patient-merge.module';
 import { AppointmentModule } from './modules/appointment/appointment.module';
 import { ClinicModule } from './modules/clinic/clinic.module';
@@ -71,6 +72,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     CommonModule,
     IamModule,
     PatientModule,
+    PatientDocumentModule,
     PatientMergeModule,
     AppointmentModule,
     ClinicModule,

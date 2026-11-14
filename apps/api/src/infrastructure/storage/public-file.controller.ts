@@ -10,6 +10,8 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
   png: 'image/png',
   // Kết quả xét nghiệm đối tác nhận về dạng PDF (docs/DECISIONS.md #291).
   pdf: 'application/pdf',
+  // Hình ảnh & Tài liệu của bệnh nhân (#299): tệp DICOM chỉ lưu và tải về.
+  dcm: 'application/dicom',
 };
 
 /**

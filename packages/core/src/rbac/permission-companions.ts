@@ -33,6 +33,11 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'dashboard.cashier': ['cashier_shift.read'],
   // "Hẹn tái khám": ghi lần nhắc cần xem danh sách. "Khách không làm dịch vụ" là nút trên phiếu thu nên cần xem được phiếu.
   'follow_up.remind': ['follow_up.read'],
+  // Hình ảnh & Tài liệu (#299): tải lên/xoá chỉ có ích khi xem được danh sách của nhóm đó.
+  'patient_document.upload': ['patient_document.read'],
+  'patient_document.delete': ['patient_document.read'],
+  'patient_contract.upload': ['patient_contract.read'],
+  'patient_contract.delete': ['patient_contract.read'],
   'invoice.cancel_service': ['invoice.read'],
   // Nhà cung cấp & đối tác xét nghiệm (#291): sửa/thêm cần xem danh sách.
   'supplier.create': ['supplier.read'],

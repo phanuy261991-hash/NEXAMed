@@ -155,6 +155,8 @@ model Tenant {
   patientAllergens            PatientAllergen[]
   patientConditions           PatientCondition[]
   insuranceCards              InsuranceCard[]
+  patientDocuments            PatientDocument[]
+  patientDocumentFolders      PatientDocumentFolder[]
   followUpReminders           FollowUpReminder[]
   serviceConsumptionNorms     ServiceConsumptionNorm[]
   patientFamilyHistories      PatientFamilyHistory[]
@@ -1408,6 +1410,8 @@ model Patient {
   conditions        PatientCondition[]
   // Thẻ BHYT (S2-04, #243) — nhiều thẻ mỗi bệnh nhân, dùng chung cả công ty.
   insuranceCards    InsuranceCard[]
+  documents         PatientDocument[]
+  documentFolders   PatientDocumentFolder[]
   familyHistoryRows PatientFamilyHistory[]
   // Ví tạm ứng — 1 ví/bệnh nhân, `null` nếu chưa từng nạp lần nào (xem model PatientWallet).
   wallet            PatientWallet?
@@ -1566,6 +1570,7 @@ enum ClinicalNoteSection {
 // 6 giá trị theo state machine đã chốt (packages/core/src/encounter/encounter-state-machine.ts)
 // dù SCHEDULED/NO_SHOW hiện chưa có luồng nào ghi tới cho riêng bảng này.
 model Encounter {
+  patientDocuments PatientDocument[]
   id                    String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId              String          @map("tenant_id") @db.Uuid
   patientId             String          @map("patient_id") @db.Uuid
@@ -5421,6 +5426,7 @@ model PlatformAuditLog {
 // không thấy khái niệm này trên giao diện. `code` tự sinh qua CodeSequenceRepository (prefix "CN"), không nhập tay.
 // Đúng 1 dòng `is_default` mỗi tenant — partial unique index raw SQL trong migration (Prisma không biểu diễn được).
 model Branch {
+  patientDocuments PatientDocument[]
   id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId     String  @map("tenant_id") @db.Uuid
   code         String
@@ -5799,4 +5805,91 @@ model ServiceConsumptionNorm {
 
   @@unique([tenantId, id])
   @@map("service_consumption_norm")
+}
+
+// Tab "Hình ảnh & Tài liệu" của hồ sơ bệnh nhân (docs/DECISIONS.md #299, docs/product/patient-documents-plan.md). Nơi tổng hợp DUY NHẤT mọi hình ảnh/tài liệu gắn bệnh nhân.
+// Tệp nằm ngoài DB (StoragePort, khoá `patient/<patientId>/documents/<uuid>.<ext>`); bảng chỉ giữ khoá lưu + thông tin hiển thị. Thư mục là THƯ MỤC ẢO: thư mục "ngày" không có bản ghi
+// (nhóm lúc đọc theo `upload_date`, giờ Việt Nam), chỉ thư mục tự tạo có bảng riêng. Dữ liệu đi theo BỆNH NHÂN nên xem được ở mọi chi nhánh; `branch_id` chỉ ghi nơi tải lên.
+// `source_type` UPLOAD = tải tay; các loại khác (giai đoạn 2) là dòng THAM CHIẾU chỉ đọc cùng `storage_key` với tệp gốc ở module khác, không nhân đôi tệp.
+enum PatientDocumentCategory {
+  PARACLINICAL
+  CLINICAL_PHOTO
+  CONTRACT
+  OTHER
+
+  @@map("patient_document_category")
+}
+
+enum PatientDocumentSource {
+  UPLOAD
+  PARACLINICAL_IMAGE
+  LAB_PARTNER_RESULT
+  INSURANCE_CARD
+  PATIENT_PHOTO
+
+  @@map("patient_document_source")
+}
+
+model PatientDocument {
+  id          String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String                  @map("tenant_id") @db.Uuid
+  patientId   String                  @map("patient_id") @db.Uuid
+  branchId    String                  @map("branch_id") @db.Uuid
+  folderId    String?                 @map("folder_id") @db.Uuid
+  encounterId String?                 @map("encounter_id") @db.Uuid
+  category    PatientDocumentCategory
+  sourceType  PatientDocumentSource   @default(UPLOAD) @map("source_type")
+  sourceId    String?                 @map("source_id") @db.Uuid
+  storageKey  String                  @map("storage_key")
+  fileName    String                  @map("file_name")
+  displayName String                  @map("display_name")
+  contentType String                  @map("content_type")
+  sizeBytes   Int                     @map("size_bytes")
+  sha256      String?
+  note        String?
+  uploadedAt  DateTime                @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  /// Ngày tải lên theo lịch Việt Nam (server tính 1 lần bằng hàm ngày dùng chung) — khoá nhóm thư mục "ngày".
+  uploadDate  DateTime                @map("upload_date") @db.Date
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant                 @relation(fields: [tenantId], references: [id])
+  patient   Patient                @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  branch    Branch                 @relation(fields: [tenantId, branchId], references: [tenantId, id])
+  folder    PatientDocumentFolder? @relation(fields: [tenantId, folderId], references: [tenantId, id])
+  encounter Encounter?             @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("patient_document")
+}
+
+/// Thư mục tự tạo của MỘT bệnh nhân (không lồng nhau). Tên không phân biệt hoa thường, duy nhất trong cùng bệnh nhân (chỉ mục riêng ở migration).
+model PatientDocumentFolder {
+  id        String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  patientId String @map("patient_id") @db.Uuid
+  name      String
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id])
+  patient   Patient           @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  documents PatientDocument[]
+
+  @@unique([tenantId, id])
+  @@map("patient_document_folder")
 }

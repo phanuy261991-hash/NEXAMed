@@ -18,6 +18,10 @@ Biến môi trường: `UI_AUDIT_EXTRA` (thêm trang cần dữ liệu riêng, d
 ## Phạm vi chưa phủ
 Tab/pill con trong trang, hộp thoại, trạng thái có dữ liệu lớn, trang cần dữ liệu riêng chưa có ở tenant dev.
 
+## Tab Hình ảnh & Tài liệu (#299, 14/11/2026)
+
+- `patient-document-check.cjs` — rỗng, tải lên nhiều tệp (kể cả tệp quá 15 MB), xem theo ngày/theo loại, thư mục tự tạo, xem lớn, xoá có lý do, lỗi tải danh sách, mất mạng khi tải lên, lễ tân chỉ thấy hợp đồng và giấy tờ. Cũng kiểm ảnh lớn tự thu nhỏ, trùng tên tệp và gửi lại sau mất mạng (không tạo tệp thứ hai). Kỳ vọng 32/32. Dữ liệu thử tiền tố KIEMTAILIEU.
+
 ## Kiểm các trạng thái lỗi (#255, thêm 23/10/2026)
 
 - `error-states.cjs` — URL lạ, lưu gặp 503/mất mạng (hộp thông báo, dữ liệu form còn nguyên), lỗi nghiệp vụ 409 hiện tại chỗ, thông điệp tiếng Anh của máy chủ bị thay, hết phiên, mã khởi động hỏng → khung báo tĩnh. Kỳ vọng 15/15.

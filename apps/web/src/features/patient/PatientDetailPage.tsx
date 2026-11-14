@@ -27,8 +27,9 @@ import { PatientWalletTab } from '../patient-wallet/PatientWalletTab';
 import { PatientEncounterHistoryTab } from './PatientEncounterHistoryTab';
 import { PatientParaclinicalResultsTab, useCanSeePatientParaclinicalTab } from './PatientParaclinicalResultsTab';
 import { PatientMedicalRecordTab } from '../medical-record/PatientMedicalRecordTab';
+import { PatientDocumentsTab } from '../patient-document/PatientDocumentsTab';
 
-type ProfileTabId = 'info' | 'wallet' | 'record' | 'history' | 'cls';
+type ProfileTabId = 'info' | 'wallet' | 'record' | 'history' | 'cls' | 'documents';
 
 const TABS: { id: ProfileTabId; label: string; comingSoon: boolean }[] = [
   { id: 'info', label: 'Thông tin cá nhân', comingSoon: false },
@@ -36,6 +37,7 @@ const TABS: { id: ProfileTabId; label: string; comingSoon: boolean }[] = [
   { id: 'record', label: 'Hồ sơ bệnh án', comingSoon: false },
   { id: 'history', label: 'Lịch sử khám', comingSoon: false },
   { id: 'cls', label: 'Kết quả cận lâm sàng', comingSoon: false },
+  { id: 'documents', label: 'Hình ảnh & Tài liệu', comingSoon: false },
 ];
 
 /**
@@ -56,7 +58,13 @@ export function PatientDetailPage() {
   const canSeeParaclinicalTab = useCanSeePatientParaclinicalTab();
   // Tab "Hồ sơ bệnh án" (#269) là dữ liệu lâm sàng đầy đủ của từng lượt khám: chỉ người có quyền xem hồ sơ khám (`encounter.read_clinical`) thấy — lễ tân không thấy, máy chủ cũng chặn.
   const canSeeMedicalRecordTab = useHasPermission('encounter', 'read_clinical');
-  const visibleTabs = TABS.filter((tab) => (tab.id !== 'cls' || canSeeParaclinicalTab) && (tab.id !== 'record' || canSeeMedicalRecordTab));
+  // Tab "Hình ảnh & Tài liệu" (#299): hiện khi có MỘT trong hai nhóm quyền xem (tệp lâm sàng / hợp đồng và giấy tờ); máy chủ lọc loại tệp theo từng nhóm.
+  const canReadClinicalDocuments = useHasPermission('patient_document', 'read');
+  const canReadContractDocuments = useHasPermission('patient_contract', 'read');
+  const canSeeDocumentsTab = canReadClinicalDocuments || canReadContractDocuments;
+  const visibleTabs = TABS.filter(
+    (tab) => (tab.id !== 'cls' || canSeeParaclinicalTab) && (tab.id !== 'record' || canSeeMedicalRecordTab) && (tab.id !== 'documents' || canSeeDocumentsTab),
+  );
 
   const [activeTab, setActiveTab] = useState<ProfileTabId>('info');
   const [editing, setEditing] = useState(false);
@@ -189,6 +197,7 @@ export function PatientDetailPage() {
       {activeTab === 'record' && canSeeMedicalRecordTab && <PatientMedicalRecordTab patient={patient} />}
       {activeTab === 'history' && <PatientEncounterHistoryTab patientId={patient.id} mergedIntoId={patient.mergedIntoId} />}
       {activeTab === 'cls' && canSeeParaclinicalTab && <PatientParaclinicalResultsTab patientId={patient.id} />}
+      {activeTab === 'documents' && canSeeDocumentsTab && <PatientDocumentsTab patientId={patient.id} patientName={patient.fullName} merged={merged} />}
 
       <PatientHistoryDialog
         open={historyDialogOpen}

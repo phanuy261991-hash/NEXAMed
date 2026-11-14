@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PatientModule } from './patient.module';
 import { EncounterModule } from '../encounter/encounter.module';
+import { PatientDocumentModule } from '../patient-document/patient-document.module';
 import { PatientMergeController } from './patient-merge.controller';
 import { PatientMergeService } from './patient-merge.service';
 
@@ -13,7 +14,7 @@ import { PatientMergeService } from './patient-merge.service';
  * và `EncounterRepository` (đã export từ `EncounterModule`).
  */
 @Module({
-  imports: [PatientModule, EncounterModule],
+  imports: [PatientModule, EncounterModule, PatientDocumentModule],
   controllers: [PatientMergeController],
   providers: [PatientMergeService],
 })

@@ -107,6 +107,12 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   INTEROP_SEND_DISABLED: HttpStatus.CONFLICT,
   // Thẻ BHYT (S2-04, #243) — công tắc "Áp dụng BHYT" tắt là xung đột trạng thái cấu hình (409), khuôn INTEROP_SEND_DISABLED.
   INSURANCE_DISABLED: HttpStatus.CONFLICT,
+  // Hình ảnh & Tài liệu của bệnh nhân (#299): tệp sai định dạng/vượt dung lượng là 400; trùng tên thư mục, thư mục còn tệp, tệp tham chiếu chỉ đọc là xung đột trạng thái (409).
+  PATIENT_DOCUMENT_INVALID_FILE: HttpStatus.BAD_REQUEST,
+  PATIENT_DOCUMENT_FOLDER_NAME_TAKEN: HttpStatus.CONFLICT,
+  PATIENT_DOCUMENT_NAME_TAKEN: HttpStatus.CONFLICT,
+  PATIENT_DOCUMENT_FOLDER_NOT_EMPTY: HttpStatus.CONFLICT,
+  PATIENT_DOCUMENT_READ_ONLY: HttpStatus.CONFLICT,
   // "Dùng Hẹn tái khám" tắt (#285) — xung đột trạng thái cấu hình (409), cùng khuôn INSURANCE_DISABLED.
   FOLLOW_UP_DISABLED: HttpStatus.CONFLICT,
   // "Gửi mẫu đối tác" (#291) — công tắc tắt / đối tác còn giá trả là xung đột trạng thái (409).

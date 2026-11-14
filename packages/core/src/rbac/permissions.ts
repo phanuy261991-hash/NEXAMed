@@ -84,6 +84,14 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'pharmacy_report', action: 'read', description: 'Xem và xuất báo cáo Thuốc và vật tư (đã phát, lãi gộp, kiểm soát đặc biệt)' },
   { module: 'operations_report', action: 'read', description: 'Xem và xuất báo cáo Khám bệnh và vận hành (sổ khám bệnh, giờ cao điểm, thời gian chờ, huỷ và không đến, tái khám, nguồn đặt lịch)' },
   // Trang "Hẹn tái khám" (#285): `read` xem danh sách (lễ tân/quản trị toàn bộ, bác sĩ chỉ hẹn của lượt khám do mình khám — vì `encounter.read` của bác sĩ là global nên cần quyền riêng); `remind` ghi lần nhắc.
+  // Tab "Hình ảnh & Tài liệu" của hồ sơ bệnh nhân (#299). Hai nhóm quyền độc lập: `patient_document` cho tệp LÂM SÀNG (kết quả cận lâm sàng, ảnh lâm sàng, loại khác),
+  // `patient_contract` cho HỢP ĐỒNG VÀ GIẤY TỜ dịch vụ (lễ tân/thu ngân tải được hợp đồng nhưng không xem ảnh lâm sàng). Sửa tên/ghi chú/chuyển thư mục dùng quyền `upload` của nhóm.
+  { module: 'patient_document', action: 'read', description: 'Xem hình ảnh và tài liệu lâm sàng của bệnh nhân (kết quả cận lâm sàng, ảnh lâm sàng, loại khác)' },
+  { module: 'patient_document', action: 'upload', description: 'Tải lên, sửa thông tin và xếp thư mục cho hình ảnh, tài liệu lâm sàng' },
+  { module: 'patient_document', action: 'delete', description: 'Xoá hình ảnh, tài liệu lâm sàng của bệnh nhân' },
+  { module: 'patient_contract', action: 'read', description: 'Xem hợp đồng và giấy tờ dịch vụ của bệnh nhân' },
+  { module: 'patient_contract', action: 'upload', description: 'Tải lên, sửa thông tin và xếp thư mục cho hợp đồng, giấy tờ dịch vụ' },
+  { module: 'patient_contract', action: 'delete', description: 'Xoá hợp đồng, giấy tờ dịch vụ của bệnh nhân' },
   { module: 'follow_up', action: 'read', description: 'Xem danh sách Hẹn tái khám' },
   { module: 'follow_up', action: 'remind', description: 'Ghi lần nhắc hẹn tái khám (đã gọi, không nghe máy...)' },
   // Chi phí vật tư theo dịch vụ (#297 GĐ4): `read` xem vật tư/thuốc đã ghi (tên + số lượng, KHÔNG giá vốn); `record` người thực hiện dịch vụ ghi tiêu hao; `reverse` đảo phiếu + hoàn kho; `norm` khai định mức trong form dịch vụ; `report` xem giá vốn + báo cáo (chỉ quản lý).
@@ -397,6 +405,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Tổng quan thu ngân (#283) — lễ tân là thu ngân chính nên thấy bản này làm trang chủ; số liệu theo chi nhánh/ngày, không phải "của riêng mình" nên 'global'.
     'dashboard.cashier': 'global',
     'dashboard.reception': 'global',
+    // Hình ảnh & Tài liệu (#299): lễ tân/thu ngân xử lý hợp đồng và giấy tờ, không xem ảnh lâm sàng.
+    'patient_contract.read': 'global',
+    'patient_contract.upload': 'global',
+    'patient_contract.delete': 'global',
     // Hẹn tái khám (#285): lễ tân là người gọi nhắc.
     'follow_up.read': 'global',
     'follow_up.remind': 'global',
@@ -432,6 +444,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'result_template.read': 'global',
   },
   nurse: {
+    // Hình ảnh & Tài liệu (#299): điều dưỡng xem và tải lên tệp lâm sàng.
+    'patient_document.read': 'global',
+    'patient_document.upload': 'global',
     'service_consumption.read': 'global',
     'service_consumption.record': 'global',
     'patient.read': 'global',
@@ -503,6 +518,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'appointment.cancel': 'personal',
     'encounter.read': 'global',
     'encounter.read_clinical': 'global',
+    // Hình ảnh & Tài liệu (#299): bác sĩ xem, tải lên và xoá tệp lâm sàng.
+    'patient_document.read': 'global',
+    'patient_document.upload': 'global',
+    'patient_document.delete': 'global',
     // Hẹn tái khám (#285): bác sĩ chỉ thấy hẹn của lượt khám do chính mình khám.
     'follow_up.read': 'personal',
     // Trang Tổng quan của bác sĩ (#286): máy chủ luôn lọc theo CHÍNH bác sĩ đăng nhập, nên phạm vi chỉ mang tính khai báo (cùng các Tổng quan khác).
@@ -604,6 +623,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'quality_report.read': 'global',
     'patient_report.read': 'global',
     'pharmacy_report.read': 'global',
+    // Hình ảnh & Tài liệu (#299): quản lý có cả hai nhóm quyền.
+    'patient_document.read': 'global',
+    'patient_document.upload': 'global',
+    'patient_document.delete': 'global',
+    'patient_contract.read': 'global',
+    'patient_contract.upload': 'global',
+    'patient_contract.delete': 'global',
     // Hẹn tái khám (#285).
     'follow_up.read': 'global',
     'follow_up.remind': 'global',

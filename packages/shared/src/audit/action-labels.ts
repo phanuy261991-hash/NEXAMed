@@ -139,6 +139,13 @@ const ACTION_LABELS: Record<string, string> = {
   'insurance_card.updated': 'Sửa thẻ BHYT',
   'insurance_card.removed': 'Xoá thẻ BHYT',
   'insurance_card.photo_updated': 'Đổi ảnh thẻ BHYT',
+  // Hình ảnh & Tài liệu của bệnh nhân (#299) — nhật ký không ghi tên tệp
+  'patient_document.uploaded': 'Tải lên hình ảnh, tài liệu bệnh nhân',
+  'patient_document.updated': 'Sửa thông tin hình ảnh, tài liệu bệnh nhân',
+  'patient_document.removed': 'Xoá hình ảnh, tài liệu bệnh nhân',
+  'patient_document_folder.created': 'Tạo thư mục hình ảnh, tài liệu',
+  'patient_document_folder.renamed': 'Đổi tên thư mục hình ảnh, tài liệu',
+  'patient_document_folder.removed': 'Xoá thư mục hình ảnh, tài liệu',
   'encounter.viewed': 'Xem hồ sơ khám',
 
   // drug

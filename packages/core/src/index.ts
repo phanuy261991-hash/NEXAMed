@@ -41,6 +41,7 @@ export * from './report/system-report-math';
 export * from './follow-up/follow-up-status';
 export * from './specialty/registry';
 export * from './storage/sniff-image-extension';
+export * from './storage/sniff-document-kind';
 export * from './encounter/encounter-state-machine';
 export * from './encounter/shift-summary';
 export * from './encounter/follow-up-date';

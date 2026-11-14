@@ -10,6 +10,8 @@
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   patient: 'Bệnh nhân',
   insurance_card: 'Thẻ BHYT',
+  patient_document: 'Hình ảnh, tài liệu bệnh nhân',
+  patient_document_folder: 'Thư mục hình ảnh, tài liệu',
   encounter: 'Lượt khám',
   invoice: 'Phiếu thu',
   invoice_refund: 'Phiếu hoàn tiền',

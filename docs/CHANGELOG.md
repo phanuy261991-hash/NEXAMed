@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 14/11/2026 — Tab "Hình ảnh & Tài liệu" ở hồ sơ bệnh nhân, giai đoạn 1 (`docs/DECISIONS.md` #299, mockup đã chốt)
+
+- **Máy chủ**: module `patient-document` — tải lên MỘT tệp mỗi lần (JPG, PNG, PDF, DICOM; kiểm magic byte, tối đa 15 MB), danh sách mới nhất trước phân trang bằng con trỏ kèm tổng quan/thư mục/quyền của người xem, sửa tên/loại/thư mục/lượt khám/ghi chú (khoá lạc quan), xoá mềm bắt buộc lý do, thư mục tự tạo (tên không trùng, chỉ xoá được thư mục trống). Tệp lưu ở `patient/<id>/documents/`, thư mục "ngày" tính theo giờ Việt Nam. Hai nhóm quyền độc lập: `patient_document.*` (tệp lâm sàng) và `patient_contract.*` (hợp đồng và giấy tờ — lễ tân tải/xem được, không thấy ảnh lâm sàng). Gộp hồ sơ bệnh nhân chuyển cả tệp và thư mục. Nhật ký có nhãn tiếng Việt, không ghi tên tệp.
+- **Web**: tab "Hình ảnh & Tài liệu" ở hồ sơ bệnh nhân — hai kiểu xem Theo ngày/Theo loại, thư mục tự tạo, bảng tệp (cột Chi nhánh khi công ty nhiều chi nhánh), hộp tải lên (nhiều tệp, kéo thả, Chụp ảnh, tiến độ và lỗi riêng từng tệp), xem lớn + chi tiết tệp, sửa, xoá có lý do, đổi tên/xoá thư mục, trạng thái rỗng/đang tải/lỗi.
+- **Kiểm**: API 19 ca (cô lập công ty khác và chi nhánh khác, hai nhóm quyền, magic byte, phân trang, khoá lạc quan, gộp hồ sơ), core +5, shared +3, web +8; Chrome thật qua IP LAN `scripts/ui-audit/patient-document-check.cjs` 28/28. Cần `db:deploy` (migration `20261113120000_patient_document`) + `db:seed` rồi khởi động lại API.
+- **Bổ sung cùng ngày**: ảnh JPG/PNG quá 15 MB tự thu nhỏ ở trình duyệt; tải tệp có khoá chống ghi trùng (gửi lại sau mất mạng không tạo tệp thứ hai); không cho trùng tên tệp trong cùng bệnh nhân (migration `20261114100000_patient_document_name_unique`, gộp hồ sơ tự thêm hậu tố "(từ hồ sơ gộp)"). Chrome IP LAN 32/32. Cần `db:deploy`.
+- **Chưa làm** (giai đoạn sau): tự gộp ảnh/PDF cận lâm sàng + thẻ BHYT + ảnh đại diện, ảnh thu nhỏ, công tắc + dung lượng đã dùng ở Cấu hình chung.
+
 ## 13/11/2026 (phần 3) — Rà soát và làm cho đúng 16 màn mockup Yêu cầu cấp hàng / Đơn đặt hàng NCC (`docs/DECISIONS.md` #298 bổ sung 4)
 
 - **Danh sách Yêu cầu cấp hàng**: cột "Tiến độ cấp", cột "Người xin" và "Việc cần làm" (Tiếp nhận/Cấp tiếp/Xử lý ngay ở hàng), dải đếm kiểu mockup, dải vàng nói rõ việc cần làm, tìm theo mặt hàng, lọc theo kho xin, màu trạng thái theo mockup.
