@@ -117,6 +117,8 @@ const LOGIN_ONLY_ROUTES = new Set<string>([
   'GET /api/v1/clinic-settings/follow-up-enabled',
   'GET /api/v1/clinic-settings/lab-partner-enabled',
   'GET /api/v1/clinic-settings/stock-request-enabled',
+  // "Dùng Hình ảnh & Tài liệu" (#299 giai đoạn 3): mọi nhân viên mở hồ sơ bệnh nhân cần biết công tắc để web ẩn/hiện tab.
+  'GET /api/v1/clinic-settings/patient-documents-enabled',
   'GET /api/v1/clinic-settings/purchase-order-settings',
   'GET /api/v1/clinic-settings/cashier-shift-blind-close-enabled',
   'GET /api/v1/clinic-profile/print-header',

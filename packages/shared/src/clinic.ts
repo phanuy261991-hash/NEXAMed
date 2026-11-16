@@ -381,6 +381,11 @@ export const clinicSettingsSchema = z.object({
    */
   stockRequestEnabled: z.boolean(),
   /**
+   * "Dùng Hình ảnh & Tài liệu" (docs/DECISIONS.md #299 giai đoạn 3) — công tắc chung cả công ty, BẬT (mặc định). TẮT: ẩn tab "Hình ảnh & Tài liệu" ở hồ sơ bệnh nhân, máy chủ từ chối các API của tab (409);
+   * tệp đã tải giữ nguyên, bật lại là thấy đủ.
+   */
+  patientDocumentsEnabled: z.boolean(),
+  /**
    * Đơn đặt hàng NCC (docs/DECISIONS.md #298 giai đoạn 2) — 3 công tắc chung cả công ty: chi nhánh phụ có được đặt hàng NCC riêng không (BẬT mặc định), đơn của chi nhánh phụ có cần chi nhánh chính duyệt không (TẮT mặc định),
    * có cho nhận vượt số đặt không (TẮT mặc định, chặn).
    */
@@ -435,6 +440,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   doctorDashboardMoneyEnabled: z.boolean().optional(),
   labPartnerEnabled: z.boolean().optional(),
   stockRequestEnabled: z.boolean().optional(),
+  patientDocumentsEnabled: z.boolean().optional(),
   branchPurchasingEnabled: z.boolean().optional(),
   branchPurchaseNeedsMainApproval: z.boolean().optional(),
   allowOverReceipt: z.boolean().optional(),
@@ -514,6 +520,8 @@ export const DEFAULT_DOCTOR_DASHBOARD_MONEY_ENABLED = false;
 export const DEFAULT_LAB_PARTNER_ENABLED = false;
 /** Bật theo mặc định ("Dùng yêu cầu cấp hàng", #298) — chủ dự án chốt 12/11/2026. */
 export const DEFAULT_STOCK_REQUEST_ENABLED = true;
+/** Bật theo mặc định ("Dùng Hình ảnh & Tài liệu", #299) — mockup đã chốt 13/11/2026; phòng khám không dùng chủ động tắt. */
+export const DEFAULT_PATIENT_DOCUMENTS_ENABLED = true;
 /** `GET /clinic-settings/follow-up-enabled` — chiếu tối thiểu tự-phục vụ (lễ tân/bác sĩ không có `clinic_config.read`), khuôn `insuranceStatusSchema`. */
 export const followUpFeatureStatusSchema = z.object({ enabled: z.boolean() });
 export type FollowUpFeatureStatus = z.infer<typeof followUpFeatureStatusSchema>;
@@ -523,6 +531,9 @@ export type LabPartnerFeatureStatus = z.infer<typeof labPartnerFeatureStatusSche
 /** `GET /clinic-settings/stock-request-enabled` — công tắc "Dùng yêu cầu cấp hàng" (#298), chiếu tối thiểu tự-phục vụ. */
 export const stockRequestFeatureStatusSchema = z.object({ enabled: z.boolean() });
 export type StockRequestFeatureStatus = z.infer<typeof stockRequestFeatureStatusSchema>;
+/** `GET /clinic-settings/patient-documents-enabled` — công tắc "Dùng Hình ảnh & Tài liệu" (#299), chiếu tối thiểu tự-phục vụ để web ẩn/hiện tab. */
+export const patientDocumentsFeatureStatusSchema = z.object({ enabled: z.boolean() });
+export type PatientDocumentsFeatureStatus = z.infer<typeof patientDocumentsFeatureStatusSchema>;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

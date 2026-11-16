@@ -3738,6 +3738,7 @@ export interface paths {
                                 doctorDashboardMoneyEnabled: boolean;
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
+                                patientDocumentsEnabled: boolean;
                                 branchPurchasingEnabled: boolean;
                                 branchPurchaseNeedsMainApproval: boolean;
                                 allowOverReceipt: boolean;
@@ -19168,6 +19169,7 @@ export interface paths {
                                 doctorDashboardMoneyEnabled: boolean;
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
+                                patientDocumentsEnabled: boolean;
                                 branchPurchasingEnabled: boolean;
                                 branchPurchaseNeedsMainApproval: boolean;
                                 allowOverReceipt: boolean;
@@ -19292,6 +19294,7 @@ export interface paths {
                         doctorDashboardMoneyEnabled?: boolean;
                         labPartnerEnabled?: boolean;
                         stockRequestEnabled?: boolean;
+                        patientDocumentsEnabled?: boolean;
                         branchPurchasingEnabled?: boolean;
                         branchPurchaseNeedsMainApproval?: boolean;
                         allowOverReceipt?: boolean;
@@ -19375,6 +19378,7 @@ export interface paths {
                                 doctorDashboardMoneyEnabled: boolean;
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
+                                patientDocumentsEnabled: boolean;
                                 branchPurchasingEnabled: boolean;
                                 branchPurchaseNeedsMainApproval: boolean;
                                 allowOverReceipt: boolean;
@@ -20578,6 +20582,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Dùng đối tác xét nghiệm" (#291) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/patient-documents-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Dùng Hình ảnh & Tài liệu" (#299) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
         get: {
             parameters: {
                 query?: never;
@@ -68298,6 +68358,7 @@ export interface paths {
                                     branchId: string;
                                     branchName: string | null;
                                     url: string;
+                                    thumbnailUrl: string | null;
                                     version: number;
                                 }[];
                                 nextCursor: string | null;
@@ -68388,6 +68449,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc "Dùng Hình ảnh & Tài liệu" đang tắt (PATIENT_DOCUMENTS_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
             };
         };
         put?: never;
@@ -68409,6 +68485,11 @@ export interface paths {
                          * @description Tệp JPG, PNG, PDF hoặc DICOM
                          */
                         file: string;
+                        /**
+                         * Format: binary
+                         * @description Tuỳ chọn: ảnh thu nhỏ JPEG ≤ 200 KB do trình duyệt tạo cho tệp ảnh; không đạt thì bị bỏ qua
+                         */
+                        thumbnail?: string;
                         /** @enum {string} */
                         category: "PARACLINICAL" | "CLINICAL_PHOTO" | "CONTRACT" | "OTHER";
                         /** Format: uuid */
@@ -68466,6 +68547,7 @@ export interface paths {
                                 branchId: string;
                                 branchName: string | null;
                                 url: string;
+                                thumbnailUrl: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -68532,7 +68614,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc "Dùng Hình ảnh & Tài liệu" đang tắt (PATIENT_DOCUMENTS_DISABLED) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -68549,6 +68631,80 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient-documents/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dung lượng đã dùng của mọi tệp gắn bệnh nhân trong công ty (tệp tải tay, kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện) + dung lượng ổ chứa kho — Cấu hình chung */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                fileCount: number;
+                                totalBytes: number;
+                                volumeTotalBytes: number | null;
+                                volumeFreeBytes: number | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -68747,7 +68903,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc "Dùng Hình ảnh & Tài liệu" đang tắt (PATIENT_DOCUMENTS_DISABLED) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -68867,7 +69023,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc "Dùng Hình ảnh & Tài liệu" đang tắt (PATIENT_DOCUMENTS_DISABLED) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -68993,7 +69149,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc "Dùng Hình ảnh & Tài liệu" đang tắt (PATIENT_DOCUMENTS_DISABLED) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -69115,7 +69271,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc "Dùng Hình ảnh & Tài liệu" đang tắt (PATIENT_DOCUMENTS_DISABLED) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -69228,7 +69384,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp */
+                /** @description version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc "Dùng Hình ảnh & Tài liệu" đang tắt (PATIENT_DOCUMENTS_DISABLED) */
                 409: {
                     headers: {
                         [name: string]: unknown;

@@ -244,6 +244,12 @@ export interface ClinicConfigReaderPort {
   getStockRequestEnabled(tenantId: string): Promise<boolean>;
 
   /**
+   * "Dùng Hình ảnh & Tài liệu" (#299 giai đoạn 3) — công tắc chung cả công ty, BẬT (mặc định) (`tenant_setting` key `patient_documents_enabled`). Tắt thì máy chủ từ chối mọi API của tab
+   * (409 `PATIENT_DOCUMENTS_DISABLED`); tệp đã tải giữ nguyên. KHÔNG gọi hàm này bên TRONG một transaction đang mở (port mở transaction riêng) — đọc trước.
+   */
+  getPatientDocumentsEnabled(tenantId: string): Promise<boolean>;
+
+  /**
    * Đơn đặt hàng NCC (#298 giai đoạn 2) — 3 công tắc chung cả công ty (`tenant_setting`): `branchPurchasingEnabled` (mặc định BẬT), `branchPurchaseNeedsMainApproval` (mặc định TẮT), `allowOverReceipt` (mặc định TẮT).
    * KHÔNG gọi hàm này bên TRONG một transaction đang mở (port mở transaction riêng) — đọc trước.
    */

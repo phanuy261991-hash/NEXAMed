@@ -65,7 +65,7 @@ export function DocumentTable({
                 <td className="px-3 py-2">
                   <button type="button" onClick={() => onOpen(doc)} className="flex min-w-0 items-center gap-2.5 text-left font-semibold text-slate-900 hover:text-blue-700">
                     <span className="block h-8 w-[42px] flex-none overflow-hidden rounded border border-slate-200 bg-slate-100">
-                      <DocumentThumb kind={doc.kind} url={doc.url} category={doc.category} />
+                      <DocumentThumb kind={doc.kind} url={doc.url} thumbnailUrl={doc.thumbnailUrl} category={doc.category} />
                     </span>
                     <span className="truncate">{doc.displayName}</span>
                   </button>

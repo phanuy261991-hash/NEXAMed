@@ -8,6 +8,8 @@ import { z } from 'zod';
 
 /** Dung lượng tối đa mỗi tệp tải lên: 15 MB (trình duyệt tự thu nhỏ ảnh quá lớn trước khi gửi). */
 export const PATIENT_DOCUMENT_MAX_BYTES = 15 * 1024 * 1024;
+/** Ảnh thu nhỏ trình duyệt gửi kèm: JPEG, tối đa 200 KB (thường vài chục KB). Quá hạn mức hoặc sai định dạng thì máy chủ bỏ qua, tệp vẫn được lưu. */
+export const PATIENT_DOCUMENT_THUMBNAIL_MAX_BYTES = 200 * 1024;
 export const PATIENT_DOCUMENT_FOLDER_NAME_MAX = 60;
 export const PATIENT_DOCUMENT_DISPLAY_NAME_MAX = 200;
 export const PATIENT_DOCUMENT_NOTE_MAX = 1000;
@@ -70,6 +72,8 @@ export const patientDocumentSchema = z.object({
   branchName: z.string().nullable(),
   /** Đường dẫn ký có hạn 15 phút (làm mới mỗi lần gọi lại danh sách). */
   url: z.string(),
+  /** Ảnh thu nhỏ cho lưới và bảng (nhẹ hơn nhiều so với ảnh gốc); `null` khi không có (PDF, DICOM, dòng tham chiếu, tệp cũ) — giao diện rơi về `url`. */
+  thumbnailUrl: z.string().nullable(),
   version: z.number().int(),
 });
 export type PatientDocument = z.infer<typeof patientDocumentSchema>;
@@ -175,3 +179,15 @@ export const patientDocumentEncounterOptionSchema = z.object({
 export const listPatientDocumentEncounterOptionsResponseSchema = z.object({ items: z.array(patientDocumentEncounterOptionSchema) });
 export type PatientDocumentEncounterOption = z.infer<typeof patientDocumentEncounterOptionSchema>;
 export type ListPatientDocumentEncounterOptionsResponse = z.infer<typeof listPatientDocumentEncounterOptionsResponseSchema>;
+
+/**
+ * `GET /patient-documents/usage` — dung lượng mọi tệp gắn bệnh nhân của CÔNG TY (mọi chi nhánh), hiện ở Cấu hình chung (mockup màn 13): tệp tải tay, ảnh/PDF kết quả cận lâm sàng, ảnh thẻ BHYT, ảnh đại diện.
+ * Mỗi tệp gốc tính MỘT lần; tệp đã xoá mềm vẫn nằm trên đĩa nên vẫn tính. `volume*` là dung lượng của ổ chứa kho lưu để vẽ thanh phần trăm — `null` khi kho không báo được.
+ */
+export const patientDocumentUsageSchema = z.object({
+  fileCount: z.number().int().nonnegative(),
+  totalBytes: z.number().int().nonnegative(),
+  volumeTotalBytes: z.number().int().nonnegative().nullable(),
+  volumeFreeBytes: z.number().int().nonnegative().nullable(),
+});
+export type PatientDocumentUsage = z.infer<typeof patientDocumentUsageSchema>;

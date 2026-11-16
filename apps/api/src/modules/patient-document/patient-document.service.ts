@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Prisma } from '@prisma/client';
 import { createHash, randomUUID } from 'node:crypto';
 import {
+  CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DOCUMENT_CONTENT_TYPE,
   IdempotencyKeyInvalidError,
@@ -12,11 +13,14 @@ import {
   PatientDocumentFolderNotEmptyError,
   PatientDocumentInvalidFileError,
   PatientDocumentReadOnlyError,
+  PatientDocumentsDisabledError,
   STORAGE_PORT,
   getVietnamDateString,
   isValidIdempotencyKey,
   maxDataScope,
   sniffDocumentKind,
+  sniffImageExtension,
+  type ClinicConfigReaderPort,
   type DocumentKind,
   type StoragePort,
 } from '@nexamed/core';
@@ -25,6 +29,7 @@ import {
   PATIENT_DOCUMENT_DISPLAY_NAME_MAX,
   PATIENT_DOCUMENT_MAX_BYTES,
   PATIENT_DOCUMENT_PERMISSION_MODULE,
+  PATIENT_DOCUMENT_THUMBNAIL_MAX_BYTES,
   patientDocumentGroupOf,
   type CreatePatientDocumentFolderRequest,
   type ListPatientDocumentEncounterOptionsResponse,
@@ -107,7 +112,15 @@ export class PatientDocumentService {
     private readonly configService: ConfigService,
     private readonly idempotency: IdempotencyService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfig: ClinicConfigReaderPort,
   ) {}
+
+  // ---------------------------------------------------------------- công tắc
+
+  /** Công tắc "Dùng Hình ảnh & Tài liệu" (#299 giai đoạn 3): tắt thì mọi API của tab bị từ chối (409). Đọc TRƯỚC khi mở transaction (port tự mở transaction riêng — #264). */
+  private async assertEnabled(tenantId: string): Promise<void> {
+    if (!(await this.clinicConfig.getPatientDocumentsEnabled(tenantId))) throw new PatientDocumentsDisabledError();
+  }
 
   // ---------------------------------------------------------------- quyền
 
@@ -139,6 +152,7 @@ export class PatientDocumentService {
   // ---------------------------------------------------------------- danh sách
 
   async list(tenantId: string, userId: string, branchId: string, patientId: string, query: ListPatientDocumentsQuery): Promise<ListPatientDocumentsResponse> {
+    await this.assertEnabled(tenantId);
     const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const patient = await this.patientRepository.findById(tx, tenantId, patientId);
@@ -212,6 +226,7 @@ export class PatientDocumentService {
   }
 
   async encounterOptions(tenantId: string, userId: string, patientId: string): Promise<ListPatientDocumentEncounterOptionsResponse> {
+    await this.assertEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientExists(tx, tenantId, patientId);
       this.assertCanManageFolders(await this.resolveAccess(tx, tenantId, userId));
@@ -235,11 +250,13 @@ export class PatientDocumentService {
     patientId: string,
     form: UploadPatientDocumentForm,
     file: { buffer: Buffer; originalname: string },
+    thumbnail: { buffer: Buffer } | undefined,
     rawRequestKey: string | undefined,
     path: string,
     meta: RequestMeta,
   ): Promise<PatientDocument> {
-    if (rawRequestKey === undefined) return this.upload(tenantId, actorId, branchId, patientId, form, file, meta);
+    await this.assertEnabled(tenantId);
+    if (rawRequestKey === undefined) return this.upload(tenantId, actorId, branchId, patientId, form, file, thumbnail, meta);
     const requestKey = rawRequestKey.trim().toLowerCase();
     if (!isValidIdempotencyKey(requestKey)) throw new IdempotencyKeyInvalidError();
     const requestHash = createHash('sha256')
@@ -248,7 +265,7 @@ export class PatientDocumentService {
     const outcome = await this.idempotency.acquire(tenantId, actorId, { requestKey, requestHash, method: 'POST', path });
     if (outcome.kind === 'replay') return outcome.value as PatientDocument;
     try {
-      const result = await this.upload(tenantId, actorId, branchId, patientId, form, file, meta);
+      const result = await this.upload(tenantId, actorId, branchId, patientId, form, file, thumbnail, meta);
       await this.idempotency.complete(tenantId, actorId, outcome.id, result);
       return result;
     } catch (error) {
@@ -264,6 +281,7 @@ export class PatientDocumentService {
     patientId: string,
     form: UploadPatientDocumentForm,
     file: { buffer: Buffer; originalname: string },
+    thumbnail: { buffer: Buffer } | undefined,
     meta: RequestMeta,
   ): Promise<PatientDocument> {
     if (file.buffer.byteLength === 0) throw new PatientDocumentInvalidFileError('Tệp rỗng, hãy chọn tệp khác.');
@@ -278,6 +296,11 @@ export class PatientDocumentService {
     const originalName = decodeOriginalName(file.originalname);
     const sha256 = createHash('sha256').update(file.buffer).digest('hex');
     const uploadDate = getVietnamDateString(new Date());
+    // Ảnh thu nhỏ do trình duyệt gửi kèm là TUỲ CHỌN: chỉ nhận khi tệp chính là ảnh, đúng JPEG và ≤ 200 KB. Không đạt thì bỏ qua — tệp vẫn được lưu, giao diện rơi về ảnh gốc.
+    const thumbBuffer =
+      thumbnail && (kind === 'jpg' || kind === 'png') && thumbnail.buffer.byteLength > 0 && thumbnail.buffer.byteLength <= PATIENT_DOCUMENT_THUMBNAIL_MAX_BYTES && sniffImageExtension(thumbnail.buffer) === 'jpg'
+        ? thumbnail.buffer
+        : null;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientUsable(tx, tenantId, patientId);
@@ -285,15 +308,19 @@ export class PatientDocumentService {
       await this.assertFolderAndEncounter(tx, tenantId, patientId, form.folderId ?? null, form.encounterId ?? null);
       if (await this.repository.uploadNameExists(tx, tenantId, patientId, originalName)) throw new PatientDocumentNameTakenError(originalName);
 
-      const key = `patient/${patientId}/documents/${randomUUID()}.${kind}`;
+      const fileId = randomUUID();
+      const key = `patient/${patientId}/documents/${fileId}.${kind}`;
+      const thumbKey = thumbBuffer ? `patient/${patientId}/documents/${fileId}.thumb.jpg` : null;
       await this.storage.save(tenantId, key, file.buffer, contentType);
       try {
+        if (thumbKey && thumbBuffer) await this.storage.save(tenantId, thumbKey, thumbBuffer, 'image/jpeg');
         const row = await this.repository.create(tx, tenantId, patientId, actorId, {
           branchId,
           folderId: form.folderId ?? null,
           encounterId: form.encounterId ?? null,
           category: form.category,
           storageKey: key,
+          thumbKey,
           fileName: originalName,
           displayName: originalName,
           contentType,
@@ -320,6 +347,7 @@ export class PatientDocumentService {
         return this.toDocument(tenantId, row, encryptionKey, userNames, branchNames, encounterLabels, branchId, new Map());
       } catch (error) {
         await this.storage.delete(tenantId, key); // ghi DB lỗi thì dọn tệp vừa lưu, không để rác không ai trỏ tới
+        if (thumbKey) await this.storage.delete(tenantId, thumbKey);
         // Hai yêu cầu cùng tên chạy song song: chỉ mục duy nhất chặn bản thứ hai (P2002) → cùng thông báo như kiểm trước.
         if ((error as { code?: string } | null)?.code === 'P2002') throw new PatientDocumentNameTakenError(originalName);
         throw error;
@@ -330,6 +358,7 @@ export class PatientDocumentService {
   // ---------------------------------------------------------------- sửa / xoá tệp
 
   async update(tenantId: string, actorId: string, patientId: string, documentId: string, dto: UpdatePatientDocumentRequest, meta: RequestMeta): Promise<{ ok: true }> {
+    await this.assertEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientUsable(tx, tenantId, patientId);
       const access = await this.resolveAccess(tx, tenantId, actorId);
@@ -367,6 +396,7 @@ export class PatientDocumentService {
   }
 
   async remove(tenantId: string, actorId: string, patientId: string, documentId: string, version: number, reason: string, meta: RequestMeta): Promise<void> {
+    await this.assertEnabled(tenantId);
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientUsable(tx, tenantId, patientId);
       const access = await this.resolveAccess(tx, tenantId, actorId);
@@ -392,6 +422,7 @@ export class PatientDocumentService {
   // ---------------------------------------------------------------- thư mục tự tạo
 
   async createFolder(tenantId: string, actorId: string, patientId: string, dto: CreatePatientDocumentFolderRequest, meta: RequestMeta): Promise<PatientDocumentFolder> {
+    await this.assertEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientUsable(tx, tenantId, patientId);
       this.assertCanManageFolders(await this.resolveAccess(tx, tenantId, actorId));
@@ -411,6 +442,7 @@ export class PatientDocumentService {
   }
 
   async renameFolder(tenantId: string, actorId: string, patientId: string, folderId: string, dto: RenamePatientDocumentFolderRequest, meta: RequestMeta): Promise<{ ok: true }> {
+    await this.assertEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientUsable(tx, tenantId, patientId);
       this.assertCanManageFolders(await this.resolveAccess(tx, tenantId, actorId));
@@ -432,6 +464,7 @@ export class PatientDocumentService {
   }
 
   async removeFolder(tenantId: string, actorId: string, patientId: string, folderId: string, version: number, meta: RequestMeta): Promise<void> {
+    await this.assertEnabled(tenantId);
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientUsable(tx, tenantId, patientId);
       this.assertCanManageFolders(await this.resolveAccess(tx, tenantId, actorId));
@@ -517,6 +550,7 @@ export class PatientDocumentService {
       branchId: unbranched ? currentBranchId : row.branchId,
       branchName: unbranched ? null : (branchNames.get(row.branchId) ?? null),
       url: `/api/v1/files/${signFileToken({ tenantId, key: row.storageKey, exp }, encryptionKey)}`,
+      thumbnailUrl: row.thumbKey ? `/api/v1/files/${signFileToken({ tenantId, key: row.thumbKey, exp }, encryptionKey)}` : null,
       version: row.version,
     };
   }

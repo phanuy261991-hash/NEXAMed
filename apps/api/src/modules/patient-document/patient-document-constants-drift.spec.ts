@@ -8,6 +8,7 @@ import {
   PATIENT_DOCUMENT_FOLDER_NAME_MAX,
   PATIENT_DOCUMENT_MAX_BYTES,
   PATIENT_DOCUMENT_NOTE_MAX,
+  PATIENT_DOCUMENT_THUMBNAIL_MAX_BYTES,
   patientDocumentGroupOf,
 } from '@nexamed/shared';
 
@@ -27,6 +28,21 @@ describe('hằng của tab Hình ảnh & Tài liệu khớp giữa shared và we
       expect(webFile).toContain(`'${category}'`);
       expect(webFile).toContain(PATIENT_DOCUMENT_CATEGORY_LABEL[category]);
     }
+  });
+
+  it('hạn mức ảnh thu nhỏ của trình duyệt khớp hạn mức máy chủ nhận', () => {
+    const thumbFile = readFileSync(resolve(__dirname, '../../../../web/src/features/patient-document/make-thumbnail.ts'), 'utf8');
+    expect(thumbFile).toContain(`THUMBNAIL_MAX_BYTES = ${PATIENT_DOCUMENT_THUMBNAIL_MAX_BYTES / 1024} * 1024`);
+  });
+
+  it('nginx của bản cài on-prem cho phép tải lên tệp lớn nhất (15 MB + ảnh thu nhỏ) vào tab tài liệu — trần 8m chung từng chặn 413 ở khách mà Vite proxy lúc phát triển không thấy', () => {
+    const nginx = readFileSync(resolve(__dirname, '../../../../../deploy/on-prem/nginx.conf'), 'utf8');
+    const match = /location ~ \^\/api\/v1\/patients\/\[\^\/\]\+\/documents\$ \{[^}]*client_max_body_size (\d+)m;/.exec(nginx);
+    expect(match, 'thiếu khối location riêng cho đường dẫn tải tệp lên tab Hình ảnh & Tài liệu').not.toBeNull();
+    const limitBytes = Number(match![1]) * 1024 * 1024;
+    expect(limitBytes).toBeGreaterThanOrEqual(PATIENT_DOCUMENT_MAX_BYTES + PATIENT_DOCUMENT_THUMBNAIL_MAX_BYTES + 512 * 1024);
+    // Trần chung của các đường dẫn khác không bị nới theo.
+    expect(nginx).toMatch(/^\s{4}client_max_body_size 8m;/m);
   });
 
   it('chỉ loại CONTRACT thuộc nhóm hợp đồng', () => {

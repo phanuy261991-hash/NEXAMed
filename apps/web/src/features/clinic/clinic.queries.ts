@@ -37,6 +37,7 @@ import {
   getFollowUpFeatureStatus,
   getLabPartnerFeatureStatus,
   getStockRequestFeatureStatus,
+  getPatientDocumentsFeatureStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupConfig,
   getBackupStatus,
@@ -321,6 +322,19 @@ export function useStockRequestEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'stock-request-enabled'),
     queryFn: getStockRequestFeatureStatus,
+    staleTime: STALE_REFERENCE_MS,
+  });
+}
+
+/**
+ * "Dùng Hình ảnh & Tài liệu" (#299) — tab ở hồ sơ bệnh nhân đọc qua hook tự-phục vụ này (KHÔNG dùng `useClinicSettingsQuery()`, cần `clinic_config.read`).
+ * Máy chủ vẫn là nơi chặn thật (409 PATIENT_DOCUMENTS_DISABLED); web chỉ ẩn cho gọn. Trước khi tải xong coi như TẮT để tab không nháy rồi biến mất.
+ */
+export function usePatientDocumentsEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'patient-documents-enabled'),
+    queryFn: getPatientDocumentsFeatureStatus,
     staleTime: STALE_REFERENCE_MS,
   });
 }

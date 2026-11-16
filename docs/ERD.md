@@ -798,6 +798,7 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 
 | Version | Ngày | Thay đổi |
 |---|---|---|
+| v2.01 | 16/11/2026 | Hình ảnh & Tài liệu giai đoạn 3 (`docs/DECISIONS.md` #299 bổ sung 4). Migration `20261114150000_patient_document_thumbnail`: `patient_document.thumbnail_key` TEXT NULL (ảnh thu nhỏ); công tắc ở `tenant_setting` key `patient_documents_enabled`; chi tiết ở `docs/ERD-3.md` mục 3.26. |
 | v2.00 | 14/11/2026 | Hình ảnh & Tài liệu giai đoạn 2 (`docs/DECISIONS.md` #299 bổ sung 3). Migration `20261114120000_patient_document_reference_unique`: chỉ mục duy nhất một phần `patient_document_reference_key` (mỗi tệp gốc một dòng tham chiếu/bệnh nhân); không đổi cột; chi tiết ở `docs/ERD-3.md` mục 3.26. |
 | v1.99 | 14/11/2026 | Hình ảnh & Tài liệu của bệnh nhân (`docs/DECISIONS.md` #299, giai đoạn 1). Migration `20261113120000_patient_document` (FORCE RLS): bảng mới `patient_document`, `patient_document_folder`; enum `patient_document_category`, `patient_document_source`; chi tiết ở `docs/ERD-3.md` mục 3.26 (ERD-2 đã quá ngưỡng nên mở file mới). |
 | v1.97 | 12/11/2026 | Yêu cầu cấp hàng theo cấp (`docs/DECISIONS.md` #298, giai đoạn 1). Migration `20261112150000_stock_request` + `20261112160000_stock_request_force_rls` (FORCE RLS): bảng mới `stock_request`, `stock_request_line`, `stock_request_event`; `stock_transfer.request_id` + `stock_transfer_line.request_line_id`; 3 enum mới + `PrintDocumentType.STOCK_REQUEST`; chi tiết ở `docs/ERD-2.md` mục 3.24. |

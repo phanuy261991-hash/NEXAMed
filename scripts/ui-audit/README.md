@@ -22,6 +22,7 @@ Tab/pill con trong trang, hộp thoại, trạng thái có dữ liệu lớn, tr
 
 - `patient-document-check.cjs` — rỗng, tải lên nhiều tệp (kể cả tệp quá 15 MB), xem theo ngày/theo loại, thư mục tự tạo, xem lớn, xoá có lý do, lỗi tải danh sách, mất mạng khi tải lên, lễ tân chỉ thấy hợp đồng và giấy tờ. Cũng kiểm ảnh lớn tự thu nhỏ, trùng tên tệp và gửi lại sau mất mạng (không tạo tệp thứ hai). Kỳ vọng 32/32. Dữ liệu thử tiền tố KIEMTAILIEU.
 - `patient-document-reference-check.cjs` — giai đoạn 2: ảnh kết quả cận lâm sàng đã duyệt, thẻ BHYT, ảnh đại diện hiện dạng dòng tham chiếu chỉ đọc (nhãn nguồn, cột Nguồn, "Mở kết quả" kể cả khi mất mạng, không Sửa/Xoá), tắt "Áp dụng BHYT" thì ẩn, lễ tân chỉ thấy giấy tờ. Dữ liệu dựng bằng API thật (không ghi thẳng CSDL), tiền tố KIEMGD2. Kỳ vọng 31/31.
+- `patient-document-settings-check.cjs` — giai đoạn 3: khối "Hình ảnh & Tài liệu" ở Cấu hình chung (công tắc, dung lượng đã dùng, lỗi tải kèm Thử lại), ảnh tải lên có ảnh thu nhỏ (lưới dùng ảnh nhỏ, xem lớn dùng ảnh gốc), tắt công tắc thì tab biến mất (quản trị và lễ tân) và máy chủ trả 409, bật lại còn đủ tệp. Tiền tố KIEMGD3; cuối chạy trả công tắc về như cũ và khoá tài khoản thử. Kỳ vọng 22/22.
 
 ## Kiểm các trạng thái lỗi (#255, thêm 23/10/2026)
 

@@ -70,6 +70,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         doctorDashboardMoneyEnabled,
         labPartnerEnabled,
         stockRequestEnabled,
+        patientDocumentsEnabled,
         purchaseOrderSettings,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
@@ -110,6 +111,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getDoctorDashboardMoneyEnabled(tx, tenantId),
         this.clinicSettingsRepository.getLabPartnerEnabled(tx, tenantId),
         this.clinicSettingsRepository.getStockRequestEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPatientDocumentsEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPurchaseOrderSettings(tx, tenantId),
       ]);
       return {
@@ -151,6 +153,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         doctorDashboardMoneyEnabled,
         labPartnerEnabled,
         stockRequestEnabled,
+        patientDocumentsEnabled,
         ...purchaseOrderSettings,
       };
     });
@@ -419,6 +422,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.stockRequestEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertStockRequestEnabled(tx, tenantId, actorId, dto.stockRequestEnabled);
       }
+      if (dto.patientDocumentsEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertPatientDocumentsEnabled(tx, tenantId, actorId, dto.patientDocumentsEnabled);
+      }
       if (dto.branchPurchasingEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertBranchPurchasingEnabled(tx, tenantId, actorId, dto.branchPurchasingEnabled);
       }
@@ -468,6 +474,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.doctorDashboardMoneyEnabled !== undefined ||
         dto.labPartnerEnabled !== undefined ||
         dto.stockRequestEnabled !== undefined ||
+        dto.patientDocumentsEnabled !== undefined ||
         dto.branchPurchasingEnabled !== undefined ||
         dto.branchPurchaseNeedsMainApproval !== undefined ||
         dto.allowOverReceipt !== undefined;
@@ -522,6 +529,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         doctorDashboardMoneyEnabled,
         labPartnerEnabled,
         stockRequestEnabled,
+        patientDocumentsEnabled,
         purchaseOrderSettings,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
@@ -562,6 +570,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getDoctorDashboardMoneyEnabled(tx, tenantId),
         this.clinicSettingsRepository.getLabPartnerEnabled(tx, tenantId),
         this.clinicSettingsRepository.getStockRequestEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPatientDocumentsEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPurchaseOrderSettings(tx, tenantId),
       ]);
       return {
@@ -603,6 +612,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         doctorDashboardMoneyEnabled,
         labPartnerEnabled,
         stockRequestEnabled,
+        patientDocumentsEnabled,
         ...purchaseOrderSettings,
       };
     });
@@ -710,6 +720,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` — công tắc "Dùng yêu cầu cấp hàng" (#298). */
   getStockRequestEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getStockRequestEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getStockRequestEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` — công tắc "Dùng Hình ảnh & Tài liệu" (#299 giai đoạn 3). */
+  getPatientDocumentsEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getPatientDocumentsEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPatientDocumentsEnabled(tx, tenantId));
   }
 
   /** `ClinicConfigReaderPort` — 3 công tắc Đơn đặt hàng NCC (#298 giai đoạn 2). */

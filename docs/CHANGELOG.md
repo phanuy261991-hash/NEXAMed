@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 16/11/2026 — Tab "Hình ảnh & Tài liệu", giai đoạn 3: công tắc, dung lượng đã dùng, ảnh thu nhỏ; sửa lỗi nginx chặn tải tệp lớn (`docs/DECISIONS.md` #299 bổ sung 4)
+
+- **Công tắc "Dùng Hình ảnh & Tài liệu"** ở Cấu hình chung (mặc định bật): tắt thì ẩn tab ở hồ sơ bệnh nhân và máy chủ từ chối mọi API của tab (409); tệp đã tải giữ nguyên, bật lại là thấy đủ.
+- **Dung lượng đã dùng** ở Cấu hình chung: tổng dung lượng và số tệp gắn bệnh nhân của cả công ty (tệp tải tay, kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện; mỗi tệp gốc một lần, tệp xoá mềm vẫn tính) kèm thanh phần trăm so với ổ chứa kho. `StoragePort` thêm `sizeOf` và `volumeUsage`.
+- **Ảnh thu nhỏ**: trình duyệt tạo ảnh JPEG ≤ 320 px lúc tải lên và gửi kèm; lưới và bảng dùng ảnh thu nhỏ (đo thật: 23,6 KB so với 1,89 MB), xem lớn dùng ảnh gốc. Máy chủ chỉ nhận JPEG ≤ 200 KB cho tệp ảnh, không đạt thì bỏ qua.
+- **Sửa lỗi**: `nginx.conf` của bản cài on-prem chặn mọi thân yêu cầu > 8 MB nên tải tệp 9–15 MB lên tab tài liệu bị 413 ở khách (kiểm qua Vite proxy không thấy). Thêm khối riêng 17 MB cho đường dẫn tải lên, kiểm bằng nginx thật, có test chặn tái phạm. Cần dựng lại ảnh web để nhận. Sửa cả script kiểm khoá tài khoản thử sai đường dẫn.
+- Cần `db:deploy` (migration `20261114150000_patient_document_thumbnail`) rồi khởi động lại API.
+
 ## 14/11/2026 (phần 3) — Dọn nguồn, giảm khối lượng thư mục làm việc
 
 - Rà soát toàn bộ tệp được git theo dõi (46 MB): không có tệp trùng nội dung, không có phụ thuộc npm thừa. Gỡ **95 tệp bàn giao cũ** ở `docs/handoffs/` (chỉ giữ bản GĐ2 mới nhất; tra lịch sử bằng git) và 2 component không ai dùng (`PatientPicker.tsx`, `ComingSoonPage.tsx`); sửa các tham chiếu tới chúng ở `CURRENT.md`, `TASK.md`, `DECISIONS.md`, `ERD-2.md`, `coding-standards.md`, `router.tsx`.

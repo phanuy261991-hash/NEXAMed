@@ -1,5 +1,5 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import {
   PATIENT_DOCUMENT_MAX_BYTES,
@@ -51,18 +51,20 @@ export class PatientDocumentController {
   @Post()
   @RequirePermission('patient_document', 'upload', { alsoAccept: [{ module: 'patient_contract', action: 'upload' }] })
   @HttpCode(200)
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: PATIENT_DOCUMENT_MAX_BYTES + 1 } }))
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'file', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }], { limits: { fileSize: PATIENT_DOCUMENT_MAX_BYTES + 1 } }))
   async upload(
     @Param('patientId', ParseUUIDPipe) patientId: string,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFiles() files: { file?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] } | undefined,
     @Body() body: unknown,
     @Req() req: Request,
   ) {
+    const file = files?.file?.[0];
     if (!file) throw new BadRequestException('Thiếu tệp tải lên.');
+    const thumbnail = files?.thumbnail?.[0];
     const form = uploadPatientDocumentFormSchema.parse(body);
     const { tenantId, userId } = req.user!;
     const requestKey = req.headers['idempotency-key'];
-    return this.service.uploadOnce(tenantId, userId, requireBranchId(req.user!), patientId, form, file, Array.isArray(requestKey) ? requestKey[0] : requestKey, req.originalUrl.split('?')[0] ?? req.originalUrl, extractRequestMeta(req));
+    return this.service.uploadOnce(tenantId, userId, requireBranchId(req.user!), patientId, form, file, thumbnail, Array.isArray(requestKey) ? requestKey[0] : requestKey, req.originalUrl.split('?')[0] ?? req.originalUrl, extractRequestMeta(req));
   }
 
   @Post('folders')

@@ -30,7 +30,7 @@ export function DocumentDayView({ items, today, onOpen }: { items: PatientDocume
               return (
                 <button key={doc.id} type="button" onClick={() => onOpen(doc)} className="flex min-w-0 flex-col gap-1 text-left" title={doc.displayName}>
                   <span className="relative block h-28 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                    <DocumentThumb kind={doc.kind} url={doc.url} category={doc.category} />
+                    <DocumentThumb kind={doc.kind} url={doc.url} thumbnailUrl={doc.thumbnailUrl} category={doc.category} />
                     {badge && <span className="absolute left-1.5 top-1.5 rounded bg-slate-900/80 px-1.5 py-px text-[11px] font-semibold text-white">{badge}</span>}
                   </span>
                   <span className="truncate text-[13.5px] font-semibold text-slate-900">{doc.displayName}</span>

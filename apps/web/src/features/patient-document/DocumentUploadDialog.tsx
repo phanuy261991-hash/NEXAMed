@@ -15,6 +15,7 @@ import { formatBytes, formatIsoDateVi, suggestCategory, uploadableCategories, va
 import { useDocumentEncounterOptionsQuery, useUploadPatientDocumentMutation } from './patient-document.queries';
 import { DocumentArt } from './DocumentThumb';
 import { DocumentField, DocumentModal, INPUT_CLASS } from './DocumentModal';
+import { makeThumbnail } from './make-thumbnail';
 import { isShrinkableImage, shrinkImageToLimit } from './shrink-image';
 
 interface UploadRow {
@@ -142,7 +143,10 @@ export function DocumentUploadDialog({
       const idemKey = row.idemSig === sig ? row.idemKey : generateUuid();
       patchRow(row.key, { status: 'uploading', progress: 0, error: null, idemKey, idemSig: sig });
       try {
+        // Ảnh thu nhỏ tạo ngay trước khi gửi (tuỳ chọn: không tạo được thì tệp vẫn tải lên, lưới rơi về ảnh gốc).
+        const thumbnail = await makeThumbnail(row.file);
         await upload.mutateAsync({
+          thumbnail,
           file: row.file,
           fields: { category: row.category, folderId: folderId || undefined, encounterId: encounterId || undefined, note: note.trim() || undefined },
           onProgress: (progress) => patchRow(row.key, { progress }),

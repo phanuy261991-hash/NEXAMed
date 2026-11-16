@@ -223,6 +223,8 @@ import {
   followUpFeatureStatusSchema,
   labPartnerFeatureStatusSchema,
   stockRequestFeatureStatusSchema,
+  patientDocumentsFeatureStatusSchema,
+  patientDocumentUsageSchema,
   purchaseOrderSettingsSchema,
   getStockRequestRestockResponseSchema,
   purchaseOrderDetailSchema,
@@ -3428,6 +3430,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(labPartnerFeatureStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/patient-documents-enabled',
+  tags: ['clinic'],
+  summary: '"Dùng Hình ảnh & Tài liệu" (#299) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(patientDocumentsFeatureStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });
@@ -8513,7 +8527,7 @@ const documentErrors = {
   401: errorResponse('Thiếu hoặc sai access token'),
   403: errorResponse('Không có quyền với loại tệp này (patient_document / patient_contract)'),
   404: errorResponse('Không tìm thấy hồ sơ, tệp, thư mục hoặc lượt khám'),
-  409: errorResponse('version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp'),
+  409: errorResponse('version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc "Dùng Hình ảnh & Tài liệu" đang tắt (PATIENT_DOCUMENTS_DISABLED)'),
 };
 
 registry.registerPath({
@@ -8528,6 +8542,20 @@ registry.registerPath({
     401: documentErrors[401],
     403: documentErrors[403],
     404: documentErrors[404],
+    409: documentErrors[409],
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/patient-documents/usage',
+  tags: ['patient-document'],
+  summary: 'Dung lượng đã dùng của mọi tệp gắn bệnh nhân trong công ty (tệp tải tay, kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện) + dung lượng ổ chứa kho — Cấu hình chung',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(patientDocumentUsageSchema)),
+    401: documentErrors[401],
+    403: errorResponse('Không có quyền clinic_config.read'),
   },
 });
 
@@ -8559,6 +8587,7 @@ registry.registerPath({
         'multipart/form-data': {
           schema: z.object({
             file: z.string().openapi({ format: 'binary', description: 'Tệp JPG, PNG, PDF hoặc DICOM' }),
+            thumbnail: z.string().openapi({ format: 'binary', description: 'Tuỳ chọn: ảnh thu nhỏ JPEG ≤ 200 KB do trình duyệt tạo cho tệp ảnh; không đạt thì bị bỏ qua' }).optional(),
             category: z.enum(['PARACLINICAL', 'CLINICAL_PHOTO', 'CONTRACT', 'OTHER']),
             folderId: z.string().uuid().optional(),
             encounterId: z.string().uuid().optional(),

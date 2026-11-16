@@ -8957,6 +8957,9 @@
                         "stockRequestEnabled": {
                           "type": "boolean"
                         },
+                        "patientDocumentsEnabled": {
+                          "type": "boolean"
+                        },
                         "branchPurchasingEnabled": {
                           "type": "boolean"
                         },
@@ -9006,6 +9009,7 @@
                         "doctorDashboardMoneyEnabled",
                         "labPartnerEnabled",
                         "stockRequestEnabled",
+                        "patientDocumentsEnabled",
                         "branchPurchasingEnabled",
                         "branchPurchaseNeedsMainApproval",
                         "allowOverReceipt"
@@ -50111,6 +50115,9 @@
                         "stockRequestEnabled": {
                           "type": "boolean"
                         },
+                        "patientDocumentsEnabled": {
+                          "type": "boolean"
+                        },
                         "branchPurchasingEnabled": {
                           "type": "boolean"
                         },
@@ -50160,6 +50167,7 @@
                         "doctorDashboardMoneyEnabled",
                         "labPartnerEnabled",
                         "stockRequestEnabled",
+                        "patientDocumentsEnabled",
                         "branchPurchasingEnabled",
                         "branchPurchaseNeedsMainApproval",
                         "allowOverReceipt"
@@ -50540,6 +50548,9 @@
                   "stockRequestEnabled": {
                     "type": "boolean"
                   },
+                  "patientDocumentsEnabled": {
+                    "type": "boolean"
+                  },
                   "branchPurchasingEnabled": {
                     "type": "boolean"
                   },
@@ -50850,6 +50861,9 @@
                         "stockRequestEnabled": {
                           "type": "boolean"
                         },
+                        "patientDocumentsEnabled": {
+                          "type": "boolean"
+                        },
                         "branchPurchasingEnabled": {
                           "type": "boolean"
                         },
@@ -50899,6 +50913,7 @@
                         "doctorDashboardMoneyEnabled",
                         "labPartnerEnabled",
                         "stockRequestEnabled",
+                        "patientDocumentsEnabled",
                         "branchPurchasingEnabled",
                         "branchPurchaseNeedsMainApproval",
                         "allowOverReceipt"
@@ -52890,6 +52905,83 @@
           "clinic"
         ],
         "summary": "\"Dùng đối tác xét nghiệm\" (#291) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/patient-documents-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Dùng Hình ảnh & Tài liệu\" (#299) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)",
         "security": [
           {
             "bearerAuth": []
@@ -179704,6 +179796,12 @@
                               "url": {
                                 "type": "string"
                               },
+                              "thumbnailUrl": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -179732,6 +179830,7 @@
                               "branchId",
                               "branchName",
                               "url",
+                              "thumbnailUrl",
                               "version"
                             ]
                           }
@@ -180025,6 +180124,37 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc \"Dùng Hình ảnh & Tài liệu\" đang tắt (PATIENT_DOCUMENTS_DISABLED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -180059,6 +180189,11 @@
                     "type": "string",
                     "format": "binary",
                     "description": "Tệp JPG, PNG, PDF hoặc DICOM"
+                  },
+                  "thumbnail": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Tuỳ chọn: ảnh thu nhỏ JPEG ≤ 200 KB do trình duyệt tạo cho tệp ảnh; không đạt thì bị bỏ qua"
                   },
                   "category": {
                     "type": "string",
@@ -180240,6 +180375,12 @@
                         "url": {
                           "type": "string"
                         },
+                        "thumbnailUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -180268,6 +180409,7 @@
                         "branchId",
                         "branchName",
                         "url",
+                        "thumbnailUrl",
                         "version"
                       ]
                     },
@@ -180409,7 +180551,137 @@
             }
           },
           "409": {
-            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp",
+            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc \"Dùng Hình ảnh & Tài liệu\" đang tắt (PATIENT_DOCUMENTS_DISABLED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patient-documents/usage": {
+      "get": {
+        "tags": [
+          "patient-document"
+        ],
+        "summary": "Dung lượng đã dùng của mọi tệp gắn bệnh nhân trong công ty (tệp tải tay, kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện) + dung lượng ổ chứa kho — Cấu hình chung",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fileCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "totalBytes": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "volumeTotalBytes": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
+                        },
+                        "volumeFreeBytes": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "fileCount",
+                        "totalBytes",
+                        "volumeTotalBytes",
+                        "volumeFreeBytes"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.read",
             "content": {
               "application/json": {
                 "schema": {
@@ -180849,7 +181121,7 @@
             }
           },
           "409": {
-            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp",
+            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc \"Dùng Hình ảnh & Tài liệu\" đang tắt (PATIENT_DOCUMENTS_DISABLED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -181087,7 +181359,7 @@
             }
           },
           "409": {
-            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp",
+            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc \"Dùng Hình ảnh & Tài liệu\" đang tắt (PATIENT_DOCUMENTS_DISABLED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -181345,7 +181617,7 @@
             }
           },
           "409": {
-            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp",
+            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc \"Dùng Hình ảnh & Tài liệu\" đang tắt (PATIENT_DOCUMENTS_DISABLED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -181590,7 +181862,7 @@
             }
           },
           "409": {
-            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp",
+            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc \"Dùng Hình ảnh & Tài liệu\" đang tắt (PATIENT_DOCUMENTS_DISABLED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -181818,7 +182090,7 @@
             }
           },
           "409": {
-            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc hoặc hồ sơ đã gộp",
+            "description": "version không khớp, tên thư mục trùng, thư mục còn tệp, tệp chỉ đọc, hồ sơ đã gộp hoặc công tắc \"Dùng Hình ảnh & Tài liệu\" đang tắt (PATIENT_DOCUMENTS_DISABLED)",
             "content": {
               "application/json": {
                 "schema": {

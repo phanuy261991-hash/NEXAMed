@@ -28,6 +28,7 @@ import { PatientEncounterHistoryTab } from './PatientEncounterHistoryTab';
 import { PatientParaclinicalResultsTab, useCanSeePatientParaclinicalTab } from './PatientParaclinicalResultsTab';
 import { PatientMedicalRecordTab } from '../medical-record/PatientMedicalRecordTab';
 import { PatientDocumentsTab } from '../patient-document/PatientDocumentsTab';
+import { usePatientDocumentsEnabledQuery } from '../clinic/clinic.queries';
 
 type ProfileTabId = 'info' | 'wallet' | 'record' | 'history' | 'cls' | 'documents';
 
@@ -61,7 +62,9 @@ export function PatientDetailPage() {
   // Tab "Hình ảnh & Tài liệu" (#299): hiện khi có MỘT trong hai nhóm quyền xem (tệp lâm sàng / hợp đồng và giấy tờ); máy chủ lọc loại tệp theo từng nhóm.
   const canReadClinicalDocuments = useHasPermission('patient_document', 'read');
   const canReadContractDocuments = useHasPermission('patient_contract', 'read');
-  const canSeeDocumentsTab = canReadClinicalDocuments || canReadContractDocuments;
+  // Công tắc "Dùng Hình ảnh & Tài liệu" (#299 giai đoạn 3): tắt thì ẩn tab; máy chủ cũng từ chối (409).
+  const documentsFeatureEnabled = usePatientDocumentsEnabledQuery().data?.enabled === true;
+  const canSeeDocumentsTab = documentsFeatureEnabled && (canReadClinicalDocuments || canReadContractDocuments);
   const visibleTabs = TABS.filter(
     (tab) => (tab.id !== 'cls' || canSeeParaclinicalTab) && (tab.id !== 'record' || canSeeMedicalRecordTab) && (tab.id !== 'documents' || canSeeDocumentsTab),
   );

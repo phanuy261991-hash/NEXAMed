@@ -4,6 +4,7 @@ import { Button } from '../../shared/ui/Button';
 import { EditIconButton } from '../../shared/ui/EditIconButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { PatientDocumentUsageRow } from '../patient-document/PatientDocumentUsageRow';
 import { useClinicSettingsQuery, useUpdateClinicSettingsMutation } from './clinic.queries';
 
 /** Toggle switch dùng chung ngay trong file — cùng khuôn công tắc "Cho phép nhân viên tự đăng ký ca" bên dưới. */
@@ -434,6 +435,25 @@ export function GeneralConfigPane() {
           )}
         </div>
       </div>
+    </div>
+
+    <div className={sectionBoxClassName}>
+      <span className={sectionBadgeClassName}>Hình ảnh & Tài liệu</span>
+
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-[14.5px] font-semibold text-slate-900">Dùng Hình ảnh &amp; Tài liệu</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">Bật để hồ sơ bệnh nhân có tab lưu phim chụp, ảnh và giấy tờ. Tắt: ẩn tab; các tệp đã tải vẫn được giữ.</p>
+        </div>
+        <ToggleSwitch
+          checked={settingsQuery.data.patientDocumentsEnabled}
+          disabled={updateMutation.isPending}
+          onChange={(checked) => updateMutation.mutate({ patientDocumentsEnabled: checked })}
+          ariaLabel="Dùng Hình ảnh & Tài liệu"
+        />
+      </div>
+
+      <PatientDocumentUsageRow />
     </div>
     </div>
   );

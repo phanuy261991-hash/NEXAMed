@@ -3,10 +3,11 @@ import type { PatientDocumentKind } from '@nexamed/shared';
 import { resolveApiUrl } from '../../shared/api/client';
 
 /** Hình thu nhỏ của một tệp: ảnh thật, hoặc hình minh hoạ cho PDF/DICOM (và khi ảnh không tải được). Lấp đầy khung cha. */
-export function DocumentThumb({ kind, url, category }: { kind: PatientDocumentKind; url?: string; category?: string }) {
+export function DocumentThumb({ kind, url, thumbnailUrl, category }: { kind: PatientDocumentKind; url?: string; /** Ảnh thu nhỏ do trình duyệt tạo lúc tải lên (nhẹ hơn nhiều); thiếu thì dùng ảnh gốc `url`. */ thumbnailUrl?: string | null; category?: string }) {
   const [broken, setBroken] = useState(false);
-  if (kind === 'image' && url && !broken) {
-    return <img src={resolveApiUrl(url)} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full object-cover" />;
+  const src = thumbnailUrl ?? url;
+  if (kind === 'image' && src && !broken) {
+    return <img src={resolveApiUrl(src)} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full object-cover" />;
   }
   return <DocumentArt kind={kind} contract={category === 'CONTRACT'} />;
 }

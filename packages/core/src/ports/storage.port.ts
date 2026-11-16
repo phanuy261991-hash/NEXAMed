@@ -17,6 +17,10 @@ export interface StoragePort {
   save(tenantId: string, key: string, content: Uint8Array, contentType: string): Promise<StoredFileRef>;
   read(tenantId: string, key: string): Promise<Uint8Array>;
   delete(tenantId: string, key: string): Promise<void>;
+  /** Dung lượng (byte) của một tệp đã lưu; `null` nếu tệp không còn trong kho. Không đọc nội dung tệp. */
+  sizeOf(tenantId: string, key: string): Promise<number | null>;
+  /** Dung lượng tổng và còn trống của ổ chứa kho lưu (để nhắc ổ sắp đầy); `null` khi kho không có khái niệm đó (ví dụ kho đám mây) hoặc không đọc được. */
+  volumeUsage(): Promise<{ totalBytes: number; freeBytes: number } | null>;
 }
 
 export const STORAGE_PORT = Symbol('STORAGE_PORT');

@@ -113,6 +113,7 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   PATIENT_DOCUMENT_NAME_TAKEN: HttpStatus.CONFLICT,
   PATIENT_DOCUMENT_FOLDER_NOT_EMPTY: HttpStatus.CONFLICT,
   PATIENT_DOCUMENT_READ_ONLY: HttpStatus.CONFLICT,
+  PATIENT_DOCUMENTS_DISABLED: HttpStatus.CONFLICT,
   // "Dùng Hẹn tái khám" tắt (#285) — xung đột trạng thái cấu hình (409), cùng khuôn INSURANCE_DISABLED.
   FOLLOW_UP_DISABLED: HttpStatus.CONFLICT,
   // "Gửi mẫu đối tác" (#291) — công tắc tắt / đối tác còn giá trả là xung đột trạng thái (409).

@@ -236,7 +236,12 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     if (!hadDeferred) restore.deferredPaymentEnabled = false;
     if (hadShiftRule) restore.requirePreviousShiftClosed = true;
     if (Object.keys(restore).length > 0) await api('PATCH', '/clinic-settings', restore);
-    for (const u of [doc.body, rec.body]) if (u?.id) await api('POST', `/users/${u.id}/deactivate`, { version: u.version ?? 1 }).catch(() => undefined);
+    // Khoá tài khoản thử (không xoá cứng): đọc phiên bản mới nhất rồi PATCH isActive=false — đường dẫn `/users/:id/deactivate` không tồn tại.
+    for (const u of [doc.body, rec.body]) {
+      if (!u?.id) continue;
+      const cur = (await api('GET', `/users/${u.id}`)).body;
+      if (cur) await api('PATCH', `/users/${u.id}`, { version: cur.version, isActive: false });
+    }
   }
   const passed = results.filter(Boolean).length;
   console.log(`\n${passed}/${results.length} ĐẠT`);

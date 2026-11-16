@@ -23,6 +23,7 @@ const doc = (over: Partial<PatientDocument>): PatientDocument => ({
   readOnly: false,
   sourceLabel: null,
   sourceRef: null,
+  thumbnailUrl: null,
   fileName: 'a.jpg',
   displayName: 'a.jpg',
   contentType: 'image/jpeg',

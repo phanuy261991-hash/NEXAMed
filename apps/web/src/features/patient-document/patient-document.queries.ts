@@ -4,6 +4,7 @@ import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
   createDocumentFolder,
+  getPatientDocumentUsage,
   listDocumentEncounterOptions,
   listPatientDocuments,
   removeDocumentFolder,
@@ -29,6 +30,16 @@ export function usePatientDocumentsQuery(patientId: string, filters: Omit<ListPa
   });
 }
 
+/** Dung lượng đã dùng ở Cấu hình chung (mockup màn 13). Đo tệp khá nặng nên không tự tải lại: chỉ khi vào trang và khi bấm Thử lại. */
+export function usePatientDocumentUsageQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, DOMAIN, 'usage'),
+    queryFn: getPatientDocumentUsage,
+    staleTime: 60_000,
+  });
+}
+
 export function useDocumentEncounterOptionsQuery(patientId: string, enabled: boolean) {
   const { tenantId } = useAppConfig();
   return useQuery({
@@ -47,8 +58,8 @@ function useRefresh(patientId: string) {
 export function useUploadPatientDocumentMutation(patientId: string) {
   const refresh = useRefresh(patientId);
   return useMutation({
-    mutationFn: (input: { file: File; fields: UploadDocumentFields; onProgress?: (percent: number) => void; idempotencyKey?: string }) =>
-      uploadPatientDocument(patientId, input.file, input.fields, input.onProgress, input.idempotencyKey),
+    mutationFn: (input: { file: File; fields: UploadDocumentFields; onProgress?: (percent: number) => void; idempotencyKey?: string; thumbnail?: Blob | null }) =>
+      uploadPatientDocument(patientId, input.file, input.fields, input.onProgress, input.idempotencyKey, input.thumbnail),
     onSuccess: () => void refresh(),
   });
 }

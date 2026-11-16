@@ -200,6 +200,14 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /** "Dùng Hình ảnh & Tài liệu" (#299 giai đoạn 3) — tự-phục vụ, không gắn `@RequirePermission`: mọi nhân viên mở hồ sơ bệnh nhân cần biết để web ẩn/hiện tab. */
+  @Get('patient-documents-enabled')
+  async getPatientDocumentsEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getPatientDocumentsEnabled(tenantId);
+    return { enabled };
+  }
+
   /** 3 công tắc Đơn đặt hàng NCC (#298 giai đoạn 2) — tự-phục vụ, không gắn `@RequirePermission`: web cần để ẩn/hiện menu và dải "cần duyệt". */
   @Get('purchase-order-settings')
   async getPurchaseOrderSettings(@Req() req: Request) {

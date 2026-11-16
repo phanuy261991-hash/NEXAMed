@@ -44,3 +44,12 @@ export class PatientDocumentReadOnlyError extends DomainError {
     super('Tệp này lấy từ nơi khác trong hồ sơ nên chỉ xem được. Muốn sửa hoặc gỡ, hãy làm ở chỗ gốc.');
   }
 }
+
+/** Công tắc "Dùng Hình ảnh & Tài liệu" đang TẮT (#299 giai đoạn 3) — mọi API của tab bị từ chối. 409. */
+export class PatientDocumentsDisabledError extends DomainError {
+  readonly code = 'PATIENT_DOCUMENTS_DISABLED';
+
+  constructor() {
+    super('Phòng khám đã tắt tính năng "Hình ảnh & Tài liệu" ở Cấu hình phòng khám.');
+  }
+}

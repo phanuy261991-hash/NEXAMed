@@ -31,6 +31,7 @@ export interface CreateDocumentData {
   encounterId: string | null;
   category: PatientDocumentCategory;
   storageKey: string;
+  thumbKey: string | null;
   fileName: string;
   displayName: string;
   contentType: string;

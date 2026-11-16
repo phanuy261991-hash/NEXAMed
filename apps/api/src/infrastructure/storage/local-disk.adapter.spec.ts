@@ -31,6 +31,21 @@ describe('LocalDiskStorageAdapter', () => {
     expect(await adapter.read('tenant-a', 'files/a.txt')).toEqual(content);
   });
 
+  it('sizeOf trả đúng dung lượng không đọc nội dung; tệp không còn thì trả null', async () => {
+    await adapter.save('tenant-a', 'docs/b.bin', new Uint8Array(1234), 'application/octet-stream');
+    expect(await adapter.sizeOf('tenant-a', 'docs/b.bin')).toBe(1234);
+    expect(await adapter.sizeOf('tenant-a', 'docs/khong-co.bin')).toBeNull();
+    expect(await adapter.sizeOf('tenant-b', 'docs/b.bin')).toBeNull(); // cách ly theo tenant
+  });
+
+  it('volumeUsage báo tổng và chỗ trống của ổ chứa kho (tổng > 0, trống ≤ tổng)', async () => {
+    const usage = await adapter.volumeUsage();
+    expect(usage).not.toBeNull();
+    expect(usage!.totalBytes).toBeGreaterThan(0);
+    expect(usage!.freeBytes).toBeGreaterThanOrEqual(0);
+    expect(usage!.freeBytes).toBeLessThanOrEqual(usage!.totalBytes);
+  });
+
   it('delete xoá file, read sau đó lỗi', async () => {
     const content = new TextEncoder().encode('x');
     await adapter.save('tenant-a', 'a.txt', content, 'text/plain');

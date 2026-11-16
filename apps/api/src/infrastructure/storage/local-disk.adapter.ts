@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, statfs, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize } from 'node:path';
 import type { StoragePort, StoredFileRef } from '@nexamed/core';
 import type { Env } from '../../config/env.schema';
@@ -29,6 +29,26 @@ export class LocalDiskStorageAdapter implements StoragePort {
   async delete(tenantId: string, key: string): Promise<void> {
     const filePath = this.resolvePath(tenantId, key);
     await rm(filePath, { force: true });
+  }
+
+  async sizeOf(tenantId: string, key: string): Promise<number | null> {
+    try {
+      return (await stat(this.resolvePath(tenantId, key))).size;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; // tệp không còn trong kho
+      throw error;
+    }
+  }
+
+  async volumeUsage(): Promise<{ totalBytes: number; freeBytes: number } | null> {
+    try {
+      const baseDir = this.configService.get('STORAGE_DIR', { infer: true });
+      await mkdir(baseDir, { recursive: true });
+      const info = await statfs(baseDir);
+      return { totalBytes: info.blocks * info.bsize, freeBytes: info.bavail * info.bsize };
+    } catch {
+      return null; // hệ thống tệp không báo được dung lượng ổ: chỉ không hiện thanh phần trăm, không phải lỗi
+    }
   }
 
   /** Chặn path traversal qua `key` — key luôn do code nội bộ sinh, nhưng không tin ngay cả vậy. */

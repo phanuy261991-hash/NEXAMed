@@ -5841,6 +5841,8 @@ model PatientDocument {
   sourceType  PatientDocumentSource   @default(UPLOAD) @map("source_type")
   sourceId    String?                 @map("source_id") @db.Uuid
   storageKey  String                  @map("storage_key")
+  /// Ảnh thu nhỏ do trình duyệt tạo lúc tải lên (JPEG), lưu cạnh tệp gốc; NULL với PDF/DICOM, dòng tham chiếu và tệp tải trước giai đoạn 3.
+  thumbKey    String?                 @map("thumbnail_key")
   fileName    String                  @map("file_name")
   displayName String                  @map("display_name")
   contentType String                  @map("content_type")

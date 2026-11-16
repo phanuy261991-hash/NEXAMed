@@ -151,6 +151,24 @@ Tìm nhầm khách? Dùng icon **kính lúp tìm kiếm** cạnh ô SĐT — m�
 
 **Xem chi phí** (chỉ quản lý, vì có giá vốn) — "Báo cáo" → "Chi phí vật tư", bốn tab Theo dịch vụ, Theo khách, Theo vật tư và Theo chi nhánh (tab cuối chỉ có khi công ty từ 2 chi nhánh và bạn có quyền xem báo cáo toàn công ty), xuất Excel hoặc in. Báo cáo cho thấy doanh thu ghi nhận, chi phí vốn và lãi gộp dịch vụ (doanh thu trừ chi phí vật tư); số liệu chỉ gồm các lượt đã ghi tiêu hao nên lãi gộp có thể thấp hơn thực tế, và chưa trừ nhân sự, mặt bằng, khấu hao. Lượt khách đã hoàn tiền mà vật tư đã hao hiện lãi gộp âm. "Toàn hệ thống" → "So sánh chi nhánh" có thêm hai cột Lãi gộp dịch vụ và Lãi gộp tổng (thuốc cộng dịch vụ).
 
+### 3.11. Hình ảnh và Tài liệu của bệnh nhân (Quản trị, bác sĩ, lễ tân)
+
+**Mở tab** — hồ sơ bệnh nhân → tab **"Hình ảnh & Tài liệu"**. Hai kiểu xem: **Theo ngày** (mỗi ngày tải lên là một thư mục, mới nhất ở trên) và **Theo loại** (Kết quả cận lâm sàng, Ảnh lâm sàng, Hợp đồng và giấy tờ, Khác, cùng các thư mục tự tạo).
+
+**Tải lên** — bấm "Tải lên": kéo thả hoặc chọn nhiều tệp (JPG, PNG, PDF, DICOM, tối đa 15 MB mỗi tệp; ảnh lớn hơn được tự thu nhỏ), chọn loại cho từng tệp, tuỳ chọn thư mục, lượt khám và ghi chú. Trên máy tính bảng có nút **Chụp ảnh**. Không tải được hai tệp trùng tên trong cùng một bệnh nhân. Mất mạng giữa chừng thì bấm tải lại là an toàn, không tạo tệp trùng.
+
+**Tệp tự hiện từ nơi khác** — ảnh và PDF của **kết quả cận lâm sàng đã duyệt** (kể cả PDF của đối tác), ảnh **thẻ BHYT** (khi bật "Áp dụng BHYT") và **ảnh đại diện** tự xuất hiện ở tab, có nhãn nguồn. Các tệp này chỉ xem và tải về; muốn sửa hoặc gỡ thì làm ở chỗ gốc (kết quả cận lâm sàng thì đính chính ở kết quả). Nút **"Mở kết quả"** mở đúng phiếu kết quả.
+
+**Sửa, chuyển, xoá** — tệp tải tay có menu: đổi tên và ghi chú, chuyển thư mục, xoá (bắt buộc nhập lý do, tệp ẩn khỏi hồ sơ nhưng vẫn lưu vết). Thư mục chỉ xoá được khi trống.
+
+**Ai thấy gì** — ảnh lâm sàng và kết quả cận lâm sàng theo quyền xem hồ sơ khám (lễ tân không thấy); **Hợp đồng và giấy tờ** (gồm ảnh thẻ BHYT) có quyền riêng, mặc định quản lý, thu ngân và lễ tân đều dùng được.
+
+**Quản trị: bật/tắt và dung lượng** — "Quản trị" → "Cấu hình hệ thống" → "Cấu hình chung" → khối **Hình ảnh & Tài liệu**:
+
+- Công tắc **"Dùng Hình ảnh & Tài liệu"** (mặc định bật). Tắt thì ẩn tab ở mọi hồ sơ; tệp đã tải vẫn được giữ, bật lại là thấy đủ.
+- Dòng **"Dung lượng đã dùng"**: tổng dung lượng và số tệp gắn bệnh nhân của cả công ty, thanh cho biết các tệp chiếm bao nhiêu phần trăm ổ chứa. Dùng để biết khi nào cần thêm ổ cho dữ liệu và bản sao lưu; tệp đã xoá vẫn nằm trên đĩa nên vẫn được tính.
+- Máy chủ cài bằng nginx cần ảnh web **mới** (bản có khối cho phép tải lên tới 17 MB); bản cũ chặn tệp lớn hơn 8 MB bằng lỗi "Dữ liệu gửi lên quá lớn".
+
 ---
 
 ## 4. Câu hỏi thường gặp

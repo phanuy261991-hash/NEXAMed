@@ -6,6 +6,7 @@ import type {
   PatientDocument,
   PatientDocumentCategory,
   PatientDocumentFolder,
+  PatientDocumentUsage,
   RenamePatientDocumentFolderRequest,
   UpdatePatientDocumentRequest,
 } from '@nexamed/shared';
@@ -18,6 +19,11 @@ export async function listPatientDocuments(patientId: string, query: ListPatient
   return unwrap(
     await getApiClient().GET('/api/v1/patients/{patientId}/documents', { params: { path: { patientId }, query: query as never } }),
   ) as ListPatientDocumentsResponse;
+}
+
+/** Dung lượng mọi tệp gắn bệnh nhân của công ty — Cấu hình chung (cần `clinic_config.read`). */
+export async function getPatientDocumentUsage(): Promise<PatientDocumentUsage> {
+  return unwrap(await getApiClient().GET('/api/v1/patient-documents/usage')) as PatientDocumentUsage;
 }
 
 export async function listDocumentEncounterOptions(patientId: string): Promise<ListPatientDocumentEncounterOptionsResponse> {
@@ -37,7 +43,7 @@ export interface UploadDocumentFields {
  * Tải MỘT tệp lên kèm tiến độ (XMLHttpRequest, vì `fetch` không báo tiến độ gửi). Lỗi mạng ném `TypeError` như `fetch` để giao diện nhận ra là lỗi mạng
  * (hộp "Chưa kết nối được máy chủ"); lỗi máy chủ đi qua `apiErrorFromResponse` nên luôn là câu tiếng Việt, không lộ mã.
  */
-export function uploadPatientDocument(patientId: string, file: File, fields: UploadDocumentFields, onProgress?: (percent: number) => void, idempotencyKey?: string): Promise<PatientDocument> {
+export function uploadPatientDocument(patientId: string, file: File, fields: UploadDocumentFields, onProgress?: (percent: number) => void, idempotencyKey?: string, thumbnail?: Blob | null): Promise<PatientDocument> {
   return new Promise((resolve, reject) => {
     const form = new FormData();
     form.append('category', fields.category);
@@ -45,6 +51,8 @@ export function uploadPatientDocument(patientId: string, file: File, fields: Upl
     if (fields.encounterId) form.append('encounterId', fields.encounterId);
     if (fields.note) form.append('note', fields.note);
     form.append('file', file);
+    // Ảnh thu nhỏ do trình duyệt tạo (tuỳ chọn): máy chủ lưu cạnh tệp gốc, lưới/bảng dùng nó thay cho ảnh gốc.
+    if (thumbnail) form.append('thumbnail', thumbnail, 'thumb.jpg');
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', resolveApiUrl(`/api/v1/patients/${patientId}/documents`));
