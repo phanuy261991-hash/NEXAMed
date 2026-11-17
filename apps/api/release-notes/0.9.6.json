@@ -1,0 +1,24 @@
+{
+  "version": "0.9.6",
+  "releasedAt": "2026-11-17",
+  "features": [
+    "Tab \"Hình ảnh & Tài liệu\" ở hồ sơ bệnh nhân: lưu phim chụp, ảnh lâm sàng, hợp đồng và giấy tờ theo thư mục, xem theo Ngày hoặc theo loại. Ảnh và PDF kết quả cận lâm sàng đã duyệt, ảnh thẻ BHYT, ảnh đại diện tự hiện ở đây.",
+    "Đính ảnh ngay tại màn khám: tab \"Hình ảnh\" của lượt khám, dán ảnh bằng Ctrl+V, chụp bằng camera trên điện thoại hoặc máy tính bảng. Lượt khám đã hoàn tất vẫn đính bổ sung được.",
+    "Tuỳ chọn \"Dùng tệp DICOM\" ở Cấu hình chung (mặc định tắt): kết quả chẩn đoán hình ảnh đính được tệp DICOM gốc và xem ngay trong trình duyệt (kéo, phóng, độ sáng và tương phản, xoay, lật, nhiều khung).",
+    "Yêu cầu cấp hàng giữa các kho và Đơn đặt hàng nhà cung cấp: duyệt theo chi nhánh, nhận hàng nhiều đợt bằng phiếu nhập kho liên kết, thêm nhanh mặt hàng ngay khi lập đơn, có in và xuất Excel.",
+    "Vật tư y tế được hoàn thiện: đánh dấu \"Chỉ dùng nội bộ\", ngày sản xuất của lô, nhập và xuất Excel danh mục vật tư, bảng giá theo nhóm vật tư.",
+    "Chi phí vật tư theo dịch vụ: khai định mức vật tư cho từng dịch vụ, ghi vật tư đã dùng khi trả kết quả, chọn kho trừ, và báo cáo chi phí vật tư theo dịch vụ.",
+    "Báo cáo doanh thu và lãi gộp theo dịch vụ, thêm tab \"Theo vật tư\" và \"Theo chi nhánh\"; So sánh chi nhánh có thêm cột lãi gộp."
+  ],
+  "improvements": [
+    "Thanh tab của màn khám không còn phải cuộn ngang: nhãn gọn hơn, tab ít dùng gom vào nút \"Thêm\", tab đang mở luôn hiện.",
+    "Sổ công nợ nhà cung cấp có thêm cột \"Diễn giải\".",
+    "Cấu hình chung hiện dung lượng đã dùng của hình ảnh và tài liệu bệnh nhân; ảnh thu nhỏ giúp danh sách tải nhanh hơn.",
+    "Trình cài đặt nhận biết đúng thứ tự bản thử (beta) và bản chính thức cùng số, nên nâng cấp từ bản thử lên bản chính thức hiện đúng danh sách thay đổi."
+  ],
+  "fixes": [
+    "Tải tệp từ 9 đến 15 MB lên tab tài liệu không còn bị từ chối ở bản cài tại phòng khám.",
+    "Sửa lỗi nhiều người thao tác cùng lúc ở ví tạm ứng, ca thu ngân, duyệt phiếu nhập kho và lịch làm việc có thể làm hệ thống báo lỗi.",
+    "Nhập Excel vật tư để trống \"Tính chất sử dụng\" giữ trạng thái \"chưa phân loại\" thay vì tự điền."
+  ]
+}

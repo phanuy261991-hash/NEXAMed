@@ -38,6 +38,14 @@ describe('notesForUpgrade', () => {
     expect(notesForUpgrade(all, '0.9.0', null)).toBeNull();
   });
 
+  it('bản beta đồng hành: beta → chính thức cùng số và beta.1 → beta.2 đều là nâng cấp, có ghi chú của bản sắp cài; chính thức → beta cùng số thì không', () => {
+    const betas = [note('0.9.6-beta.1'), note('0.9.6-beta.2'), note('0.9.6')];
+    expect(notesForUpgrade(betas, '0.9.6-beta.2', '0.9.6')?.version).toBe('0.9.6');
+    expect(notesForUpgrade(betas, '0.9.6-beta.1', '0.9.6-beta.2')?.version).toBe('0.9.6-beta.2');
+    expect(notesForUpgrade(betas, '0.9.5', '0.9.6-beta.1')?.version).toBe('0.9.6-beta.1');
+    expect(notesForUpgrade(betas, '0.9.6', '0.9.6-beta.2')).toBeNull();
+  });
+
   it('gói không kèm ghi chú của bản sắp cài (dù có ghi chú các bản khác) → null, không báo lỗi; trùng số thì lấy bản đầu', () => {
     expect(notesForUpgrade([note('0.9.0'), note('0.9.1')], '0.9.0', '0.9.2')).toBeNull();
     expect(notesForUpgrade([note('0.9.1'), note('0.9.1', { features: ['trùng'] })], '0.9.0', '0.9.1')?.features).toEqual(['tính năng 0.9.1']);

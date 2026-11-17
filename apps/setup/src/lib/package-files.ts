@@ -21,25 +21,48 @@ export interface PackageInfo {
 
 const VERSION_FILE = /^(nexamed-(?:api|web|backup))-(.+)\.tar(?:\.gz)?$/;
 
-/** So sánh hai nhãn phiên bản dạng `2026.10.15.2` hoặc SemVer `0.9.0` theo từng đoạn số; đoạn không phải số so theo chuỗi. */
-export function compareVersions(a: string, b: string): number {
-  const split = (v: string) => v.split(/[.+-]/);
-  const pa = split(a);
-  const pb = split(b);
+/** So sánh từng đoạn ngăn cách bằng dấu chấm: đoạn số so theo giá trị, đoạn chữ so theo chuỗi; bên hết đoạn trước thì nhỏ hơn. */
+function compareSegments(pa: string[], pb: string[]): number {
   for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
     const x = pa[i];
     const y = pb[i];
     if (x === undefined) return -1;
     if (y === undefined) return 1;
-    const nx = Number(x);
-    const ny = Number(y);
+    const nx = x === '' ? Number.NaN : Number(x);
+    const ny = y === '' ? Number.NaN : Number(y);
     if (Number.isFinite(nx) && Number.isFinite(ny)) {
       if (nx !== ny) return nx - ny;
+    } else if (Number.isFinite(nx) !== Number.isFinite(ny)) {
+      // SemVer: đoạn số luôn nhỏ hơn đoạn chữ (beta.1 < beta.rc).
+      return Number.isFinite(nx) ? -1 : 1;
     } else if (x !== y) {
       return x < y ? -1 : 1;
     }
   }
   return 0;
+}
+
+/**
+ * So sánh hai nhãn phiên bản dạng `2026.10.15.2` hoặc SemVer `0.9.0` / `0.9.6-beta.1`.
+ * Theo SemVer: bỏ phần `+số dựng`; bản có hậu tố tiền phát hành (`-beta.1`) NHỎ hơn bản chính thức cùng số (`0.9.6-beta.2 < 0.9.6`),
+ * nên bản dev đồng hành nâng lên được bản chính thức. Nhãn kiểu ngày không có hậu tố nên so như trước (thêm đoạn thì lớn hơn).
+ */
+export function compareVersions(a: string, b: string): number {
+  const parse = (v: string) => {
+    const noBuild = v.split('+')[0]!;
+    const dash = noBuild.indexOf('-');
+    const core = dash === -1 ? noBuild : noBuild.slice(0, dash);
+    const pre = dash === -1 ? null : noBuild.slice(dash + 1);
+    return { core: core.split('.'), pre: pre === null ? null : pre.split('.') };
+  };
+  const pa = parse(a);
+  const pb = parse(b);
+  const byCore = compareSegments(pa.core, pb.core);
+  if (byCore !== 0) return byCore;
+  if (pa.pre === null && pb.pre === null) return 0;
+  if (pa.pre === null) return 1;
+  if (pb.pre === null) return -1;
+  return compareSegments(pa.pre, pb.pre);
 }
 
 export async function discoverPackage(workDir: string): Promise<PackageInfo> {

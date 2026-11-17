@@ -125,6 +125,17 @@ describe('gói cài đặt', () => {
     expect(compareVersions('2026.10.15.2', '2026.10.15')).toBeGreaterThan(0);
     expect(compareVersions('1.0.0', '1.0.0')).toBe(0);
   });
+  it('so sánh theo SemVer: bản tiền phát hành (beta) nhỏ hơn bản chính thức cùng số, bỏ phần +số dựng', () => {
+    expect(compareVersions('0.9.6-beta.1', '0.9.6')).toBeLessThan(0);
+    expect(compareVersions('0.9.6', '0.9.6-beta.9')).toBeGreaterThan(0);
+    expect(compareVersions('0.9.6-beta.2', '0.9.6-beta.1')).toBeGreaterThan(0);
+    expect(compareVersions('0.9.6-beta.10', '0.9.6-beta.9')).toBeGreaterThan(0);
+    expect(compareVersions('0.9.6-beta.1', '0.9.6-beta')).toBeGreaterThan(0);
+    expect(compareVersions('0.9.6-beta.1', '0.9.6-beta.1')).toBe(0);
+    expect(compareVersions('0.9.6+300', '0.9.6+301')).toBe(0);
+    // Bản beta của số lớn hơn vẫn lớn hơn bản chính thức của số nhỏ hơn.
+    expect(compareVersions('0.9.6-beta.1', '0.9.5')).toBeGreaterThan(0);
+  });
   it('chỉ tính phiên bản có đủ cả 3 ảnh, mới nhất trước', async () => {
     await writeFile(join(workDir, 'images', 'nexamed-api-0.11.0.tar.gz'), 'x');
     const pkg = await discoverPackage(workDir);
