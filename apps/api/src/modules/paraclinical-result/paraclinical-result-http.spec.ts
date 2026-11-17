@@ -632,6 +632,123 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       expect(audit).not.toBeNull();
     });
 
+    it('tệp DICOM gốc (#299 bổ sung 6): công tắc tắt → 409; bật → chỉ nhận DICOM thật, tối đa 4, không lẫn vào ảnh, đã duyệt thì khoá, đính chính giữ nguyên, hiện ở tab hồ sơ, cách ly công ty', async () => {
+      const setDicom = (enabled: boolean) => http().patch('/api/v1/clinic-settings').set(authed(adminToken)).send({ dicomEnabled: enabled });
+      const dcm = (tag: number) => Buffer.concat([Buffer.alloc(128, 0), Buffer.from('DICM'), Buffer.alloc(64, tag)]);
+      const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 1)]);
+      const { encounterId } = await prepareEncounterInConsultation();
+      const placed = await order(encounterId, [ultrasoundId]);
+      await payAll(encounterId);
+      const imgItem = placed.items[0]!;
+      await start(nurseToken, [imgItem.id]);
+      const upDicom = (buffer: Buffer, name = 'ct.dcm', token = nurseToken, itemId = imgItem.id) => http().post(`${baseUrl('imaging')}/items/${itemId}/dicom`).set(authed(token)).attach('file', buffer, name);
+      const upImage = (buffer: Buffer, name: string) => http().post(`${baseUrl('imaging')}/items/${imgItem.id}/images`).set(authed(nurseToken)).attach('file', buffer, name);
+
+      try {
+        // Mặc định TẮT: từ chối, không tạo bản nháp nào.
+        expect((await http().get('/api/v1/clinic-settings/dicom-enabled').set(authed(nurseToken))).body.data).toEqual({ enabled: false });
+        const off = await upDicom(dcm(1));
+        expect(off.status).toBe(409);
+        expect(off.body.error.code).toBe('DICOM_DISABLED');
+
+        expect((await setDicom(true)).status).toBe(200);
+        expect((await http().get('/api/v1/clinic-settings/dicom-enabled').set(authed(nurseToken))).body.data).toEqual({ enabled: true });
+
+        // Không phải DICOM / thiếu tệp / không có quyền nhập.
+        expect((await upDicom(png, 'anh.dcm')).status).toBeGreaterThanOrEqual(400);
+        expect((await upDicom(Buffer.from('không phải dicom'), 'x.dcm')).status).toBeGreaterThanOrEqual(400);
+        expect((await http().post(`${baseUrl('imaging')}/items/${imgItem.id}/dicom`).set(authed(nurseToken))).status).toBe(400);
+        expect((await upDicom(dcm(1), 'a.dcm', receptionistToken)).status).toBe(403);
+
+        // Đính được; nằm ở dicomFiles, KHÔNG lẫn vào images (phiếu in chỉ đọc images).
+        const first = await upDicom(dcm(1), 'nguc-thang.dcm');
+        expect(first.status, JSON.stringify(first.body)).toBe(200);
+        const section = first.body.data.form.sections[0] as { images: unknown[]; dicomFiles: { id: string; fileName: string; sizeBytes: number; url: string }[] };
+        expect(section.images).toHaveLength(0);
+        expect(section.dicomFiles).toHaveLength(1);
+        expect(section.dicomFiles[0]).toMatchObject({ fileName: 'nguc-thang.dcm', sizeBytes: 128 + 4 + 64, url: expect.stringMatching(/^\/api\/v1\/files\//) });
+        expect((await http().get(section.dicomFiles[0]!.url)).status).toBe(200);
+
+        // Ảnh và DICOM đếm RIÊNG: đủ 4 DICOM thì DICOM thứ 5 bị từ chối nhưng vẫn thêm được ảnh.
+        for (const tag of [2, 3, 4]) expect((await upDicom(dcm(tag), `ct-${tag}.dcm`)).status).toBe(200);
+        const fifth = await upDicom(dcm(5), 'ct-5.dcm');
+        expect(fifth.status).toBe(409);
+        const withImage = await upImage(png, 'sieu-am.png');
+        expect(withImage.status, JSON.stringify(withImage.body)).toBe(200);
+        const mixed = withImage.body.data.form.sections[0] as { images: unknown[]; dicomFiles: unknown[] };
+        expect(mixed.images).toHaveLength(1);
+        expect(mixed.dicomFiles).toHaveLength(4);
+
+        // Công ty khác không đính được vào dịch vụ của công ty này.
+        // (Bật công tắc của công ty kia để phép thử đúng là cách ly dữ liệu chứ không phải bị công tắc chặn trước.)
+        expect((await http().patch('/api/v1/clinic-settings').set(authed(tenantBAdminToken)).send({ dicomEnabled: true })).status).toBe(200);
+        expect((await upDicom(dcm(6), 'x.dcm', tenantBAdminToken)).status).toBe(404);
+        await http().patch('/api/v1/clinic-settings').set(authed(tenantBAdminToken)).send({ dicomEnabled: false });
+
+        // Gỡ một tệp (dùng chung DELETE images/:id) rồi duyệt kết quả.
+        const removed = await http().delete(`${baseUrl('imaging')}/images/${section.dicomFiles[0]!.id}`).set(authed(nurseToken));
+        expect(removed.status, JSON.stringify(removed.body)).toBe(200);
+        expect(removed.body.data.form.sections[0].dicomFiles).toHaveLength(3);
+        const approved = await http()
+          .post(`${resultUrl(imgItem.id)}/approve`)
+          .set(authed(doctorToken))
+          .send({ sections: [{ itemId: imgItem.id, values: [], descriptionText: 'Phổi sáng.', conclusionText: 'Không thấy tổn thương.' }] });
+        expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+        expect(approved.body.data.form.sections[0].dicomFiles).toHaveLength(3);
+
+        // Đã duyệt: không đính thêm, không gỡ (service 409 + trigger DB).
+        expect((await upDicom(dcm(7), 'tre.dcm')).status).toBe(409);
+        const keptId = (approved.body.data.form.sections[0].dicomFiles as { id: string }[])[0]!.id;
+        expect((await http().delete(`${baseUrl('imaging')}/images/${keptId}`).set(authed(nurseToken))).status).toBe(409);
+        await expect(privileged.paraclinicalResultImage.updateMany({ where: { tenantId: fixture.tenantA.id, id: keptId }, data: { deletedAt: new Date() } })).rejects.toThrow(/đã ký/);
+
+        // Tắt công tắc sau khi đã dùng: tệp đã đính giữ nguyên, chỉ không đính thêm được.
+        expect((await setDicom(false)).status).toBe(200);
+        const afterOff = await form(imgItem.id);
+        expect((afterOff as unknown as { sections: { dicomFiles: unknown[] }[] }).sections[0]!.dicomFiles).toHaveLength(3);
+        expect((await upDicom(dcm(8), 'sau-khi-tat.dcm')).status).toBe(409);
+
+        // Đính chính: bản nháp mới sao chép cả tệp DICOM.
+        const amend = await http().post(`${resultUrl(imgItem.id)}/amend`).set(authed(nurseToken)).send({ reason: 'Đính kèm nhầm phim' });
+        expect(amend.status, JSON.stringify(amend.body)).toBe(200);
+        expect(amend.body.data.form.sections[0].dicomFiles).toHaveLength(3);
+
+        // Nhật ký.
+        const audit = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'paraclinical_result.dicom_added' } });
+        expect(audit).not.toBeNull();
+      } finally {
+        await setDicom(false);
+      }
+    });
+
+    it('tệp DICOM của kết quả đã duyệt hiện ở tab Hình ảnh & Tài liệu của hồ sơ dạng dòng tham chiếu chỉ đọc (kind dicom), kể cả khi công tắc đã tắt', async () => {
+      const dcm = Buffer.concat([Buffer.alloc(128, 0), Buffer.from('DICM'), Buffer.alloc(64, 9)]);
+      const { encounterId } = await prepareEncounterInConsultation();
+      const placed = await order(encounterId, [ultrasoundId]);
+      await payAll(encounterId);
+      const imgItem = placed.items[0]!;
+      await start(nurseToken, [imgItem.id]);
+      try {
+        expect((await http().patch('/api/v1/clinic-settings').set(authed(adminToken)).send({ dicomEnabled: true })).status).toBe(200);
+        expect((await http().post(`${baseUrl('imaging')}/items/${imgItem.id}/dicom`).set(authed(nurseToken)).attach('file', dcm, 'phim-ct.dcm')).status).toBe(200);
+        // Kết quả chỉ có DICOM (không ảnh JPG/PNG) vẫn duyệt được.
+        const approved = await http()
+          .post(`${resultUrl(imgItem.id)}/approve`)
+          .set(authed(doctorToken))
+          .send({ sections: [{ itemId: imgItem.id, values: [], descriptionText: 'Có phim.', conclusionText: 'Đã xem phim.' }] });
+        expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+        expect(approved.body.data.form.sections[0].images).toHaveLength(0);
+      } finally {
+        await http().patch('/api/v1/clinic-settings').set(authed(adminToken)).send({ dicomEnabled: false });
+      }
+      const encounter = await privileged.encounter.findFirstOrThrow({ where: { id: encounterId }, select: { patientId: true } });
+      const docs = await http().get(`/api/v1/patients/${encounter.patientId}/documents?encounterId=${encounterId}`).set(authed(adminToken));
+      expect(docs.status, JSON.stringify(docs.body)).toBe(200);
+      const items = docs.body.data.items as { kind: string; source: string; readOnly: boolean; fileName: string; category: string }[];
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({ kind: 'dicom', source: 'PARACLINICAL_IMAGE', readOnly: true, category: 'PARACLINICAL' });
+    });
+
     it('GET kết quả ghi audit "xem"; chưa lấy mẫu mở màn nhập → 409', async () => {
       const { encounterId } = await prepareEncounterInConsultation();
       const placed = await order(encounterId, [ultrasoundId]);

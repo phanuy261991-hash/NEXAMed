@@ -38,6 +38,7 @@ import {
   getLabPartnerFeatureStatus,
   getStockRequestFeatureStatus,
   getPatientDocumentsFeatureStatus,
+  getDicomFeatureStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupConfig,
   getBackupStatus,
@@ -335,6 +336,16 @@ export function usePatientDocumentsEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'patient-documents-enabled'),
     queryFn: getPatientDocumentsFeatureStatus,
+    staleTime: STALE_REFERENCE_MS,
+  });
+}
+
+/** "Dùng tệp DICOM" (#299 bổ sung 6) — tự-phục vụ như công tắc Hình ảnh & Tài liệu; chưa tải xong coi như TẮT (khối DICOM không nháy rồi biến mất). Tắt = như hiện nay. */
+export function useDicomEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'dicom-enabled'),
+    queryFn: getDicomFeatureStatus,
     staleTime: STALE_REFERENCE_MS,
   });
 }

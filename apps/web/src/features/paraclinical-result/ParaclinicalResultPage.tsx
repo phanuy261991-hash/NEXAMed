@@ -22,6 +22,8 @@ import { PARACLINICAL_GROUP_META, type ParaclinicalGroup } from './paraclinical-
 import { AmendResultDialog, CancelAmendmentDialog } from './ParaclinicalAmendDialogs';
 import { ParaclinicalResultPrintView } from './ParaclinicalResultPrintView';
 import { splitAttachments } from './result-attachments';
+import { ResultDicomPanel } from './ResultDicomPanel';
+import { useDicomEnabledQuery } from '../clinic/clinic.queries';
 import { useAmendParaclinicalMutations, useApproveParaclinicalResultMutation, useParaclinicalImageMutations, useParaclinicalResultQuery, usePrintParaclinicalResultMutation, useSaveParaclinicalResultMutation } from './paraclinical-result.queries';
 
 interface SectionDraft {
@@ -250,8 +252,18 @@ function ResultForm({ group, itemId, form }: { group: ParaclinicalGroup; itemId:
                 setError(err instanceof ApiError ? err.message : 'Không tải được ảnh. Thử lại sau.');
               }
             }}
+            onUploadDicom={async (files) => {
+              setError(null);
+              try {
+                for (const file of files) await imageMutations.uploadDicom.mutateAsync({ itemId: section.itemId, file });
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : 'Không đính được tệp DICOM. Thử lại sau.');
+              }
+            }}
             onRemoveImage={(imageId) => void imageMutations.remove.mutateAsync(imageId).catch((err) => setError(err instanceof ApiError ? err.message : 'Không gỡ được ảnh.'))}
             imageBusy={imageMutations.upload.isPending || imageMutations.remove.isPending}
+            dicomBusy={imageMutations.uploadDicom.isPending || imageMutations.remove.isPending}
+            recordName={form.patientName}
           />
         ))}
 
@@ -471,8 +483,11 @@ function SectionCard({
   onPatch,
   showName,
   onUploadImages,
+  onUploadDicom,
   onRemoveImage,
   imageBusy,
+  dicomBusy,
+  recordName,
 }: {
   section: ParaclinicalResultSection;
   draft: SectionDraft;
@@ -481,9 +496,14 @@ function SectionCard({
   onPatch: (itemId: string, patch: Partial<Pick<SectionDraft, 'description' | 'conclusion'>>) => void;
   showName: boolean;
   onUploadImages: (files: File[]) => Promise<void>;
+  onUploadDicom: (files: File[]) => Promise<void>;
   onRemoveImage: (imageId: string) => void;
   imageBusy: boolean;
+  dicomBusy: boolean;
+  /** Tên bệnh nhân trong hồ sơ — trình xem DICOM đối chiếu với tên ghi trong tệp. */
+  recordName: string;
 }) {
+  const dicomEnabled = useDicomEnabledQuery().data?.enabled === true;
   const wantsIndicators = section.resultType === 'INDICATORS' || section.resultType === 'BOTH';
   const wantsNarrative = section.resultType === 'NARRATIVE' || section.resultType === 'BOTH';
   const templatesQuery = useResultTemplatesQuery({ technicalServiceId: section.technicalServiceId });
@@ -629,7 +649,14 @@ function SectionCard({
           onChange={(e) => onPatch(section.itemId, { conclusion: e.target.value })}
         />
         </div>
-        {section.serviceKind !== 'LAB' && <ImagesPanel images={splitAttachments(section.images).images} editable={editable} busy={imageBusy} onUpload={onUploadImages} onRemove={onRemoveImage} />}
+        {section.serviceKind !== 'LAB' && (
+          <div className="flex w-full flex-shrink-0 flex-col gap-4 lg:w-[300px]">
+            <ImagesPanel images={splitAttachments(section.images).images} editable={editable} busy={imageBusy} onUpload={onUploadImages} onRemove={onRemoveImage} />
+            {dicomEnabled && (
+              <ResultDicomPanel files={section.dicomFiles ?? []} hasImages={splitAttachments(section.images).images.length > 0} editable={editable} busy={dicomBusy} recordName={recordName} onUpload={onUploadDicom} onRemove={onRemoveImage} />
+            )}
+          </div>
+        )}
         {splitAttachments(section.images).pdfs.length > 0 && <PdfAttachmentsPanel pdfs={splitAttachments(section.images).pdfs} />}
       </div>
     </section>

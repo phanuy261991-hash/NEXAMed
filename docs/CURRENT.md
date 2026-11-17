@@ -63,7 +63,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-HinhAnhTaiLieu-GD3-2026-11-16.md`** (cập nhật 17/11/2026, ĐỌC TRƯỚC): tab "Hình ảnh & Tài liệu" GĐ1–GĐ3 + hoàn thiện (#299 bổ sung 5) XONG, full test xanh (API 2423, core 900, shared 136, web 824, setup 112); mục 4 là việc cần chủ dự án quyết (9 câu mockup "Đính ảnh" + DICOM đang chờ duyệt, dựng gói on-prem), mục 5 là bẫy đã gặp.
+**`docs/handoffs/HANDOFF-HinhAnhTaiLieu-GD3-2026-11-16.md`** (cập nhật 17/11/2026 tối, ĐỌC TRƯỚC): mọi việc #299 + thanh tab màn khám (#300, Cách 2) + tab "Hình ảnh"/hộp "Đính ảnh" ở màn khám + chế độ DICOM tuỳ chọn (công tắc mặc định TẮT, #299 bổ sung 6) đã LÀM và kiểm Chrome IP LAN (thanh tab 23/23, Đính ảnh 25/25, DICOM 36/36); mockup đã được chủ dự án chốt. Lần chạy cuối (17/11): API 2429 (2 tệp lỗi do tải máy khi chạy song song, chạy riêng đạt 36/36), core 900, shared 136, web 844, setup 112, typecheck + lint sạch. Còn: dựng gói on-prem (chờ chủ dự án chốt số phiên bản; cần dựng lại ảnh web vì nginx có khối mới), việc SaaS (kho đối tượng, hạn mức dung lượng, giới hạn tải DICOM).
 
 Các bản bàn giao cũ đã được gỡ khỏi thư mục làm việc (14/11/2026, chủ dự án chốt chỉ giữ bản mới nhất; không đọc lại). Khi cần tra một việc cũ: tìm theo số quyết định/ngày trong `docs/DECISIONS.md` và `docs/CHANGELOG.md` trước; cần đúng bản bàn giao thì `git log --all --diff-filter=D --name-only -- docs/handoffs` để tìm commit gỡ rồi `git show <commit>^:docs/handoffs/<tên tệp>`.
 

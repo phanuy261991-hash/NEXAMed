@@ -34,3 +34,4 @@ Tab/pill con trong trang, hộp thoại, trạng thái có dữ liệu lớn, tr
 
 - `consultation-tabs-check.cjs` — thanh tab màn khám không cuộn ở 1280/1366/1440/1536/1920/2560, nút "Thêm" + menu + chọn tab trong menu ở 1000 px, rất hẹp 760 px. Tạo lượt khám thử tiền tố KIEMTAB, cuối chạy khoá bác sĩ thử. Kỳ vọng 23/23.
 - `encounter-images-check.cjs` — tab "Hình ảnh" + hộp "Đính ảnh" ở màn khám (#299 bổ sung 6): rỗng, hộp Đính ảnh, dán Ctrl+V, số trên tab, lọc, xem lớn, ảnh nằm ở hồ sơ bệnh nhân, bổ sung sau hoàn tất, chỉ xem thì nút mờ, lỗi tải/lỗi đính, công tắc tắt ẩn tab. Tiền tố KIEMIMG. Kỳ vọng 25/25.
+- `dicom-check.cjs` — chế độ DICOM tuỳ chọn (#299 bổ sung 6): công tắc, khối "Tệp DICOM gốc" ở màn nhập kết quả, trình xem (vẽ ảnh thật, công cụ, nhiều khung), tên khác hồ sơ, kiểu nén chưa đọc được, mất mạng + Thử lại, đã duyệt, tab Hình ảnh, tệp hỏng, ảnh lớn. Dựng DICOM tổng hợp trong script. Tiền tố KIEMDCM. Kỳ vọng 36/36.

@@ -4,6 +4,7 @@ import type {
   LabPartnerFeatureStatus,
   StockRequestFeatureStatus,
   PatientDocumentsFeatureStatus,
+  DicomFeatureStatus,
   AllowFreeTextPrescriptionStatus,
   PrescriptionSplitBlockStatus,
   AllowStaffSelfScheduleStatus,
@@ -139,6 +140,11 @@ export async function getStockRequestFeatureStatus(): Promise<StockRequestFeatur
 /** "Dùng Hình ảnh & Tài liệu" (#299) — tự-phục vụ, mọi nhân viên đọc được để web ẩn/hiện tab ở hồ sơ bệnh nhân. */
 export async function getPatientDocumentsFeatureStatus(): Promise<PatientDocumentsFeatureStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/patient-documents-enabled')) as PatientDocumentsFeatureStatus;
+}
+
+/** "Dùng tệp DICOM" (#299 bổ sung 6) — tự-phục vụ, mọi nhân viên đọc được để ẩn/hiện khối DICOM ở kết quả và trình xem. */
+export async function getDicomFeatureStatus(): Promise<DicomFeatureStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/dicom-enabled')) as DicomFeatureStatus;
 }
 
 /** S6-01 (ADM-04) — chỉ `clinic_admin` gọi được (`clinic_config.read`), dùng cho banner cảnh báo toàn cục. */

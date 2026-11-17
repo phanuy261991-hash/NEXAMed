@@ -2,6 +2,10 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 17/11/2026 (phần 4) — Chế độ DICOM tuỳ chọn (`docs/DECISIONS.md` #299 bổ sung 6, đợt 3)
+
+- Công tắc "Dùng tệp DICOM" ở Cấu hình chung (mặc định TẮT = như cũ). Bật: kết quả chẩn đoán hình ảnh đính được tệp DICOM gốc (khối "Tệp DICOM gốc", ≤ 4 tệp, 50 MB) và có trình xem DICOM trong trình duyệt (kéo, phóng, sáng/tương phản, đảo màu, xoay, lật, nhiều khung, tên khác hồ sơ thì cảnh báo, kiểu nén chưa đọc được thì Tải về). Không có migration; nginx on-prem thêm khối 52m cho đường dẫn đính DICOM (bản cài cần dựng lại ảnh web).
+
 ## 17/11/2026 (phần 3) — Đính ảnh ở màn khám (`docs/DECISIONS.md` #299 bổ sung 6)
 
 - Màn khám có tab "Hình ảnh" (ảnh của đúng lượt khám, lọc theo loại, số trên tab, xem lớn) và hộp "Đính ảnh" (gắn sẵn lượt khám, ô Loại chung, dán Ctrl+V, nút Chụp ảnh trên điện thoại/máy tính bảng). Ảnh nằm luôn ở tab Hình ảnh & Tài liệu của hồ sơ; lượt khám đã hoàn tất vẫn đính thêm được, ảnh mới có thẻ "Bổ sung". API danh sách nhận `encounterId`.

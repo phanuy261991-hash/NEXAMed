@@ -208,6 +208,14 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /** "Dùng tệp DICOM" (#299 bổ sung 6) — tự-phục vụ, không gắn `@RequirePermission`: màn nhập kết quả, tab hồ sơ và trình xem cần biết để ẩn/hiện khối DICOM. */
+  @Get('dicom-enabled')
+  async getDicomEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getDicomEnabled(tenantId);
+    return { enabled };
+  }
+
   /** 3 công tắc Đơn đặt hàng NCC (#298 giai đoạn 2) — tự-phục vụ, không gắn `@RequirePermission`: web cần để ẩn/hiện menu và dải "cần duyệt". */
   @Get('purchase-order-settings')
   async getPurchaseOrderSettings(@Req() req: Request) {

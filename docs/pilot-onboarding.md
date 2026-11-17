@@ -157,6 +157,8 @@ Tìm nhầm khách? Dùng icon **kính lúp tìm kiếm** cạnh ô SĐT — m�
 
 **Tải lên** — bấm "Tải lên": kéo thả hoặc chọn nhiều tệp (JPG, PNG, PDF, DICOM, tối đa 15 MB mỗi tệp; ảnh lớn hơn được tự thu nhỏ), chọn loại cho từng tệp, tuỳ chọn thư mục, lượt khám và ghi chú. Trên máy tính bảng có nút **Chụp ảnh**. Không tải được hai tệp trùng tên trong cùng một bệnh nhân. Mất mạng giữa chừng thì bấm tải lại là an toàn, không tạo tệp trùng.
 
+**Tệp DICOM (tuỳ chọn, mặc định tắt)** — dòng "Dùng tệp DICOM" ngay dưới "Dùng Hình ảnh & Tài liệu". Chỉ bật khi phòng khám nhận ảnh từ máy chẩn đoán hình ảnh dạng DICOM (`.dcm`). Bật: màn nhập kết quả chẩn đoán hình ảnh có thêm khối "Tệp DICOM gốc" (tối đa 4 tệp, mỗi tệp 50 MB; ảnh JPG/PNG để in vẫn đính như cũ) và bấm "Xem" là xem ngay trong hệ thống. Tắt: như trước (DICOM chỉ tải lên ở tab hồ sơ và tải về). Bản cài on-prem cần dựng lại ảnh web để nhận cấu hình nginx mới (cho tải tệp 50 MB).
+
 **Ảnh nhỏ cho lưới** — ảnh tải lên được tạo ảnh nhỏ ngay để lưới tải nhanh. Tệp tải từ trước và các ảnh tự hiện từ nơi khác sẽ có ảnh nhỏ sau lần đầu một người có quyền tải lên mở hồ sơ (lần đầu ảnh còn tải bản gốc).
 
 **Tệp tự hiện từ nơi khác** — ảnh và PDF của **kết quả cận lâm sàng đã duyệt** (kể cả PDF của đối tác), ảnh **thẻ BHYT** (khi bật "Áp dụng BHYT") và **ảnh đại diện** tự xuất hiện ở tab, có nhãn nguồn. Các tệp này chỉ xem và tải về; muốn sửa hoặc gỡ thì làm ở chỗ gốc (kết quả cận lâm sàng thì đính chính ở kết quả). Nút **"Mở kết quả"** mở đúng phiếu kết quả.

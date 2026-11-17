@@ -4,7 +4,8 @@ import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import type { ParaclinicalGroup } from './paraclinical-group';
 import { getPatientParaclinicalResult, recordPatientParaclinicalPrint } from './patient-paraclinical.api';
-import { amendParaclinicalResult, approveParaclinicalResult, cancelParaclinicalAmendment, deleteParaclinicalImage, getParaclinicalResult, listParaclinicalLookup, listParaclinicalQueue, recordParaclinicalResultPrint, saveParaclinicalResult, startParaclinicalItems, uploadParaclinicalImage } from './paraclinical-result.api';
+import { amendParaclinicalResult, approveParaclinicalResult, cancelParaclinicalAmendment, deleteParaclinicalImage,
+  uploadParaclinicalDicom, getParaclinicalResult, listParaclinicalLookup, listParaclinicalQueue, recordParaclinicalResultPrint, saveParaclinicalResult, startParaclinicalItems, uploadParaclinicalImage } from './paraclinical-result.api';
 
 /** Cận lâm sàng GĐ4 — Hàng đợi & kết quả (docs/DECISIONS.md #212), tách 2 menu theo nhóm (#215). Cache key có `group` vì 2 nhóm là 2 hàng đợi độc lập. */
 
@@ -111,5 +112,6 @@ export function useParaclinicalImageMutations(pageItemId: string) {
   const apply = (data: Awaited<ReturnType<typeof uploadParaclinicalImage>>) => queryClient.setQueryData(queryKey(tenantId, 'paraclinical', 'result', pageItemId), data);
   const upload = useMutation({ mutationFn: ({ itemId, file }: { itemId: string; file: File }) => uploadParaclinicalImage(itemId, file), onSuccess: apply });
   const remove = useMutation({ mutationFn: (imageId: string) => deleteParaclinicalImage(imageId), onSuccess: apply });
-  return { upload, remove };
+  const uploadDicom = useMutation({ mutationFn: ({ itemId, file }: { itemId: string; file: File }) => uploadParaclinicalDicom(itemId, file), onSuccess: apply });
+  return { upload, remove, uploadDicom };
 }

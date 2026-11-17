@@ -119,6 +119,8 @@ const LOGIN_ONLY_ROUTES = new Set<string>([
   'GET /api/v1/clinic-settings/stock-request-enabled',
   // "Dùng Hình ảnh & Tài liệu" (#299 giai đoạn 3): mọi nhân viên mở hồ sơ bệnh nhân cần biết công tắc để web ẩn/hiện tab.
   'GET /api/v1/clinic-settings/patient-documents-enabled',
+  // "Dùng tệp DICOM" (#299 bổ sung 6): màn nhập kết quả, tab hồ sơ và trình xem cần biết công tắc.
+  'GET /api/v1/clinic-settings/dicom-enabled',
   'GET /api/v1/clinic-settings/purchase-order-settings',
   'GET /api/v1/clinic-settings/cashier-shift-blind-close-enabled',
   'GET /api/v1/clinic-profile/print-header',

@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { DOCUMENT_CONTENT_TYPE } from '@nexamed/core';
 import { Prisma, type ParaclinicalResult, type ParaclinicalResultImage, type ParaclinicalResultValue } from '@prisma/client';
+
+/** Tệp DICOM gốc nằm chung bảng ảnh, phân biệt bằng `content_type` (cùng cách tệp PDF của đối tác); mọi truy vấn "ảnh" phải loại nó ra. */
+const DICOM_CONTENT_TYPE = DOCUMENT_CONTENT_TYPE.dcm;
 
 export type ResultWithValues = ParaclinicalResult & { values: ParaclinicalResultValue[] };
 
@@ -52,8 +56,8 @@ export class ParaclinicalResultRepository {
         orderItem: {
           select: { id: true, name: true, sortOrder: true, createdAt: true, order: { select: { encounterId: true } }, technicalService: { select: { serviceKind: true } } },
         },
-        _count: { select: { images: { where: { deletedAt: null } } } },
-        images: { where: { deletedAt: null }, select: { contentType: true, storageKey: true, fileName: true, sortOrder: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+        _count: { select: { images: { where: { deletedAt: null, contentType: { not: DICOM_CONTENT_TYPE } } } } },
+        images: { where: { deletedAt: null, contentType: { not: DICOM_CONTENT_TYPE } }, select: { contentType: true, storageKey: true, fileName: true, sortOrder: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
       },
     });
   }
@@ -88,7 +92,7 @@ export class ParaclinicalResultRepository {
             order: { select: { orderNo: true, encounter: { select: { id: true, encounterNo: true, branchId: true, doctorId: true } } } },
           },
         },
-        _count: { select: { images: { where: { deletedAt: null } } } },
+        _count: { select: { images: { where: { deletedAt: null, contentType: { not: DICOM_CONTENT_TYPE } } } } },
       },
       orderBy: [{ signedAt: 'desc' }, { id: 'desc' }],
       take: MAX_PATIENT_RESULTS,
@@ -255,8 +259,14 @@ export class ParaclinicalResultRepository {
     return tx.paraclinicalResultImage.findFirst({ where: { tenantId, id, deletedAt: null }, include: { result: true } });
   }
 
+  /** Số ảnh (KHÔNG tính tệp DICOM gốc) — giới hạn 8 ảnh/kết quả. */
   countImages(tx: Prisma.TransactionClient, tenantId: string, resultId: string): Promise<number> {
-    return tx.paraclinicalResultImage.count({ where: { tenantId, resultId, deletedAt: null } });
+    return tx.paraclinicalResultImage.count({ where: { tenantId, resultId, deletedAt: null, contentType: { not: DICOM_CONTENT_TYPE } } });
+  }
+
+  /** Số tệp DICOM gốc của kết quả (#299 bổ sung 6) — giới hạn 4 tệp/kết quả. */
+  countDicom(tx: Prisma.TransactionClient, tenantId: string, resultId: string): Promise<number> {
+    return tx.paraclinicalResultImage.count({ where: { tenantId, resultId, deletedAt: null, contentType: DICOM_CONTENT_TYPE } });
   }
 
   createImage(

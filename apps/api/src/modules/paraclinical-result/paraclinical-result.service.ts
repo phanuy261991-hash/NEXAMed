@@ -4,7 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import type { ParaclinicalResultValue, Prisma } from '@prisma/client';
 import {
   CLINIC_CONFIG_READER_PORT,
+  DicomDisabledError,
+  DOCUMENT_CONTENT_TYPE,
   InvalidPhotoError,
+  sniffDocumentKind,
   sniffImageExtension,
   STORAGE_PORT,
   type StoragePort,
@@ -29,6 +32,8 @@ import {
 import {
   calculateAgeYears,
   type DataScope,
+  PARACLINICAL_DICOM_MAX_BYTES,
+  PARACLINICAL_DICOM_MAX_COUNT,
   PARACLINICAL_IMAGE_MAX_BYTES,
   PARACLINICAL_IMAGE_MAX_COUNT,
   specimenCapLabel,
@@ -372,34 +377,73 @@ export class ParaclinicalResultService {
     if (file.buffer.byteLength > PARACLINICAL_IMAGE_MAX_BYTES) throw new InvalidPhotoError('Ảnh vượt quá 5MB, vui lòng chọn ảnh nhỏ hơn.');
     const extension = sniffImageExtension(file.buffer);
     if (!extension) throw new InvalidPhotoError('Chỉ nhận ảnh định dạng JPG hoặc PNG.');
+    return this.attachResultFile(tenantId, actorId, scope, itemId, file, meta, {
+      extension,
+      contentType: extension === 'jpg' ? 'image/jpeg' : 'image/png',
+      dicom: false,
+      maxCount: PARACLINICAL_IMAGE_MAX_COUNT,
+      limitMessage: `Mỗi kết quả tối đa ${PARACLINICAL_IMAGE_MAX_COUNT} ảnh.`,
+      labMessage: 'Xét nghiệm không có ảnh đính kèm.',
+      auditAction: 'paraclinical_result.image_added',
+    });
+  }
 
+  /**
+   * Đính tệp DICOM gốc vào kết quả chẩn đoán hình ảnh/thăm dò (docs/DECISIONS.md #299 bổ sung 6): chỉ khi công tắc "Dùng tệp DICOM" BẬT (đọc TRƯỚC transaction — #264), nhận diện bằng magic byte
+   * (128 byte tự do rồi `DICM`), ≤ 50 MB, tối đa 4 tệp/kết quả. Cùng quy tắc với ảnh: tạo bản nháp nếu chưa có, chỉ khi chưa duyệt (sau duyệt phải "Đính chính").
+   */
+  async addDicom(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, file: { buffer: Buffer; originalname: string }, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+    if (!(await this.clinicConfigReader.getDicomEnabled(tenantId))) throw new DicomDisabledError();
+    if (file.buffer.byteLength > PARACLINICAL_DICOM_MAX_BYTES) throw new InvalidPhotoError('Tệp DICOM vượt quá 50MB, vui lòng chọn tệp nhỏ hơn.');
+    if (sniffDocumentKind(file.buffer) !== 'dcm') throw new InvalidPhotoError('Chỉ nhận tệp DICOM (.dcm).');
+    return this.attachResultFile(tenantId, actorId, scope, itemId, file, meta, {
+      extension: 'dcm',
+      contentType: DOCUMENT_CONTENT_TYPE.dcm,
+      dicom: true,
+      maxCount: PARACLINICAL_DICOM_MAX_COUNT,
+      limitMessage: `Mỗi kết quả tối đa ${PARACLINICAL_DICOM_MAX_COUNT} tệp DICOM.`,
+      labMessage: 'Xét nghiệm không có tệp DICOM.',
+      auditAction: 'paraclinical_result.dicom_added',
+    });
+  }
+
+  /** Phần chung của đính ảnh và đính DICOM: khoá phiếu chỉ định, kiểm còn sửa được, tạo nháp nếu chưa có, đếm theo loại, lưu tệp rồi ghi DB (lỗi DB thì dọn tệp vừa lưu). */
+  private async attachResultFile(
+    tenantId: string,
+    actorId: string,
+    scope: ResultAccessScope,
+    itemId: string,
+    file: { buffer: Buffer; originalname: string },
+    meta: RequestMeta,
+    opts: { extension: string; contentType: string; dicom: boolean; maxCount: number; limitMessage: string; labMessage: string; auditAction: 'paraclinical_result.image_added' | 'paraclinical_result.dicom_added' },
+  ): Promise<ParaclinicalResultForm> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
       const item = group.find((g) => g.id === itemId) ?? group[0]!;
-      if (item.serviceKind === 'LAB') throw new ParaclinicalItemInvalidStateError('Xét nghiệm không có ảnh đính kèm.');
+      if (item.serviceKind === 'LAB') throw new ParaclinicalItemInvalidStateError(opts.labMessage);
 
       let [result] = await this.resultRepository.findActiveByItemIds(tx, tenantId, [item.id]);
       if (!result) {
         const created = await this.resultRepository.createResult(tx, tenantId, actorId, { clinicalOrderItemId: item.id, descriptionText: null, conclusionText: null, performedBy: actorId, resultedAt: null, approverId: null });
         result = { ...created, values: [] };
       }
-      const count = await this.resultRepository.countImages(tx, tenantId, result.id);
-      if (count >= PARACLINICAL_IMAGE_MAX_COUNT) throw new ParaclinicalItemInvalidStateError(`Mỗi kết quả tối đa ${PARACLINICAL_IMAGE_MAX_COUNT} ảnh.`);
+      const count = opts.dicom ? await this.resultRepository.countDicom(tx, tenantId, result.id) : await this.resultRepository.countImages(tx, tenantId, result.id);
+      if (count >= opts.maxCount) throw new ParaclinicalItemInvalidStateError(opts.limitMessage);
 
-      const key = `paraclinical/${result.id}/${randomUUID()}.${extension}`;
-      await this.storage.save(tenantId, key, file.buffer, extension === 'jpg' ? 'image/jpeg' : 'image/png');
+      const key = `paraclinical/${result.id}/${randomUUID()}.${opts.extension}`;
+      await this.storage.save(tenantId, key, file.buffer, opts.contentType);
       try {
         const image = await this.resultRepository.createImage(tx, tenantId, actorId, {
           resultId: result.id,
           storageKey: key,
           fileName: file.originalname.slice(0, 200),
-          contentType: extension === 'jpg' ? 'image/jpeg' : 'image/png',
+          contentType: opts.contentType,
           sizeBytes: file.buffer.byteLength,
           sortOrder: count,
         });
-        await writeAuditLog(tx, tenantId, { actorId, action: 'paraclinical_result.image_added', entityType: 'paraclinical_result', entityId: result.id, afterJson: { imageId: image.id }, ip: meta.ip, userAgent: meta.userAgent });
+        await writeAuditLog(tx, tenantId, { actorId, action: opts.auditAction, entityType: 'paraclinical_result', entityId: result.id, afterJson: { imageId: image.id }, ip: meta.ip, userAgent: meta.userAgent });
       } catch (err) {
         await this.storage.delete(tenantId, key); // ghi DB lỗi thì dọn file vừa lưu, không để rác không ai trỏ tới
         throw err;
@@ -615,7 +659,8 @@ export class ParaclinicalResultService {
         indicators: this.buildIndicatorViews(linksByService.get(service.id) ?? [], result, ctx),
         descriptionText: result?.descriptionText ?? null,
         conclusionText: result?.conclusionText ?? null,
-        images: result ? images.filter((img) => img.resultId === result.id).map((img) => ({ id: img.id, fileName: img.fileName, contentType: img.contentType, url: this.signImageUrl(tenantId, img.storageKey, encryptionKey) })) : [],
+        images: result ? images.filter((img) => img.resultId === result.id && img.contentType !== DOCUMENT_CONTENT_TYPE.dcm).map((img) => ({ id: img.id, fileName: img.fileName, contentType: img.contentType, url: this.signImageUrl(tenantId, img.storageKey, encryptionKey) })) : [],
+        dicomFiles: result ? images.filter((img) => img.resultId === result.id && img.contentType === DOCUMENT_CONTENT_TYPE.dcm).map((img) => ({ id: img.id, fileName: img.fileName, sizeBytes: img.sizeBytes, url: this.signImageUrl(tenantId, img.storageKey, encryptionKey) })) : [],
       });
     }
 

@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Pa
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import { PARACLINICAL_GROUP_KINDS, PARACLINICAL_GROUP_PERMISSION_MODULE } from '@nexamed/core';
-import { PARACLINICAL_IMAGE_MAX_BYTES, amendParaclinicalResultRequestSchema, listParaclinicalLookupQuerySchema, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema, startParaclinicalItemsRequestSchema } from '@nexamed/shared';
+import { PARACLINICAL_DICOM_MAX_BYTES, PARACLINICAL_IMAGE_MAX_BYTES, amendParaclinicalResultRequestSchema, listParaclinicalLookupQuerySchema, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema, startParaclinicalItemsRequestSchema } from '@nexamed/shared';
 import { AuditView } from '../../common/audit-view.decorator';
 import { requireBranchId } from '../../common/branch-context';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
@@ -85,6 +85,17 @@ export class ImagingResultController {
     if (!file) throw new BadRequestException('Thiếu file ảnh.');
     const { userId, tenantId } = req.user!;
     return { form: await this.service.addImage(tenantId, userId, scopeOf(req), itemId, { buffer: file.buffer, originalname: file.originalname }, extractRequestMeta(req)) };
+  }
+
+  /** Đính tệp DICOM gốc (#299 bổ sung 6) — multipart `file`; chỉ khi công tắc "Dùng tệp DICOM" bật (409 DICOM_DISABLED nếu tắt), kiểm magic byte/dung lượng ở service. Gỡ dùng chung `DELETE images/:imageId`. */
+  @Post('items/:itemId/dicom')
+  @RequirePermission('imaging_result', 'enter')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: PARACLINICAL_DICOM_MAX_BYTES } }))
+  async addDicom(@Param('itemId', ParseUUIDPipe) itemId: string, @UploadedFile() file: Express.Multer.File | undefined, @Req() req: Request) {
+    if (!file) throw new BadRequestException('Thiếu tệp DICOM.');
+    const { userId, tenantId } = req.user!;
+    return { form: await this.service.addDicom(tenantId, userId, scopeOf(req), itemId, { buffer: file.buffer, originalname: file.originalname }, extractRequestMeta(req)) };
   }
 
   @Delete('images/:imageId')

@@ -1,12 +1,12 @@
-# HANDOFF — Tab "Hình ảnh & Tài liệu", GĐ3 + hoàn thiện (bổ sung 5) — cập nhật 2026-11-17
+# HANDOFF — Tab "Hình ảnh & Tài liệu" + Đính ảnh ở màn khám + Chế độ DICOM + Thanh tab — cập nhật 2026-11-17 (tối)
 
 ## 1. Trạng thái một câu
-**GĐ1, GĐ2, GĐ3 và đợt hoàn thiện (DECISIONS #299 bổ sung 5) của tab "Hình ảnh & Tài liệu" đều XONG về code.** Còn hai việc chờ chủ dự án: **duyệt mockup** "Đính ảnh ở màn khám" và "Trình xem DICOM" (đã dựng 17/11, chưa code), và **dựng gói cài on-prem** để giao khách.
+**Mọi việc của #299 và các việc chủ dự án giao trong phiên 17/11 đều ĐÃ LÀM về code**: tab Hình ảnh & Tài liệu (GĐ1–GĐ3 + hoàn thiện), thanh tab màn khám không cuộn (#300, Cách 2), tab "Hình ảnh" + hộp "Đính ảnh" ở màn khám, chế độ DICOM tuỳ chọn (công tắc mặc định TẮT; #299 bổ sung 6). Mockup đã được chủ dự án CHỐT ("chốt tất cả mockup trước và mockup cách 2"): Đính ảnh/DICOM https://claude.ai/artifact/Vq4jrvzMeMSDjsNmKSwYRz, thanh tab https://claude.ai/artifact/XikNudn9xiA9Ce2UpeoNt6. Còn: **dựng gói cài on-prem** để giao khách (chưa làm, chờ chủ dự án chốt số phiên bản).
 
 ## 2. Việc đầu tiên của phiên sau
-1. Đọc `docs/CURRENT.md`, `docs/TASK.md` (mục #299), `docs/DECISIONS.md` cuối file (#299 bổ sung 1–5), file này.
-2. Hỏi chủ dự án đã trả lời 9 câu của mockup chưa (mục 4). **Chưa có "duyệt" thì KHÔNG code** hai việc đó.
-3. Môi trường khác (không phải máy dev) cần: `pnpm install`, `pnpm db:deploy` (migration mới nhất `20261114150000_patient_document_thumbnail`; bổ sung 5 không thêm migration), khởi động lại API. Không cần `db:seed`. **Bản cài on-prem phải dựng lại ảnh web** (`deploy/on-prem/build-and-export.ps1`, chạy bằng `powershell -File`, cần `release-notes/<số>.json`, mỗi lần dựng đổi số phiên bản) để nhận `nginx.conf` mới.
+1. Đọc `docs/CURRENT.md`, `docs/TASK.md` (mục #299), `docs/DECISIONS.md` cuối file (#300, #299 bổ sung 5–6 kể cả "Đợt 2" và "Đợt 3"), file này.
+2. Xem `git log`: nếu đợt 3 chưa được đẩy thì chạy lại bộ test đầy đủ rồi đẩy (xem CURRENT.md ghi kết quả lần chạy cuối).
+3. Hỏi chủ dự án muốn dựng gói on-prem số phiên bản nào. Cách dựng: `deploy/on-prem/build-and-export.ps1` bằng `powershell -File`, cần `release-notes/<số>.json`, mỗi lần dựng đổi số; nâng cấp = chép chồng vào `C:\NEXAMed-onprem-test` rồi chạy setup ở đó. Máy khác cần `pnpm install`, `pnpm db:deploy` (migration mới nhất vẫn `20261114150000_patient_document_thumbnail`; đợt 2 và 3 KHÔNG thêm migration), khởi động lại API, không cần `db:seed`. **Ảnh web phải dựng lại** vì `nginx.conf` có thêm khối cho đường dẫn đính DICOM (52m).
 
 ## 3. Đã làm
 **GĐ3**
@@ -23,16 +23,15 @@
 - `CLAUDE.md`: phạm vi tab, quy tắc "mọi file gắn bệnh nhân về tab", quy tắc kiểm tệp lớn qua nginx thật, `docs/ERD-3.md` vào danh sách tài liệu.
 - **Kiểm**: API `patient-document-settings-http.spec` +6 ca, đột biến 10/10 bị bắt; web +7; Chrome IP LAN `patient-document-settings-check.cjs` 25/25 và `patient-document-reference-check.cjs` 31/31; typecheck + lint sạch. Bộ test đầy đủ chạy lại trước push (xem CURRENT.md nếu đã ghi kết quả).
 
-**Mockup mới (17/11/2026, CHƯA DUYỆT)** — Artifact https://claude.ai/artifact/Vq4jrvzMeMSDjsNmKSwYRz (file gốc ở scratchpad phiên, không nằm trong repo):
+**Mockup (17/11/2026, ĐÃ CHỐT)** — Artifact https://claude.ai/artifact/Vq4jrvzMeMSDjsNmKSwYRz (file gốc ở scratchpad phiên, không nằm trong repo):
 - A1 tab "Hình ảnh" ở màn khám (cuối thanh tab, số ảnh, lọc theo loại, ảnh tự gộp từ cận lâm sàng chỉ đọc); A2 hộp "Đính ảnh" (kéo thả, dán Ctrl+V, tải từng tệp, tệp lỗi nằm lại); A3 các trạng thái (trống, đã hoàn thành, không quyền, lỗi tải, sai định dạng, hết phiên).
 - B1 trình xem DICOM (kéo, phóng, sáng/tương phản, đảo màu, xoay, lật, nhiều khung, lớp chữ bốn góc, cột chi tiết + series); B2 các trạng thái (đang đọc, kiểu nén chưa đọc được, tên không khớp hồ sơ, tệp hỏng, ảnh quá lớn, mất mạng).
 
 ## 4. Việc còn / cần chủ dự án
-- **Trả lời 9 câu cuối mockup** (đã có gợi ý): 1 chỗ đặt nút (tab riêng/nút trong tab Khám/thanh đầu); 2 lượt khám đã hoàn thành có đính thêm không; 3 loại tệp cho phép; 4 camera (đề xuất không làm vì LAN HTTP); 5 ảnh có vào bệnh án in không; 6 có làm trình xem DICOM không (thư viện đóng gói sẵn, chạy offline, ~1–2 MB) hay chỉ tải về; 7 phạm vi công cụ; 8 tên trong tệp khác hồ sơ thì cảnh báo/chặn/bỏ qua; 9 giới hạn 15 MB cho DICOM (nâng thì phải sửa nginx và kiểm bằng nginx thật). Sau khi duyệt mới code, và code xong phải kiểm Chrome qua IP LAN + ma trận quyền (nhãn permission-grouping, role-access-sweep) vì là tính năng mới.
-- **Nếu làm DICOM và triển khai SaaS (hỏi 17/11)**: trình xem chạy trong trình duyệt nên không phải sửa; nhưng phải chốt cùng lúc (1) adapter `StoragePort` kho đối tượng cho SaaS (cần `sizeOf`/`volumeUsage`), (2) thanh dung lượng đổi từ "% ổ đĩa" sang hạn mức theo công ty (gắn với tính cước, #237 chưa làm), (3) giới hạn tải lên riêng cho DICOM ở cả nginx on-prem lẫn bộ chia tải SaaS, (4) camera chỉ dùng được khi có HTTPS.
-- **Dựng gói cài on-prem** và đưa cho khách (chưa làm; xem mục 2 điểm 3). Nên diễn tập nâng cấp bằng cách chép chồng vào `C:\NEXAMed-onprem-test` rồi chạy setup ở đó.
-- **Chủ dự án xem**: các chỗ khác mockup/kế hoạch ở #299 bổ sung 1, 3, 4, 5; giới hạn phân quyền theo Khoa/Phòng không áp lên danh sách tài liệu; thanh dung lượng chưa đổi màu khi gần đầy.
-- Chưa làm (ngoài #299): gói Nha khoa. Quy tắc thường trực: mọi file gắn bệnh nhân làm sau phải gộp về tab này.
+- **Dựng gói cài on-prem** (mục 2 điểm 3) — chờ chủ dự án chốt số phiên bản.
+- **Chủ dự án xem các chỗ khác mockup**: #299 bổ sung 1, 3, 4, 5 và "Đợt 2"/"Đợt 3" của bổ sung 6 (nút Chụp ảnh nay chỉ hiện trên máy cảm ứng ở CẢ hộp Tải lên của tab hồ sơ; thẻ "Bổ sung" ở góc ảnh; hàng DICOM không ghi số khung; hộp xem kết quả kiểu phiếu in không có khối DICOM); #300 giữ icon từ 1440px.
+- **Khi làm SaaS**: chốt cùng lúc adapter kho đối tượng cho `StoragePort`, hạn mức dung lượng theo công ty (thay thanh "% ổ đĩa"), giới hạn tải lên riêng cho DICOM ở bộ chia tải, camera chỉ khi có HTTPS.
+- Chưa làm (ngoài #299): gói Nha khoa. Quy tắc thường trực: mọi file gắn bệnh nhân làm sau phải gộp về tab này; chú thích trong mockup không chép vào sản phẩm (chỉ giữ mô tả của công tắc).
 
 ## 5. Bẫy đã gặp (đọc trước khi làm)
 - **Tải tệp lớn phải kiểm qua nginx thật**, không chỉ Vite dev proxy. Cách kiểm nhanh: container `nginx:alpine` với `--add-host api:host-gateway` + máy chủ Node giả ở cổng 3000, `curl --data-binary @tệp` các cỡ 3/9/16/18 MB.
@@ -46,6 +45,12 @@
 - **Cache react-query che trạng thái lỗi**: muốn thấy lỗi tải phải tải lại trang trước khi chặn mạng.
 - Địa chỉ IP LAN máy dev đổi theo mạng: đọc từ dòng "Network" của `dev-lan`, đừng nhớ cứng.
 - Ô tích của `ToggleSwitch` là `<input type="checkbox" class="sr-only">`: trong Playwright dùng `getByRole('checkbox', …)` rồi bấm vào nhãn bao ngoài (`xpath=ancestor::label`).
+
+- **Công cụ Edit/Write giải mã `\uXXXX`** trong tham số: không gõ `\u0300` vào mã được; dùng `\p{M}` (cờ `u`) hoặc tạo bằng `String.fromCharCode`. Shell cũng ăn dấu `\` và backtick: vá bằng Write một tệp `.cjs` rồi chạy `node`.
+- **Playwright `setInputFiles({buffer})` giới hạn 50 MB**: tệp lớn hơn phải ghi ra đĩa rồi truyền đường dẫn.
+- **Hai tệp giống hệt nhau (cùng loại/ghi chú) đính liền nhau bị máy chủ coi là một lần gửi lại** (`Idempotency-Key`) nên chỉ lưu một: ở script kiểm, mỗi ảnh phải khác nội dung. Tên tệp có dấu bị multer đọc sai: dùng tên ASCII trong test.
+- **Thanh tab**: bản sao ẩn dùng để đo phải bọc trong khung 0×0 `overflow-hidden`, nếu không nó kéo giãn `scrollWidth` của trang. Hàm chia tab coi bề rộng 0 (chưa đo/jsdom) là "hiện hết".
+- **dev-lan cần API chạy riêng** (`pnpm --filter @nexamed/api dev`, cổng 3001) và nhớ trả `config.json` (xem mục trên).
 
 ## 6. Quy tắc chủ dự án nhắc (đã ghi memory)
 - Tuân thủ mockup tuyệt đối, đối chiếu từng phần tử; **"tiếp tục"/"làm luôn" KHÔNG phải duyệt mockup**; commit/push thẳng `master`, không PR; trả lời bằng tiếng Việt; chỉ đọc file bàn giao mới nhất (đây là bản duy nhất còn trong repo).

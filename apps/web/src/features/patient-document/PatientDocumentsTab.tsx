@@ -293,6 +293,7 @@ export function PatientDocumentsTab({ patientId, patientName, merged }: { patien
           items={items}
           index={viewerIndex}
           access={access}
+          patientName={patientName}
           onIndexChange={(i) => setViewerId(items[i]?.id ?? null)}
           onOpenResult={openResult}
           onEdit={(d) => {

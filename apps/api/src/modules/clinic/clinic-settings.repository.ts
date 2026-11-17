@@ -33,6 +33,7 @@ import {
   DEFAULT_LAB_PARTNER_ENABLED,
   DEFAULT_STOCK_REQUEST_ENABLED,
   DEFAULT_PATIENT_DOCUMENTS_ENABLED,
+  DEFAULT_DICOM_ENABLED,
   DEFAULT_PURCHASE_ORDER_SETTINGS,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
@@ -171,6 +172,8 @@ const STOCK_REQUEST_ENABLED_KEY = 'stock_request_enabled';
 const stockRequestEnabledSchema = z.boolean();
 const PATIENT_DOCUMENTS_ENABLED_KEY = 'patient_documents_enabled';
 const patientDocumentsEnabledSchema = z.boolean();
+const DICOM_ENABLED_KEY = 'dicom_enabled';
+const dicomEnabledSchema = z.boolean();
 // Đơn đặt hàng NCC (#298 giai đoạn 2) — 3 công tắc chung cả công ty.
 const BRANCH_PURCHASING_ENABLED_KEY = 'branch_purchasing_enabled';
 const BRANCH_PURCHASE_NEEDS_MAIN_APPROVAL_KEY = 'branch_purchase_needs_main_approval';
@@ -679,6 +682,19 @@ export class ClinicSettingsRepository {
 
   upsertPatientDocumentsEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, PATIENT_DOCUMENTS_ENABLED_KEY, value);
+  }
+
+  async getDicomEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: DICOM_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_DICOM_ENABLED;
+    }
+    const parsed = dicomEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_DICOM_ENABLED;
+  }
+
+  upsertDicomEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, DICOM_ENABLED_KEY, value);
   }
 
   private async readPurchaseOrderFlag(tx: Prisma.TransactionClient, tenantId: string, key: string, fallback: boolean): Promise<boolean> {

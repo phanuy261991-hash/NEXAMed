@@ -151,6 +151,7 @@ export function EncounterImagesTab({
           items={shown}
           index={viewerIndex}
           access={access}
+          patientName={patientName}
           onIndexChange={(i) => setViewerId(shown[i]?.id ?? null)}
           onOpenResult={openResult}
           onEdit={(d) => {

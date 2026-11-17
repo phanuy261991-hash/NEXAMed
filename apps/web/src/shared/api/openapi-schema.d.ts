@@ -3739,6 +3739,7 @@ export interface paths {
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
                                 patientDocumentsEnabled: boolean;
+                                dicomEnabled: boolean;
                                 branchPurchasingEnabled: boolean;
                                 branchPurchaseNeedsMainApproval: boolean;
                                 allowOverReceipt: boolean;
@@ -19170,6 +19171,7 @@ export interface paths {
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
                                 patientDocumentsEnabled: boolean;
+                                dicomEnabled: boolean;
                                 branchPurchasingEnabled: boolean;
                                 branchPurchaseNeedsMainApproval: boolean;
                                 allowOverReceipt: boolean;
@@ -19295,6 +19297,7 @@ export interface paths {
                         labPartnerEnabled?: boolean;
                         stockRequestEnabled?: boolean;
                         patientDocumentsEnabled?: boolean;
+                        dicomEnabled?: boolean;
                         branchPurchasingEnabled?: boolean;
                         branchPurchaseNeedsMainApproval?: boolean;
                         allowOverReceipt?: boolean;
@@ -19379,6 +19382,7 @@ export interface paths {
                                 labPartnerEnabled: boolean;
                                 stockRequestEnabled: boolean;
                                 patientDocumentsEnabled: boolean;
+                                dicomEnabled: boolean;
                                 branchPurchasingEnabled: boolean;
                                 branchPurchaseNeedsMainApproval: boolean;
                                 allowOverReceipt: boolean;
@@ -20638,6 +20642,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Dùng Hình ảnh & Tài liệu" (#299) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/dicom-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Dùng tệp DICOM" (#299 bổ sung 6) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
         get: {
             parameters: {
                 query?: never;
@@ -59599,6 +59659,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -60076,6 +60143,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -60278,6 +60352,13 @@ export interface paths {
                                             fileName: string;
                                             url: string;
                                             contentType: string;
+                                        }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -60528,6 +60609,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -60758,6 +60846,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -60966,6 +61061,13 @@ export interface paths {
                                             fileName: string;
                                             url: string;
                                             contentType: string;
+                                        }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -61692,6 +61794,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -62084,6 +62193,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -62286,6 +62402,13 @@ export interface paths {
                                             fileName: string;
                                             url: string;
                                             contentType: string;
+                                        }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -62536,6 +62659,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -62766,6 +62896,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -62974,6 +63111,13 @@ export interface paths {
                                             fileName: string;
                                             url: string;
                                             contentType: string;
+                                        }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -63272,6 +63416,13 @@ export interface paths {
                                             url: string;
                                             contentType: string;
                                         }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
                                     }[];
                                     /** Format: uuid */
                                     performedById: string | null;
@@ -63358,6 +63509,222 @@ export interface paths {
                     };
                 };
                 /** @description Đã duyệt/chưa lấy mẫu, xét nghiệm không có ảnh hoặc quá 8 ảnh */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/imaging/items/{itemId}/dicom": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đính tệp DICOM gốc (#299 bổ sung 6, multipart "file", ≤ 50MB, tối đa 4 tệp) vào kết quả đang thực hiện — chỉ khi công tắc "Dùng tệp DICOM" bật; trả lại form kết quả */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    itemId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Đã đính tệp DICOM */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                form: {
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    patientDob: string;
+                                    patientPhone: string | null;
+                                    ageYears: number | null;
+                                    registeredAt: string;
+                                    doctorName: string | null;
+                                    collectedAt: string | null;
+                                    /** @enum {string} */
+                                    bucket: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED";
+                                    sections: {
+                                        /** Format: uuid */
+                                        itemId: string;
+                                        /** Format: uuid */
+                                        technicalServiceId: string;
+                                        code: string | null;
+                                        name: string;
+                                        /** @enum {string} */
+                                        serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                        /** @enum {string} */
+                                        resultType: "INDICATORS" | "NARRATIVE" | "BOTH";
+                                        specimenTypeName: string | null;
+                                        departmentName: string | null;
+                                        categoryName: string | null;
+                                        /** @enum {string} */
+                                        status: "ORDERED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED" | "CANCELLED";
+                                        indicators: {
+                                            /** Format: uuid */
+                                            indicatorId: string;
+                                            code: string;
+                                            name: string;
+                                            abbreviation: string | null;
+                                            unit: string | null;
+                                            /** @enum {string} */
+                                            valueType: "NUMBER" | "TEXT" | "CHOICE";
+                                            decimals: number | null;
+                                            choiceOptions: string[];
+                                            reference: {
+                                                /** @enum {string} */
+                                                sex: "ANY" | "MALE" | "FEMALE";
+                                                ageFromYears: number;
+                                                ageToYears: number | null;
+                                                lowValue: number | null;
+                                                highValue: number | null;
+                                                lowInclusive: boolean;
+                                                highInclusive: boolean;
+                                                normalText: string | null;
+                                                displayText: string | null;
+                                            } | null;
+                                            referenceText: string;
+                                            valueText: string | null;
+                                            note: string | null;
+                                            interpretationText: string | null;
+                                            /** @enum {string|null} */
+                                            flag: "LOW" | "HIGH" | "NORMAL" | "ABNORMAL" | null;
+                                        }[];
+                                        descriptionText: string | null;
+                                        conclusionText: string | null;
+                                        images: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            url: string;
+                                            contentType: string;
+                                        }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
+                                        }[];
+                                    }[];
+                                    /** Format: uuid */
+                                    performedById: string | null;
+                                    performedByName: string | null;
+                                    resultedAt: string | null;
+                                    /** Format: uuid */
+                                    approverId: string | null;
+                                    approvers: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        fullName: string;
+                                    }[];
+                                    signedAt: string | null;
+                                    signedByName: string | null;
+                                    amendment: {
+                                        reason: string;
+                                        originalSignedAt: string | null;
+                                        originalSignedByName: string | null;
+                                    } | null;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu tệp hoặc không phải DICOM */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền imaging_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy dòng chỉ định */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Công tắc "Dùng tệp DICOM" đang tắt (DICOM_DISABLED), đã duyệt/chưa lấy mẫu hoặc quá 4 tệp */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -63481,6 +63848,13 @@ export interface paths {
                                             fileName: string;
                                             url: string;
                                             contentType: string;
+                                        }[];
+                                        dicomFiles?: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            fileName: string;
+                                            sizeBytes: number;
+                                            url: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */

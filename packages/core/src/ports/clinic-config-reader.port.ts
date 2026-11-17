@@ -250,6 +250,12 @@ export interface ClinicConfigReaderPort {
   getPatientDocumentsEnabled(tenantId: string): Promise<boolean>;
 
   /**
+   * "Dùng tệp DICOM" (#299 bổ sung 6) — công tắc chung cả công ty, TẮT (mặc định) (`tenant_setting` key `dicom_enabled`). Tắt thì máy chủ từ chối đính DICOM vào kết quả cận lâm sàng
+   * (409 `DICOM_DISABLED`); tệp đã đính giữ nguyên. KHÔNG gọi hàm này bên TRONG một transaction đang mở (port mở transaction riêng) — đọc trước.
+   */
+  getDicomEnabled(tenantId: string): Promise<boolean>;
+
+  /**
    * Đơn đặt hàng NCC (#298 giai đoạn 2) — 3 công tắc chung cả công ty (`tenant_setting`): `branchPurchasingEnabled` (mặc định BẬT), `branchPurchaseNeedsMainApproval` (mặc định TẮT), `allowOverReceipt` (mặc định TẮT).
    * KHÔNG gọi hàm này bên TRONG một transaction đang mở (port mở transaction riêng) — đọc trước.
    */

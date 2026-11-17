@@ -10,6 +10,10 @@ import { Button } from '../../shared/ui/Button';
 import { DocumentArt } from './DocumentThumb';
 import { canDeleteDocument, canEditDocument, canOpenResult, formatBytes, formatDateTimeVi, sourceText } from './patient-document-view';
 import { downloadPatientDocument } from './patient-document.api';
+import { useDicomEnabledQuery } from '../clinic/clinic.queries';
+import { DicomInfoRows } from '../dicom/DicomInfo';
+import { DicomPanel, useMismatchAck } from '../dicom/DicomPanel';
+import { useDicomFile } from '../dicom/use-dicom-file';
 
 /**
  * Xem lớn một tệp (mockup màn 5, 5b): ảnh xem trực tiếp, PDF xem trong khung, DICOM chỉ tải về. Bên phải là chi tiết và thao tác; tệp tham chiếu chỉ đọc chỉ có Tải về
@@ -19,6 +23,7 @@ export function DocumentViewerDialog({
   items,
   index,
   access,
+  patientName,
   onIndexChange,
   onOpenResult,
   onEdit,
@@ -28,6 +33,8 @@ export function DocumentViewerDialog({
   items: PatientDocument[];
   index: number;
   access: PatientDocumentAccess;
+  /** Tên bệnh nhân trong hồ sơ — đối chiếu với tên ghi trong tệp DICOM khi công tắc "Dùng tệp DICOM" bật. */
+  patientName?: string;
   onIndexChange: (index: number) => void;
   /** Mở phiếu kết quả cận lâm sàng của dòng tham chiếu (nút "Mở kết quả"). Bỏ trống khi người xem không có quyền xem kết quả cận lâm sàng. */
   onOpenResult?: (doc: PatientDocument) => void;
@@ -38,6 +45,11 @@ export function DocumentViewerDialog({
   const doc = items[index];
   const hasPrev = index > 0;
   const hasNext = index < items.length - 1;
+  // Trình xem DICOM (#299 bổ sung 6): chỉ khi công tắc "Dùng tệp DICOM" bật; tắt thì giữ như cũ (chỉ tải về).
+  const dicomEnabled = useDicomEnabledQuery().data?.enabled === true;
+  const dicomActive = doc?.kind === 'dicom' && dicomEnabled;
+  const { state: dicomState, retry: dicomRetry } = useDicomFile(dicomActive ? doc.url : null, dicomActive);
+  const [dicomAck, acknowledgeDicom] = useMismatchAck(doc?.id ?? '');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -73,6 +85,10 @@ export function DocumentViewerDialog({
           ) : doc.kind === 'pdf' ? (
             // Trình xem PDF của trình duyệt: ẩn cột hình xem trước (`navpanes=0`) và cho trang vừa chiều ngang khung (`view=FitH`) để nội dung chính đủ lớn; khung chiếm hết chiều ngang vùng xem.
             <iframe title={doc.displayName} src={`${src}/${encodeURIComponent(doc.fileName)}#navpanes=0&view=FitH`} className="h-[calc(100dvh-9rem)] min-h-[360px] w-full rounded bg-white max-md:h-[55dvh]" />
+          ) : dicomActive ? (
+            <div className="h-[calc(100dvh-9rem)] min-h-[360px] w-full max-md:h-[55dvh]">
+              <DicomPanel state={dicomState} retry={dicomRetry} recordName={patientName ?? ''} onDownload={() => downloadPatientDocument(doc)} mismatchAcknowledged={dicomAck} onAcknowledgeMismatch={acknowledgeDicom} />
+            </div>
           ) : (
             <div className="flex w-full max-w-[420px] flex-col items-center gap-3 text-center">
               <div className="aspect-[4/3] w-full overflow-hidden rounded border border-slate-700">
@@ -103,6 +119,7 @@ export function DocumentViewerDialog({
           <Detail label="Ngày tải" value={formatDateTimeVi(doc.uploadedAt)} />
           <Detail label="Người tải" value={doc.uploadedByName} />
           <Detail label="Dung lượng" value={formatBytes(doc.sizeBytes)} />
+          {dicomActive && <DicomInfoRows state={dicomState} recordName={patientName ?? ''} acknowledged={dicomAck} />}
           {doc.encounterLabel && <Detail label="Lượt khám" value={doc.encounterLabel} />}
           {doc.note && <Detail label="Ghi chú" value={doc.note} />}
           {doc.readOnly && <Detail label="Nguồn" value={sourceText(doc)} />}

@@ -386,6 +386,11 @@ export const clinicSettingsSchema = z.object({
    */
   patientDocumentsEnabled: z.boolean(),
   /**
+   * "Dùng tệp DICOM" (docs/DECISIONS.md #299 bổ sung 6) — chung cả công ty, TẮT mặc định. Bật thì kết quả chẩn đoán hình ảnh/thăm dò đính được tệp DICOM gốc (khối "Tệp DICOM gốc") và hệ thống
+   * xem được DICOM trong trình duyệt; tắt thì như trước (DICOM chỉ tải lên ở tab hồ sơ và chỉ tải về). Tệp đã đính vẫn giữ nguyên khi tắt.
+   */
+  dicomEnabled: z.boolean(),
+  /**
    * Đơn đặt hàng NCC (docs/DECISIONS.md #298 giai đoạn 2) — 3 công tắc chung cả công ty: chi nhánh phụ có được đặt hàng NCC riêng không (BẬT mặc định), đơn của chi nhánh phụ có cần chi nhánh chính duyệt không (TẮT mặc định),
    * có cho nhận vượt số đặt không (TẮT mặc định, chặn).
    */
@@ -441,6 +446,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   labPartnerEnabled: z.boolean().optional(),
   stockRequestEnabled: z.boolean().optional(),
   patientDocumentsEnabled: z.boolean().optional(),
+  dicomEnabled: z.boolean().optional(),
   branchPurchasingEnabled: z.boolean().optional(),
   branchPurchaseNeedsMainApproval: z.boolean().optional(),
   allowOverReceipt: z.boolean().optional(),
@@ -534,6 +540,11 @@ export type StockRequestFeatureStatus = z.infer<typeof stockRequestFeatureStatus
 /** `GET /clinic-settings/patient-documents-enabled` — công tắc "Dùng Hình ảnh & Tài liệu" (#299), chiếu tối thiểu tự-phục vụ để web ẩn/hiện tab. */
 export const patientDocumentsFeatureStatusSchema = z.object({ enabled: z.boolean() });
 export type PatientDocumentsFeatureStatus = z.infer<typeof patientDocumentsFeatureStatusSchema>;
+/** Tắt theo mặc định ("Dùng tệp DICOM", #299 bổ sung 6) — chủ dự án chốt 17/11/2026: tắt thì giữ như hiện tại. */
+export const DEFAULT_DICOM_ENABLED = false;
+/** `GET /clinic-settings/dicom-enabled` — công tắc "Dùng tệp DICOM", chiếu tối thiểu tự-phục vụ để web ẩn/hiện khối DICOM và trình xem. */
+export const dicomFeatureStatusSchema = z.object({ enabled: z.boolean() });
+export type DicomFeatureStatus = z.infer<typeof dicomFeatureStatusSchema>;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

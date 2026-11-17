@@ -134,6 +134,20 @@ export const paraclinicalResultImageSchema = z.object({
 });
 export type ParaclinicalResultImage = z.infer<typeof paraclinicalResultImageSchema>;
 
+/** Tệp DICOM gốc đính kèm kết quả (#299 bổ sung 6, chỉ khi bật "Dùng tệp DICOM"): lấy từ cùng bảng ảnh nhưng KHÔNG nằm trong `images` (phiếu in và mọi nơi vẽ ảnh không bao giờ gặp DICOM). */
+export const paraclinicalResultDicomSchema = z.object({
+  id: z.string().uuid(),
+  fileName: z.string(),
+  sizeBytes: z.number().int().nonnegative(),
+  /** Đường dẫn ký có hạn (`/api/v1/files/<token>`) — web tải về hoặc đọc bằng trình xem DICOM. */
+  url: z.string(),
+});
+export type ParaclinicalResultDicom = z.infer<typeof paraclinicalResultDicomSchema>;
+
+/** Giới hạn tệp DICOM gốc của một kết quả (chủ dự án chốt 17/11/2026): tối đa 4 tệp, 50 MB mỗi tệp. */
+export const PARACLINICAL_DICOM_MAX_COUNT = 4;
+export const PARACLINICAL_DICOM_MAX_BYTES = 50 * 1024 * 1024;
+
 /** Giới hạn ảnh đính kèm: số ảnh/kết quả và dung lượng mỗi ảnh. */
 export const PARACLINICAL_IMAGE_MAX_COUNT = 8;
 export const PARACLINICAL_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -156,6 +170,8 @@ export const paraclinicalResultSectionSchema = z.object({
   conclusionText: z.string().nullable(),
   /** Ảnh đính kèm (siêu âm, X-quang...); rỗng với xét nghiệm. */
   images: z.array(paraclinicalResultImageSchema),
+  /** Tệp DICOM gốc (chỉ chẩn đoán hình ảnh/thăm dò chức năng); thiếu nghĩa là rỗng. Luôn rỗng khi chưa đính tệp nào, kể cả lúc công tắc "Dùng tệp DICOM" tắt. */
+  dicomFiles: z.array(paraclinicalResultDicomSchema).optional(),
 });
 export type ParaclinicalResultSection = z.infer<typeof paraclinicalResultSectionSchema>;
 

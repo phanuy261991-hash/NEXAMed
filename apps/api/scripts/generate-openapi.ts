@@ -224,6 +224,7 @@ import {
   labPartnerFeatureStatusSchema,
   stockRequestFeatureStatusSchema,
   patientDocumentsFeatureStatusSchema,
+  dicomFeatureStatusSchema,
   patientDocumentUsageSchema,
   patientDocumentThumbnailResultSchema,
   purchaseOrderSettingsSchema,
@@ -3443,6 +3444,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(patientDocumentsFeatureStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/dicom-enabled',
+  tags: ['clinic'],
+  summary: '"Dùng tệp DICOM" (#299 bổ sung 6) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(dicomFeatureStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });
@@ -7923,6 +7936,25 @@ for (const g of paraclinicalOpenApiGroups) {
         409: errorResponse('Đã duyệt/chưa lấy mẫu, xét nghiệm không có ảnh hoặc quá 8 ảnh'),
       },
     });
+
+    if (g.key === 'imaging') {
+      registry.registerPath({
+        method: 'post',
+        path: `/api/v1/paraclinical/${g.key}/items/{itemId}/dicom`,
+        tags: ['paraclinical-result'],
+        summary: 'Đính tệp DICOM gốc (#299 bổ sung 6, multipart "file", ≤ 50MB, tối đa 4 tệp) vào kết quả đang thực hiện — chỉ khi công tắc "Dùng tệp DICOM" bật; trả lại form kết quả',
+        security: [{ bearerAuth: [] }],
+        request: { params: paraclinicalItemParams },
+        responses: {
+          200: jsonResponse('Đã đính tệp DICOM', envelope(getParaclinicalResultResponseSchema)),
+          400: errorResponse('Thiếu tệp hoặc không phải DICOM'),
+          401: errorResponse('Thiếu hoặc sai access token'),
+          403: errorResponse(`Không có quyền ${g.module}.enter`),
+          404: errorResponse('Không tìm thấy dòng chỉ định'),
+          409: errorResponse('Công tắc "Dùng tệp DICOM" đang tắt (DICOM_DISABLED), đã duyệt/chưa lấy mẫu hoặc quá 4 tệp'),
+        },
+      });
+    }
 
     registry.registerPath({
       method: 'delete',

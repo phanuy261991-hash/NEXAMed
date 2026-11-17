@@ -71,6 +71,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         labPartnerEnabled,
         stockRequestEnabled,
         patientDocumentsEnabled,
+        dicomEnabled,
         purchaseOrderSettings,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
@@ -112,6 +113,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getLabPartnerEnabled(tx, tenantId),
         this.clinicSettingsRepository.getStockRequestEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPatientDocumentsEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getDicomEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPurchaseOrderSettings(tx, tenantId),
       ]);
       return {
@@ -154,6 +156,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         labPartnerEnabled,
         stockRequestEnabled,
         patientDocumentsEnabled,
+        dicomEnabled,
         ...purchaseOrderSettings,
       };
     });
@@ -425,6 +428,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.patientDocumentsEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertPatientDocumentsEnabled(tx, tenantId, actorId, dto.patientDocumentsEnabled);
       }
+      if (dto.dicomEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertDicomEnabled(tx, tenantId, actorId, dto.dicomEnabled);
+      }
       if (dto.branchPurchasingEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertBranchPurchasingEnabled(tx, tenantId, actorId, dto.branchPurchasingEnabled);
       }
@@ -475,6 +481,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.labPartnerEnabled !== undefined ||
         dto.stockRequestEnabled !== undefined ||
         dto.patientDocumentsEnabled !== undefined ||
+        dto.dicomEnabled !== undefined ||
         dto.branchPurchasingEnabled !== undefined ||
         dto.branchPurchaseNeedsMainApproval !== undefined ||
         dto.allowOverReceipt !== undefined;
@@ -530,6 +537,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         labPartnerEnabled,
         stockRequestEnabled,
         patientDocumentsEnabled,
+        dicomEnabled,
         purchaseOrderSettings,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
@@ -571,6 +579,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getLabPartnerEnabled(tx, tenantId),
         this.clinicSettingsRepository.getStockRequestEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPatientDocumentsEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getDicomEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPurchaseOrderSettings(tx, tenantId),
       ]);
       return {
@@ -613,6 +622,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         labPartnerEnabled,
         stockRequestEnabled,
         patientDocumentsEnabled,
+        dicomEnabled,
         ...purchaseOrderSettings,
       };
     });
@@ -725,6 +735,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` — công tắc "Dùng Hình ảnh & Tài liệu" (#299 giai đoạn 3). */
   getPatientDocumentsEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getPatientDocumentsEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPatientDocumentsEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` — công tắc "Dùng tệp DICOM" (#299 bổ sung 6). */
+  getDicomEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getDicomEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getDicomEnabled(tx, tenantId));
   }
 
   /** `ClinicConfigReaderPort` — 3 công tắc Đơn đặt hàng NCC (#298 giai đoạn 2). */

@@ -53,3 +53,12 @@ export class PatientDocumentsDisabledError extends DomainError {
     super('Phòng khám đã tắt tính năng "Hình ảnh & Tài liệu" ở Cấu hình phòng khám.');
   }
 }
+
+/** Công tắc "Dùng tệp DICOM" đang TẮT (#299 bổ sung 6) — không đính được DICOM vào kết quả cận lâm sàng. 409. */
+export class DicomDisabledError extends DomainError {
+  readonly code = 'DICOM_DISABLED';
+
+  constructor() {
+    super('Phòng khám chưa bật tính năng "Dùng tệp DICOM" ở Cấu hình phòng khám.');
+  }
+}

@@ -91,6 +91,13 @@ export async function uploadParaclinicalImage(itemId: string, file: File): Promi
   return uploadFile<GetParaclinicalResultResponse>(`/api/v1/paraclinical/imaging/items/${itemId}/images`, formData);
 }
 
+/** Đính tệp DICOM gốc vào kết quả CĐHA (#299 bổ sung 6) — chỉ khi công tắc "Dùng tệp DICOM" bật (máy chủ trả 409 nếu tắt). */
+export async function uploadParaclinicalDicom(itemId: string, file: File): Promise<GetParaclinicalResultResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return uploadFile<GetParaclinicalResultResponse>(`/api/v1/paraclinical/imaging/items/${itemId}/dicom`, formData);
+}
+
 export async function deleteParaclinicalImage(imageId: string): Promise<GetParaclinicalResultResponse> {
   return unwrap(await getApiClient().DELETE('/api/v1/paraclinical/imaging/images/{imageId}', { params: { path: { imageId } } })) as GetParaclinicalResultResponse;
 }

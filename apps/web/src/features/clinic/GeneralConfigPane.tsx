@@ -453,6 +453,21 @@ export function GeneralConfigPane() {
         />
       </div>
 
+      {settingsQuery.data.patientDocumentsEnabled && (
+        <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
+          <div>
+            <p className="text-[14.5px] font-semibold text-slate-900">Dùng tệp DICOM</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">Đính DICOM vào kết quả cận lâm sàng và xem ngay trong hệ thống.</p>
+          </div>
+          <ToggleSwitch
+            checked={settingsQuery.data.dicomEnabled}
+            disabled={updateMutation.isPending}
+            onChange={(checked) => updateMutation.mutate({ dicomEnabled: checked })}
+            ariaLabel="Dùng tệp DICOM"
+          />
+        </div>
+      )}
+
       <PatientDocumentUsageRow />
     </div>
     </div>
