@@ -362,6 +362,43 @@ describe('HTTP e2e — Hình ảnh & Tài liệu của bệnh nhân (#299)', () 
       expect((await list(adminToken, patient.id, '?limit=500')).status).toBe(400);
     });
 
+    it('lọc theo lượt khám (tab Hình ảnh ở màn khám): chỉ tệp gắn đúng lượt khám đó; lượt khám lạ → rỗng; công ty khác → 404', async () => {
+      const patient = await createPatient();
+      const reg = async () => {
+        const r = await http()
+          .post('/api/v1/reception/direct')
+          .set(authed(receptionistToken))
+          .send({
+            patientId: patient.id,
+            doctorId,
+            checkedInAt: new Date().toISOString(),
+            services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
+            receptionTypeCode: 'RT_NEW',
+            examFormCode: 'EF_NORMAL',
+          });
+        expect(r.status, JSON.stringify(r.body)).toBeLessThan(300);
+        return (r.body.data.encounter?.id ?? r.body.data.encounterId ?? r.body.data.id) as string;
+      };
+      const enc1 = await reg();
+      const enc2 = await reg();
+      const a = await uploadOk(doctorToken, patient.id, 'CLINICAL_PHOTO', JPG, 'luot1-a.jpg', { encounterId: enc1 });
+      const b = await uploadOk(doctorToken, patient.id, 'OTHER', PDF, 'luot1-b.pdf', { encounterId: enc1 });
+      await uploadOk(doctorToken, patient.id, 'CLINICAL_PHOTO', JPG, 'luot2.jpg', { encounterId: enc2 });
+      await uploadOk(doctorToken, patient.id, 'CLINICAL_PHOTO', JPG, 'khong-gan.jpg');
+
+      const one = await list(doctorToken, patient.id, `?encounterId=${enc1}`);
+      expect(one.status, JSON.stringify(one.body)).toBe(200);
+      expect(one.body.data.items.map((i: { id: string }) => i.id).sort()).toEqual([a.id, b.id].sort());
+      // Tổng quan KHÔNG phụ thuộc bộ lọc: vẫn đủ 4 tệp của bệnh nhân.
+      expect(one.body.data.summary.total).toBe(4);
+      expect((await list(doctorToken, patient.id, `?encounterId=${randomUUID()}`)).body.data.items).toEqual([]);
+      expect((await list(doctorToken, patient.id, '?encounterId=khong-phai-uuid')).status).toBe(400);
+      // Người chỉ có quyền xem một nhóm vẫn bị lọc theo quyền: lễ tân không thấy tệp lâm sàng của lượt khám.
+      expect((await list(receptionistToken, patient.id, `?encounterId=${enc1}`)).body.data.items.filter((i: { category: string }) => i.category !== 'CONTRACT')).toEqual([]);
+      // Công ty khác: không thấy bệnh nhân, nên 404 dù biết mã lượt khám.
+      expect((await list(tenantBAdminToken, patient.id, `?encounterId=${enc1}`)).status).toBe(404);
+    });
+
     it('thư mục "ngày" không có bản ghi riêng; lọc theo khoảng ngày', async () => {
       const patient = await createPatient();
       await uploadOk(adminToken, patient.id, 'OTHER');

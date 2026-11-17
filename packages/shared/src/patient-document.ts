@@ -113,6 +113,8 @@ export const listPatientDocumentsQuerySchema = z.object({
   /** UUID thư mục tự tạo, hoặc `none` = tệp chưa vào thư mục nào. */
   folderId: z.union([z.string().uuid(), z.literal('none')]).optional(),
   q: z.string().trim().max(100).optional(),
+  /** Chỉ tệp gắn với lượt khám này (tab "Hình ảnh" ở màn khám). */
+  encounterId: z.string().uuid().optional(),
   dateFrom: isoDate.optional(),
   dateTo: isoDate.optional(),
   cursor: z.string().max(200).optional(),

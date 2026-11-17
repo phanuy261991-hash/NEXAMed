@@ -5,7 +5,7 @@ import {
   type PatientDocumentCategory,
   type PatientDocumentFolder,
 } from '@nexamed/shared';
-import { PATIENT_DOCUMENT_CATEGORIES, PATIENT_DOCUMENT_CATEGORY_LABEL, patientDocumentGroupOf } from './patient-document-constants';
+import { PATIENT_DOCUMENT_CATEGORIES, PATIENT_DOCUMENT_CATEGORY_LABEL } from './patient-document-constants';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useInfiniteScrollSentinel } from '../../shared/hooks/useInfiniteScrollSentinel';
 import { Button } from '../../shared/ui/Button';
@@ -28,10 +28,8 @@ import { DocumentViewerDialog } from './DocumentViewerDialog';
 import { useCanSeePatientParaclinicalTab } from '../patient/PatientParaclinicalResultsTab';
 import { ParaclinicalResultViewDialog } from '../paraclinical-result/ParaclinicalResultViewDialog';
 import type { ParaclinicalGroup } from '../paraclinical-result/paraclinical-group';
-import { makeThumbnailFromImage } from './make-thumbnail';
 import { formatBytes, formatIsoDateVi, PERIOD_OPTIONS } from './patient-document-view';
-import { needsThumbnailBackfill, queueThumbnailBackfill } from './thumbnail-backfill';
-import { uploadDocumentThumbnail } from './patient-document.api';
+import { requestThumbnailBackfill } from './request-thumbnail-backfill';
 import { usePatientDocumentsQuery, useRemovePatientDocumentMutation } from './patient-document.queries';
 import { INPUT_CLASS } from './DocumentModal';
 
@@ -136,14 +134,7 @@ export function PatientDocumentsTab({ patientId, patientName, merged }: { patien
   const viewerIndex = viewerId ? items.findIndex((d) => d.id === viewerId) : -1;
   // Ảnh thu nhỏ BÙ (#299 bổ sung 5): ô ảnh vừa tải xong ảnh gốc của tệp chưa có ảnh thu nhỏ (tệp cũ, dòng tự gộp) thì vẽ lại thành ảnh nhỏ và gửi lên một lần để lần sau (và người khác) tải nhẹ.
   // Chỉ người có quyền tải lên của loại tệp đó; chạy ngầm lần lượt, lỗi thì bỏ qua.
-  const backfillThumbnail = (doc: PatientDocument, img: HTMLImageElement) => {
-    if (!access[patientDocumentGroupOf(doc.category)].upload) return;
-    if (!needsThumbnailBackfill(doc, img.naturalWidth, img.naturalHeight)) return;
-    queueThumbnailBackfill(`${patientId}:${doc.id}`, async () => {
-      const blob = await makeThumbnailFromImage(img);
-      if (blob) await uploadDocumentThumbnail(patientId, doc.id, blob);
-    });
-  };
+  const backfillThumbnail = (doc: PatientDocument, img: HTMLImageElement) => requestThumbnailBackfill(patientId, access, doc, img);
   const categoryOptions = [{ value: '', label: 'Tất cả loại' }, ...PATIENT_DOCUMENT_CATEGORIES.filter((c) => readCategories.includes(c)).map((c) => ({ value: c, label: PATIENT_DOCUMENT_CATEGORY_LABEL[c] }))];
 
   const toolbar = (

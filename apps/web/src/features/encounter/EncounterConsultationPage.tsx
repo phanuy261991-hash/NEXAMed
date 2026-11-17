@@ -9,6 +9,7 @@ import {
   Flask,
   ClockCounterClockwise,
   FirstAidKit,
+  Image,
   Microscope,
   Package,
   PencilSimple,
@@ -41,6 +42,8 @@ import { ActionMenu } from '../../shared/ui/ActionMenu';
 import { InsuranceBadge } from '../insurance-card/InsuranceBadge';
 import { Button } from '../../shared/ui/Button';
 import { OverflowTabs } from '../../shared/ui/OverflowTabs';
+import { EncounterImagesTab } from '../patient-document/EncounterImagesTab';
+import { useEncounterDocumentsQuery } from '../patient-document/patient-document.queries';
 import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { RecordLoadError } from '../../shared/ui/RecordLoadError';
@@ -65,7 +68,7 @@ import { useHasPermission } from '../auth/usePermission';
 import { useAuthStore } from '../auth/auth.store';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
 import { Icd10SearchPicker, type Icd10SearchPickerHandle } from '../../shared/ui/Icd10SearchPicker';
-import { useIcd10SuggestionEnabledQuery } from '../clinic/clinic.queries';
+import { useIcd10SuggestionEnabledQuery, usePatientDocumentsEnabledQuery } from '../clinic/clinic.queries';
 import { DiagnosisAmendDialog } from './DiagnosisAmendDialog';
 import { DiagnosisSuggestionPanel, type DiagnosisSuggestionPanelHandle } from './DiagnosisSuggestionPanel';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
@@ -163,6 +166,8 @@ const TABS = [
   { id: 'section-ketqua', label: 'Kết quả cận lâm sàng', shortLabel: 'Kết quả CLS', priority: 3, icon: Microscope },
   // Ghi vật tư/thuốc đã dùng cho dịch vụ khám (#297 GĐ4) — chỉ hiện với ai có quyền xem tiêu hao.
   { id: 'section-vattu', label: 'Vật tư đã dùng', shortLabel: 'Vật tư', priority: 6, icon: Package },
+  // Ảnh/tài liệu của lượt khám (#299 bổ sung 6) — chỉ hiện khi phòng khám dùng "Hình ảnh & Tài liệu" và tài khoản được xem tệp lâm sàng.
+  { id: 'section-hinhanh', label: 'Hình ảnh', shortLabel: 'Hình ảnh', priority: 5, icon: Image },
 ] as const;
 
 /**
@@ -179,6 +184,13 @@ export function EncounterConsultationPage() {
   const query = useConsultationDetailQuery(encounterId);
   const canSeeClinicalOrders = useHasPermission('clinical_order', 'read');
   const canSeeConsumption = useHasPermission('service_consumption', 'read');
+  const canReadClinicalDocuments = useHasPermission('patient_document', 'read');
+  const documentsEnabled = usePatientDocumentsEnabledQuery().data?.enabled === true;
+  const canSeeImages = documentsEnabled && canReadClinicalDocuments;
+  const documentsPatientId = query.data?.patient.id ?? '';
+  // Số ảnh của lượt khám cho chấm số trên tab (cùng khoá với tab nên chỉ một lần gọi máy chủ).
+  const encounterDocumentsQuery = useEncounterDocumentsQuery(documentsPatientId, encounterId, canSeeImages && documentsPatientId !== '');
+  const imageCount = encounterDocumentsQuery.data?.pages.flatMap((p) => p.items).length ?? 0;
   const clinicalOrderQuery = useClinicalOrderQuery(encounterId, canSeeClinicalOrders);
   // Số dịch vụ làm tại phòng khám ĐÃ có kết quả được duyệt — chấm số xanh ở tab "Kết quả cận lâm sàng" (#221).
   const resultReadyCount = clinicalOrderQuery.data?.order?.items.filter((i) => i.performance === 'IN_HOUSE' && i.resultReturnedAt !== null && !i.amendmentPending).length ?? 0;
@@ -1082,13 +1094,13 @@ export function EncounterConsultationPage() {
             ariaLabel="Các phần của màn khám"
             active={activeTabId}
             onChange={setActiveTabId}
-            tabs={TABS.filter((tab) => (tab.id === 'section-vattu' ? canSeeConsumption : (tab.id !== 'section-chidinh' && tab.id !== 'section-ketqua') || canSeeClinicalOrders)).map((tab) => ({
+            tabs={TABS.filter((tab) => (tab.id === 'section-hinhanh' ? canSeeImages : tab.id === 'section-vattu' ? canSeeConsumption : (tab.id !== 'section-chidinh' && tab.id !== 'section-ketqua') || canSeeClinicalOrders)).map((tab) => ({
               id: tab.id,
               label: tab.label,
               shortLabel: tab.shortLabel,
               priority: tab.priority,
               icon: tab.icon,
-              badge: tab.id === 'section-chidinh' ? clinicalOrderCount : tab.id === 'section-ketqua' ? resultReadyCount : undefined,
+              badge: tab.id === 'section-chidinh' ? clinicalOrderCount : tab.id === 'section-ketqua' ? resultReadyCount : tab.id === 'section-hinhanh' ? imageCount : undefined,
               badgeTone: tab.id === 'section-ketqua' ? ('green' as const) : ('blue' as const),
               trailing:
                 tab.id === 'section-kham' && diagnoses.some((d) => d.type === 'PRIMARY')
@@ -1416,6 +1428,7 @@ export function EncounterConsultationPage() {
             )}
 
             {activeTabId === 'section-vattu' && canSeeConsumption && <EncounterConsumptionTab encounterId={encounterId} />}
+            {activeTabId === 'section-hinhanh' && canSeeImages && <EncounterImagesTab patientId={patient.id} patientName={patient.fullName} encounterId={encounterId} encounterLabel={encounter.encounterNo} completedAt={encounter.completedAt} />}
           </div>
         </main>
       </div>

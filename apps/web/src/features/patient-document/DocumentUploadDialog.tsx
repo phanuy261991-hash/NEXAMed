@@ -50,6 +50,7 @@ export function DocumentUploadDialog({
   folders,
   defaultFolderId,
   today,
+  encounter,
   onClose,
 }: {
   patientId: string;
@@ -59,12 +60,20 @@ export function DocumentUploadDialog({
   defaultFolderId?: string;
   /** Ngày hôm nay (YYYY-MM-DD, giờ Việt Nam) cho dòng "Tệp sẽ vào thư mục ngày...". */
   today: string;
+  /**
+   * "Đính ảnh" ở màn khám (docs/DECISIONS.md #299 bổ sung 6): gắn sẵn lượt khám, một ô "Loại" chung (Ảnh lâm sàng / Khác), không có thư mục hay ô chọn lượt khám; dán ảnh bằng Ctrl+V.
+   */
+  encounter?: { id: string; label: string };
   onClose: () => void;
 }) {
-  const uploadable = useMemo(() => uploadableCategories(access, PATIENT_DOCUMENT_CATEGORIES), [access]);
+  const uploadable = useMemo(() => {
+    const all = uploadableCategories(access, PATIENT_DOCUMENT_CATEGORIES);
+    return encounter ? all.filter((c) => c === 'CLINICAL_PHOTO' || c === 'OTHER') : all;
+  }, [access, encounter]);
   const [rows, setRows] = useState<UploadRow[]>([]);
   const [folderId, setFolderId] = useState(defaultFolderId ?? '');
-  const [encounterId, setEncounterId] = useState('');
+  const [encounterId, setEncounterId] = useState(encounter?.id ?? '');
+  const [batchCategory, setBatchCategory] = useState<PatientDocumentCategory>(() => (uploadable.includes('CLINICAL_PHOTO') ? 'CLINICAL_PHOTO' : (uploadable[0] ?? 'CLINICAL_PHOTO')));
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -77,6 +86,19 @@ export function DocumentUploadDialog({
   useEffect(() => {
     const urls = previewUrls.current;
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, []);
+
+  // Dán ảnh từ bộ nhớ tạm (Ctrl+V): ảnh chụp màn hình, ảnh sao chép từ phần mềm máy chụp. Sự kiện dán không cần HTTPS.
+  const addFilesRef = useRef<(list: File[]) => void>(() => undefined);
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+      if (files.length === 0) return;
+      e.preventDefault();
+      addFilesRef.current(files);
+    }
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
   }, []);
 
   const categoryOptions = uploadable.map((c) => ({ value: c, label: PATIENT_DOCUMENT_CATEGORY_LABEL[c] }));
@@ -96,7 +118,7 @@ export function DocumentUploadDialog({
       return {
         key: generateUuid(),
         file,
-        category: suggestCategory(file.name, uploadable),
+        category: encounter ? batchCategory : suggestCategory(file.name, uploadable),
         status: error ? 'error' : 'ready',
         progress: 0,
         error,
@@ -111,6 +133,7 @@ export function DocumentUploadDialog({
     setRows((prev) => [...prev, ...added]);
     for (const row of added) if (row.shrinking) void shrinkRow(row);
   }
+  addFilesRef.current = addFiles;
 
   async function shrinkRow(row: UploadRow) {
     try {
@@ -133,13 +156,14 @@ export function DocumentUploadDialog({
     setBusy(true);
     let failed = false;
     for (const row of pending) {
-      if (!row.category) {
+      const category = encounter ? batchCategory : row.category;
+      if (!category) {
         patchRow(row.key, { status: 'error', error: 'Chọn loại tệp' });
         failed = true;
         continue;
       }
       // Khoá chống ghi trùng: giữ khoá cũ nếu nội dung không đổi (gửi lại sau mất mạng → máy chủ trả kết quả cũ), đổi khoá khi người dùng sửa loại/thư mục/lượt khám/ghi chú.
-      const sig = JSON.stringify([row.category, folderId, encounterId, note.trim(), row.file.size, row.file.name]);
+      const sig = JSON.stringify([category, folderId, encounterId, note.trim(), row.file.size, row.file.name]);
       const idemKey = row.idemSig === sig ? row.idemKey : generateUuid();
       patchRow(row.key, { status: 'uploading', progress: 0, error: null, idemKey, idemSig: sig });
       try {
@@ -148,7 +172,7 @@ export function DocumentUploadDialog({
         await upload.mutateAsync({
           thumbnail,
           file: row.file,
-          fields: { category: row.category, folderId: folderId || undefined, encounterId: encounterId || undefined, note: note.trim() || undefined },
+          fields: { category, folderId: folderId || undefined, encounterId: encounterId || undefined, note: note.trim() || undefined },
           onProgress: (progress) => patchRow(row.key, { progress }),
           idempotencyKey: idemKey,
         });
@@ -171,9 +195,22 @@ export function DocumentUploadDialog({
   }
 
   return (
-    <DocumentModal width={720} label="Tải lên hình ảnh và tài liệu" onClose={() => !busy && onClose()}>
+    <DocumentModal width={encounter ? 640 : 720} label={encounter ? 'Đính ảnh vào lượt khám' : 'Tải lên hình ảnh và tài liệu'} onClose={() => !busy && onClose()}>
       <form onSubmit={(e) => void handleSubmit(e)}>
-        <ModalHeader icon={UploadSimple} title="Tải lên hình ảnh và tài liệu" subtitle={patientName} onClose={busy ? undefined : onClose} />
+        <ModalHeader icon={UploadSimple} title={encounter ? 'Đính ảnh vào lượt khám' : 'Tải lên hình ảnh và tài liệu'} subtitle={encounter ? undefined : patientName} onClose={busy ? undefined : onClose} />
+        {encounter && (
+          <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-slate-600">
+            <span>
+              Lượt khám <b className="font-semibold text-slate-900">{encounter.label}</b>
+            </span>
+            <span>
+              Bệnh nhân <b className="font-semibold text-slate-900">{patientName}</b>
+            </span>
+            <span>
+              Ngày <b className="font-semibold text-slate-900">{formatIsoDateVi(today)}</b>
+            </span>
+          </div>
+        )}
 
         <div
           onDragOver={(e) => {
@@ -185,15 +222,20 @@ export function DocumentUploadDialog({
           className={`flex flex-col items-center gap-2 rounded-xl border-[1.5px] border-dashed px-4 py-5 text-center ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-400 bg-slate-50'}`}
         >
           <UploadSimple size={34} className="text-slate-500" aria-hidden="true" />
-          <div className="text-[15px] font-semibold text-slate-900">Kéo thả tệp vào đây</div>
-          <div className="text-xs font-medium text-slate-500">JPG, PNG, PDF, DICOM · tối đa {PATIENT_DOCUMENT_MAX_BYTES / (1024 * 1024)} MB mỗi tệp</div>
+          <div className="text-[15px] font-semibold text-slate-900">{encounter ? 'Kéo ảnh vào đây hoặc bấm để chọn tệp' : 'Kéo thả tệp vào đây'}</div>
+          <div className="text-xs font-medium text-slate-500">
+            {encounter ? 'Có thể dán ảnh bằng Ctrl+V. ' : ''}JPG, PNG, PDF, DICOM · tối đa {PATIENT_DOCUMENT_MAX_BYTES / (1024 * 1024)} MB mỗi tệp
+          </div>
           <div className="flex flex-wrap justify-center gap-2">
             <Button type="button" variant="secondary" onClick={() => fileInput.current?.click()}>
               <FolderSimple size={16} aria-hidden="true" /> Chọn tệp
             </Button>
-            <Button type="button" variant="secondary" onClick={() => cameraInput.current?.click()}>
-              <Camera size={16} aria-hidden="true" /> Chụp ảnh
-            </Button>
+            {/* Chụp ảnh mở thẳng camera của điện thoại/máy tính bảng; máy dùng chuột không có nút này (#299 bổ sung 6). */}
+            <span className="hidden [@media(pointer:coarse)]:inline-flex">
+              <Button type="button" variant="secondary" onClick={() => cameraInput.current?.click()}>
+                <Camera size={16} aria-hidden="true" /> Chụp ảnh
+              </Button>
+            </span>
           </div>
           <input ref={fileInput} type="file" multiple accept={ACCEPT} className="hidden" aria-label="Chọn tệp" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} />
           <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" aria-label="Chụp ảnh" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} />
@@ -202,7 +244,7 @@ export function DocumentUploadDialog({
         {rows.length > 0 && (
           <ul className="mt-3 divide-y divide-slate-100">
             {rows.map((row) => (
-              <li key={row.key} className="grid grid-cols-[42px_minmax(0,1fr)_190px_24px] items-center gap-2.5 py-2 max-sm:grid-cols-[42px_minmax(0,1fr)_24px]">
+              <li key={row.key} className={`grid items-center gap-2.5 py-2 ${encounter ? 'grid-cols-[42px_minmax(0,1fr)_24px]' : 'grid-cols-[42px_minmax(0,1fr)_190px_24px] max-sm:grid-cols-[42px_minmax(0,1fr)_24px]'}`}>
                 <div className="h-8 w-[42px] overflow-hidden rounded border border-slate-200 bg-slate-100">
                   {row.previewUrl ? <img src={row.previewUrl} alt="" className="h-full w-full object-cover" /> : <DocumentArt kind={/\.dcm$/i.test(row.file.name) ? 'dicom' : 'pdf'} />}
                 </div>
@@ -225,7 +267,7 @@ export function DocumentUploadDialog({
                     </div>
                   )}
                 </div>
-                <div className="max-sm:hidden">
+                <div className={encounter ? 'hidden' : 'max-sm:hidden'}>
                   <Combobox id={`doc-cat-${row.key}`} value={row.category ?? ''} onChange={(v) => patchRow(row.key, { category: v as PatientDocumentCategory })} options={categoryOptions} placeholder="Loại tệp" dense disabled={row.status === 'uploading' || row.status === 'done'} />
                 </div>
                 {row.status === 'done' ? (
@@ -246,27 +288,49 @@ export function DocumentUploadDialog({
           </ul>
         )}
 
-        <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-          <DocumentField id="doc-up-folder" label="Thư mục tự tạo">
-            <Combobox id="doc-up-folder" value={folderId} onChange={setFolderId} options={folderOptions} placeholder="Không chọn" />
-          </DocumentField>
-          <DocumentField id="doc-up-encounter" label="Gắn với lượt khám">
-            <Combobox id="doc-up-encounter" value={encounterId} onChange={setEncounterId} options={encounterOptions} placeholder="Không gắn" />
-          </DocumentField>
-          <DocumentField id="doc-up-note" label="Ghi chú" full>
-            <textarea id="doc-up-note" rows={3} maxLength={PATIENT_DOCUMENT_NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ví dụ: ảnh chụp trước khi khâu" className={INPUT_CLASS} />
-          </DocumentField>
-        </div>
-        <div className="mt-3 flex items-center gap-1.5 text-[13.5px] font-medium text-slate-600">
-          <FolderSimple size={14} aria-hidden="true" /> Tệp sẽ vào thư mục ngày {formatIsoDateVi(today)}
-        </div>
+        {encounter ? (
+          <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <DocumentField id="doc-up-category" label="Loại">
+              <Combobox
+                id="doc-up-category"
+                value={batchCategory}
+                onChange={(v) => {
+                  setBatchCategory(v as PatientDocumentCategory);
+                  setRows((prev) => prev.map((r) => (r.status === 'done' ? r : { ...r, category: v as PatientDocumentCategory })));
+                }}
+                options={categoryOptions}
+                placeholder="Loại"
+              />
+            </DocumentField>
+            <DocumentField id="doc-up-note" label="Ghi chú (tuỳ chọn)">
+              <input id="doc-up-note" maxLength={PATIENT_DOCUMENT_NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ví dụ: theo dõi sau băng ép ngày 3" className={INPUT_CLASS} />
+            </DocumentField>
+          </div>
+        ) : (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <DocumentField id="doc-up-folder" label="Thư mục tự tạo">
+                <Combobox id="doc-up-folder" value={folderId} onChange={setFolderId} options={folderOptions} placeholder="Không chọn" />
+              </DocumentField>
+              <DocumentField id="doc-up-encounter" label="Gắn với lượt khám">
+                <Combobox id="doc-up-encounter" value={encounterId} onChange={setEncounterId} options={encounterOptions} placeholder="Không gắn" />
+              </DocumentField>
+              <DocumentField id="doc-up-note" label="Ghi chú" full>
+                <textarea id="doc-up-note" rows={3} maxLength={PATIENT_DOCUMENT_NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ví dụ: ảnh chụp trước khi khâu" className={INPUT_CLASS} />
+              </DocumentField>
+            </div>
+            <div className="mt-3 flex items-center gap-1.5 text-[13.5px] font-medium text-slate-600">
+              <FolderSimple size={14} aria-hidden="true" /> Tệp sẽ vào thư mục ngày {formatIsoDateVi(today)}
+            </div>
+          </>
+        )}
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
             Huỷ
           </Button>
           <Button type="submit" loading={busy} disabled={pending.length === 0 || anyShrinking}>
-            <UploadSimple size={16} aria-hidden="true" /> {pending.length > 0 ? `Tải lên ${pending.length} tệp` : 'Tải lên'}
+            <UploadSimple size={16} aria-hidden="true" /> {pending.length > 0 ? `${encounter ? 'Đính' : 'Tải lên'} ${pending.length} tệp` : encounter ? 'Đính ảnh' : 'Tải lên'}
           </Button>
         </div>
       </form>

@@ -172,7 +172,7 @@ export class PatientDocumentService {
         tx,
         tenantId,
         patientId,
-        { categories, category: query.category, folderId: query.folderId, q: query.q, dateFrom: query.dateFrom, dateTo: query.dateTo },
+        { categories, category: query.category, folderId: query.folderId, q: query.q, encounterId: query.encounterId, dateFrom: query.dateFrom, dateTo: query.dateTo },
         query.limit + 1,
         decodeCursor(query.cursor),
       );

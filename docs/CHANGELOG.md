@@ -2,6 +2,10 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 17/11/2026 (phần 3) — Đính ảnh ở màn khám (`docs/DECISIONS.md` #299 bổ sung 6)
+
+- Màn khám có tab "Hình ảnh" (ảnh của đúng lượt khám, lọc theo loại, số trên tab, xem lớn) và hộp "Đính ảnh" (gắn sẵn lượt khám, ô Loại chung, dán Ctrl+V, nút Chụp ảnh trên điện thoại/máy tính bảng). Ảnh nằm luôn ở tab Hình ảnh & Tài liệu của hồ sơ; lượt khám đã hoàn tất vẫn đính thêm được, ảnh mới có thẻ "Bổ sung". API danh sách nhận `encounterId`.
+
 ## 17/11/2026 (phần 2) — Thanh tab màn khám không cuộn ngang (`docs/DECISIONS.md` #300)
 
 - Thanh tab màn khám đổi sang `OverflowTabs` (Cách 2 đã chốt): nhãn rút ngắn, hết chỗ thì tab ưu tiên thấp vào nút "Thêm ▾", tab đang chọn luôn hiện, hết thanh cuộn. Quyết định chốt mockup "Đính ảnh ở màn khám" và "Chế độ DICOM tuỳ chọn" ghi ở #299 bổ sung 6.

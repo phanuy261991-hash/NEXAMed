@@ -30,6 +30,14 @@ export function usePatientDocumentsQuery(patientId: string, filters: Omit<ListPa
   });
 }
 
+/** Số tệp tối đa tải một lần cho một lượt khám (trần của danh sách theo lô của máy chủ). */
+export const ENCOUNTER_DOCUMENTS_LIMIT = 100;
+
+/** Tệp của MỘT lượt khám (tab "Hình ảnh" ở màn khám); tab và chấm số trên thanh tab dùng chung một khoá nên chỉ gọi máy chủ một lần. */
+export function useEncounterDocumentsQuery(patientId: string, encounterId: string, enabled = true) {
+  return usePatientDocumentsQuery(patientId, { encounterId, limit: ENCOUNTER_DOCUMENTS_LIMIT }, enabled);
+}
+
 /** Dung lượng đã dùng ở Cấu hình chung (mockup màn 13). Đo tệp khá nặng nên không tự tải lại: chỉ khi vào trang và khi bấm Thử lại. */
 export function usePatientDocumentUsageQuery() {
   const { tenantId } = useAppConfig();

@@ -68298,6 +68298,7 @@ export interface paths {
                     category?: "PARACLINICAL" | "CLINICAL_PHOTO" | "CONTRACT" | "OTHER";
                     folderId?: string | "none";
                     q?: string;
+                    encounterId?: string;
                     dateFrom?: string;
                     dateTo?: string;
                     cursor?: string;

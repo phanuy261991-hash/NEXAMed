@@ -12,6 +12,7 @@ import {
   suggestCategory,
   uploadableCategories,
   validateFileForUpload,
+  isSupplementUpload,
 } from './patient-document-view';
 
 const MB = 1024 * 1024;
@@ -118,5 +119,17 @@ describe('suggestCategory', () => {
     expect(suggestCategory('a.pdf', ['CLINICAL_PHOTO', 'OTHER'])).toBe('OTHER');
     expect(suggestCategory('a.pdf', ['CONTRACT'])).toBe('CONTRACT');
     expect(suggestCategory('a.pdf', [])).toBeNull();
+  });
+});
+
+describe('isSupplementUpload', () => {
+  it('chỉ là bổ sung khi lượt khám đã hoàn tất và tệp tải lên SAU mốc hoàn tất', () => {
+    expect(isSupplementUpload('2026-11-17T03:00:00Z', '2026-11-17T02:00:00Z')).toBe(true);
+    expect(isSupplementUpload('2026-11-17T01:59:00Z', '2026-11-17T02:00:00Z')).toBe(false);
+    expect(isSupplementUpload('2026-11-17T02:00:00Z', '2026-11-17T02:00:00Z')).toBe(false);
+  });
+  it('lượt khám chưa hoàn tất (không có mốc) thì không bao giờ là bổ sung', () => {
+    expect(isSupplementUpload('2026-11-17T03:00:00Z', null)).toBe(false);
+    expect(isSupplementUpload('2026-11-17T03:00:00Z', undefined)).toBe(false);
   });
 });

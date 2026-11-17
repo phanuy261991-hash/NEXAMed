@@ -15,6 +15,7 @@ export interface DocumentListFilter {
   category?: PatientDocumentCategory;
   folderId?: string | 'none';
   q?: string;
+  encounterId?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -67,6 +68,7 @@ function buildWhere(tenantId: string, patientId: string, filter: DocumentListFil
   const and: Prisma.PatientDocumentWhereInput[] = [{ category: { in: filter.category ? filter.categories.filter((c) => c === filter.category) : filter.categories } }];
   if (filter.folderId === 'none') and.push({ folderId: null });
   else if (filter.folderId) and.push({ folderId: filter.folderId });
+  if (filter.encounterId) and.push({ encounterId: filter.encounterId });
   if (filter.dateFrom || filter.dateTo) {
     and.push({ uploadDate: { ...(filter.dateFrom ? { gte: new Date(filter.dateFrom) } : {}), ...(filter.dateTo ? { lte: new Date(filter.dateTo) } : {}) } });
   }

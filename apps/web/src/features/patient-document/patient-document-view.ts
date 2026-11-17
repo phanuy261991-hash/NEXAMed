@@ -84,6 +84,12 @@ export function tileMeta(doc: Pick<PatientDocument, 'category' | 'sizeBytes'>): 
   return `${CATEGORY_SHORT_LABEL[doc.category]} · ${formatBytes(doc.sizeBytes)}`;
 }
 
+/** Tệp tải lên SAU khi lượt khám hoàn tất → ghi là "bổ sung" (tab Hình ảnh ở màn khám, #299 bổ sung 6). Lượt khám chưa hoàn tất thì không bao giờ là bổ sung. */
+export function isSupplementUpload(uploadedAt: string, completedAt: string | null | undefined): boolean {
+  if (!completedAt) return false;
+  return new Date(uploadedAt).getTime() > new Date(completedAt).getTime();
+}
+
 export interface DayGroup {
   date: string;
   items: PatientDocument[];
