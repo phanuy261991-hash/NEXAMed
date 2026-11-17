@@ -2,6 +2,10 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 17/11/2026 (phần 2) — Thanh tab màn khám không cuộn ngang (`docs/DECISIONS.md` #300)
+
+- Thanh tab màn khám đổi sang `OverflowTabs` (Cách 2 đã chốt): nhãn rút ngắn, hết chỗ thì tab ưu tiên thấp vào nút "Thêm ▾", tab đang chọn luôn hiện, hết thanh cuộn. Quyết định chốt mockup "Đính ảnh ở màn khám" và "Chế độ DICOM tuỳ chọn" ghi ở #299 bổ sung 6.
+
 ## 17/11/2026 — Tab "Hình ảnh & Tài liệu": hoàn thiện (`docs/DECISIONS.md` #299 bổ sung 5)
 
 - **Ảnh thu nhỏ bù**: tệp tải trước GĐ3 và dòng tự gộp (ảnh cận lâm sàng, thẻ BHYT, ảnh đại diện) được trình duyệt tự tạo ảnh nhỏ từ ảnh vừa tải rồi gửi lên một lần (`POST …/documents/:documentId/thumbnail`, người có quyền tải lên đúng loại tệp, người gửi trước thắng, không đổi version tệp); các lần xem sau và người khác tải nhẹ. Không thêm thư viện ảnh vào máy chủ.

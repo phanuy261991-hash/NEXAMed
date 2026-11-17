@@ -29,3 +29,7 @@ Tab/pill con trong trang, hộp thoại, trạng thái có dữ liệu lớn, tr
 - `error-states.cjs` — URL lạ, lưu gặp 503/mất mạng (hộp thông báo, dữ liệu form còn nguyên), lỗi nghiệp vụ 409 hiện tại chỗ, thông điệp tiếng Anh của máy chủ bị thay, hết phiên, mã khởi động hỏng → khung báo tĩnh. Kỳ vọng 15/15.
 - `error-sweep.cjs` — quét MỌI route tĩnh của router, giả lập "không tải được mã trang": mỗi route phải hiện màn "Phần mềm vừa được cập nhật" trong khung ứng dụng. Kỳ vọng 47/47 (đổi theo số route).
 - Cùng biến môi trường như trên + `UI_AUDIT_OUT` (nơi lưu ảnh chụp, mặc định thư mục tạm, KHÔNG để trong repo). Quy tắc xử lý lỗi cho chức năng mới: `.claude/docs/ui-guidelines.md` mục 17b.
+
+## Thanh tab màn khám (#300, 17/11/2026)
+
+- `consultation-tabs-check.cjs` — thanh tab màn khám không cuộn ở 1280/1366/1440/1536/1920/2560, nút "Thêm" + menu + chọn tab trong menu ở 1000 px, rất hẹp 760 px. Tạo lượt khám thử tiền tố KIEMTAB, cuối chạy khoá bác sĩ thử. Kỳ vọng 23/23.

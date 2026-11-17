@@ -476,3 +476,20 @@ Chủ dự án yêu cầu "làm hết cho hoàn thiện chức năng" và trả 
 **Chưa làm — cần mockup được duyệt trước khi code**: nút "Đính ảnh" ngay trong màn khám và trình xem DICOM (ngoài 14 màn đã chốt); chủ dự án yêu cầu dựng mockup cho hai việc này (xem handoff).
 
 **Kiểm**: API `patient-document-settings-http.spec` +6 ca (ảnh thu nhỏ bù: tệp cũ, dòng tự gộp, sai định dạng/quá cỡ/không phải ảnh, phân quyền theo loại tệp, 6 yêu cầu đồng thời; đường dẫn ký kèm tên tệp); đột biến ảnh thu nhỏ bù 10/10 bị bắt (một đột biến sống sót lúc đầu — bỏ kiểm quyền tải lên theo loại — đã vá bằng ca vai trò "xem lâm sàng + tải lên giấy tờ"); web +7 (`thumbnail-backfill`, `diskUsedPercent`); Chrome IP LAN `patient-document-settings-check.cjs` **25/25** (thêm ảnh bù: tệp cũ → trình duyệt tự gửi ảnh nhỏ → lần mở sau ô ảnh ≤ 320 px). Cần `db:deploy` như bổ sung 4 (không migration mới); không `db:seed`.
+
+## 300 — Thanh tab màn khám không cuộn ngang: rút ngắn nhãn + nút "Thêm" (17/11/2026)
+
+Chủ dự án không thích thanh tab phải cuộn ngang (7 tab khi thêm "Hình ảnh") và đã chọn **Cách 2** trong mockup https://claude.ai/artifact/XikNudn9xiA9Ce2UpeoNt6 ("chốt mockup cách 2").
+
+- Thành phần dùng chung `shared/ui/OverflowTabs.tsx` + hàm thuần `overflow-tabs-layout.ts`: hiện vừa đủ theo bề rộng THẬT (đo bản sao ẩn của chính các nút, nên theo đúng icon/cỡ chữ từng cỡ màn hình), tab còn lại vào nút "Thêm ▾" (menu hiện tên đầy đủ, có chấm xanh khi trong menu có tab đang có số, Esc đóng). Tab đang chọn luôn hiện trên thanh (đổi chỗ với tab ưu tiên thấp nhất đang hiện). Thanh không còn `overflow-x-auto`, nên hết cả thanh cuộn dọc thừa.
+- Nhãn rút ngắn: "Điều trị & Tái khám", "Chỉ định CLS", "Kết quả CLS", "Vật tư" (tên đầy đủ nằm ở `title`/tên truy cập và trong menu). Thứ tự ở lại khi chật: Khám & Chẩn đoán, Kê đơn thuốc, Chỉ định CLS, Kết quả CLS, rồi Điều trị & Tái khám, Hình ảnh, Vật tư. Thêm tab mới chỉ cần khai báo `priority`.
+- Khác mockup: giữ icon từ 1440px như thanh tab hiện có (mockup không vẽ icon). Cách 3 (gộp nhóm) không làm.
+- Kiểm: unit 6 ca cho hàm chia tab; Chrome IP LAN `scripts/ui-audit/consultation-tabs-check.cjs` 23/23 (1280, 1366, 1440, 1536, 1920, 2560: không cuộn; 1000 và 760: có "Thêm", chọn trong menu, tab đang chọn luôn hiện).
+
+## 299 bổ sung 6 — Chốt mockup "Đính ảnh ở màn khám" và "Chế độ DICOM tuỳ chọn" (17/11/2026)
+
+Mockup https://claude.ai/artifact/Vq4jrvzMeMSDjsNmKSwYRz đã được chủ dự án chốt ("chốt tất cả mockup trước"). Quyết định:
+- **Đính ảnh ở màn khám**: tab riêng "Hình ảnh" ở cuối thanh tab (số ảnh, lọc theo loại, nút "+ Đính ảnh"); lượt khám đã hoàn thành vẫn đính thêm được và ghi là "bổ sung"; hộp nhận JPG/PNG/PDF/DICOM ≤ 15 MB như tab hồ sơ (DICOM chỉ tải về nếu công tắc DICOM tắt); nút "Chụp ảnh" mở camera điện thoại (ô chọn tệp `capture`, chỉ hiện trên điện thoại/máy tính bảng, chạy được qua HTTP LAN); ảnh KHÔNG vào bệnh án in/đơn thuốc in. Ảnh luôn gộp về tab Hình ảnh & Tài liệu của hồ sơ.
+- **Chế độ DICOM** (một công tắc "Dùng tệp DICOM", chung cả công ty, **mặc định TẮT** = như hiện nay): bật thì (1) ô nhập kết quả chẩn đoán hình ảnh/thăm dò có khối "Tệp DICOM gốc" cạnh khối ảnh JPG/PNG (tối đa 4 tệp, 50 MB mỗi tệp; kết quả chỉ có DICOM vẫn duyệt được, cảnh báo vàng "Phiếu in sẽ không có ảnh"; sau duyệt chỉ đổi qua Đính chính), (2) trình xem DICOM trong trình duyệt (thư viện đóng gói sẵn, chạy offline): kéo, phóng, sáng/tương phản, đảo màu, xoay, lật, nhiều khung, lớp thông tin bốn góc; tên bệnh nhân trong tệp khác hồ sơ thì cảnh báo vàng cho "Vẫn xem"; kiểu nén chưa đọc được thì rơi về "Tải về". Tệp DICOM của kết quả tự hiện ở tab hồ sơ dạng dòng tham chiếu chỉ đọc. Phải thêm khối nginx cho đường tải lên của kết quả và kiểm bằng nginx thật.
+- **Quy tắc giao diện của chủ dự án (17/11/2026)**: các đoạn chú thích trong mockup (khung "Ghi chú duyệt", dòng giải thích phụ) KHÔNG đưa vào sản phẩm; chỉ giữ đoạn mô tả của công tắc DICOM. Cảnh báo/lỗi có chức năng thật vẫn giữ.
+- Liên quan SaaS: trình xem chạy ở trình duyệt nên không đổi; nhưng khi làm SaaS phải chốt cùng lúc kho đối tượng, hạn mức dung lượng theo công ty, giới hạn tải lên riêng cho DICOM.

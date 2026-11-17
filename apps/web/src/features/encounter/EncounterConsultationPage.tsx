@@ -40,6 +40,7 @@ import { formatClockTime } from '../../shared/format/time';
 import { ActionMenu } from '../../shared/ui/ActionMenu';
 import { InsuranceBadge } from '../insurance-card/InsuranceBadge';
 import { Button } from '../../shared/ui/Button';
+import { OverflowTabs } from '../../shared/ui/OverflowTabs';
 import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { RecordLoadError } from '../../shared/ui/RecordLoadError';
@@ -151,14 +152,17 @@ function formatRelativeTime(iso: string): string {
  * Kho Thuốc GĐ5) — "Lời dặn & hẹn tái khám" ẨN HẲN cho tới khi có nội dung thật, không giữ chỗ "Sắp ra mắt".
  * "Chỉ định cận lâm sàng" thêm ở Cận lâm sàng GĐ3 (docs/DECISIONS.md #212), chỉ hiện với ai có quyền xem chỉ định.
  */
+/**
+ * `shortLabel` + `priority`: thanh tab không cuộn ngang (docs/DECISIONS.md #300) — hiện nhãn rút ngắn, hết chỗ thì tab có `priority` lớn nhất vào menu "Thêm".
+ */
 const TABS = [
-  { id: 'section-kham', label: 'Khám & Chẩn đoán', icon: ClipboardText },
-  { id: 'section-dieutri', label: 'Điều trị & Hẹn tái khám', icon: FirstAidKit },
-  { id: 'section-donthuoc', label: 'Kê đơn thuốc', icon: Pill },
-  { id: 'section-chidinh', label: 'Chỉ định cận lâm sàng', icon: Flask },
-  { id: 'section-ketqua', label: 'Kết quả cận lâm sàng', icon: Microscope },
+  { id: 'section-kham', label: 'Khám & Chẩn đoán', shortLabel: 'Khám & Chẩn đoán', priority: 0, icon: ClipboardText },
+  { id: 'section-dieutri', label: 'Điều trị & Hẹn tái khám', shortLabel: 'Điều trị & Tái khám', priority: 4, icon: FirstAidKit },
+  { id: 'section-donthuoc', label: 'Kê đơn thuốc', shortLabel: 'Kê đơn thuốc', priority: 1, icon: Pill },
+  { id: 'section-chidinh', label: 'Chỉ định cận lâm sàng', shortLabel: 'Chỉ định CLS', priority: 2, icon: Flask },
+  { id: 'section-ketqua', label: 'Kết quả cận lâm sàng', shortLabel: 'Kết quả CLS', priority: 3, icon: Microscope },
   // Ghi vật tư/thuốc đã dùng cho dịch vụ khám (#297 GĐ4) — chỉ hiện với ai có quyền xem tiêu hao.
-  { id: 'section-vattu', label: 'Vật tư đã dùng', icon: Package },
+  { id: 'section-vattu', label: 'Vật tư đã dùng', shortLabel: 'Vật tư', priority: 6, icon: Package },
 ] as const;
 
 /**
@@ -1073,32 +1077,25 @@ export function EncounterConsultationPage() {
 
         {/* Panel phải — khu vực làm việc */}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {/* Nhãn tab KHÔNG xuống dòng; màn hẹp (< 1440px) ẩn biểu tượng + thu padding cho vừa 5 tab, vẫn không vừa thì cuộn ngang (ui-guidelines mục 15). */}
-          <div className="scroll-hover flex h-11 flex-shrink-0 items-center gap-1.5 overflow-x-auto border-b border-slate-200 bg-white px-4">
-            {TABS.filter((tab) => (tab.id === 'section-vattu' ? canSeeConsumption : (tab.id !== 'section-chidinh' && tab.id !== 'section-ketqua') || canSeeClinicalOrders)).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTabId(tab.id)}
-                aria-current={activeTabId === tab.id ? 'true' : undefined}
-                className={`flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors min-[1440px]:px-3.5 ${
-                  activeTabId === tab.id ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                }`}
-              >
-                <tab.icon size={15} weight={activeTabId === tab.id ? 'fill' : 'bold'} aria-hidden="true" className="hidden min-[1440px]:block" />
-                {tab.label}
-                {tab.id === 'section-chidinh' && clinicalOrderCount > 0 && (
-                  <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${activeTabId === tab.id ? 'bg-white text-blue-700' : 'bg-blue-600 text-white'}`}>{clinicalOrderCount}</span>
-                )}
-                {tab.id === 'section-ketqua' && resultReadyCount > 0 && (
-                  <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${activeTabId === tab.id ? 'bg-white text-emerald-700' : 'bg-emerald-500 text-white'}`}>{resultReadyCount}</span>
-                )}
-                {tab.id === 'section-kham' && diagnoses.some((d) => d.type === 'PRIMARY') && (
-                  <CheckCircle size={13} weight="fill" className={activeTabId === tab.id ? 'text-white' : 'text-emerald-500'} aria-label="Đã có chẩn đoán chính" />
-                )}
-              </button>
-            ))}
-          </div>
+          {/* Thanh tab không cuộn ngang (docs/DECISIONS.md #300): hiện vừa đủ, tab còn lại vào nút "Thêm"; tab đang chọn luôn hiện. Icon chỉ hiện từ 1440px. */}
+          <OverflowTabs
+            ariaLabel="Các phần của màn khám"
+            active={activeTabId}
+            onChange={setActiveTabId}
+            tabs={TABS.filter((tab) => (tab.id === 'section-vattu' ? canSeeConsumption : (tab.id !== 'section-chidinh' && tab.id !== 'section-ketqua') || canSeeClinicalOrders)).map((tab) => ({
+              id: tab.id,
+              label: tab.label,
+              shortLabel: tab.shortLabel,
+              priority: tab.priority,
+              icon: tab.icon,
+              badge: tab.id === 'section-chidinh' ? clinicalOrderCount : tab.id === 'section-ketqua' ? resultReadyCount : undefined,
+              badgeTone: tab.id === 'section-ketqua' ? ('green' as const) : ('blue' as const),
+              trailing:
+                tab.id === 'section-kham' && diagnoses.some((d) => d.type === 'PRIMARY')
+                  ? (isActive: boolean) => <CheckCircle size={13} weight="fill" className={isActive ? 'text-white' : 'text-emerald-500'} aria-label="Đã có chẩn đoán chính" />
+                  : undefined,
+            }))}
+          />
 
           <div ref={tabScrollRef} className="scroll-hover flex-1 overflow-y-auto p-4">
             {activeTabId === 'section-kham' && (
