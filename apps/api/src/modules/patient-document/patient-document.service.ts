@@ -355,6 +355,52 @@ export class PatientDocumentService {
     });
   }
 
+  // ---------------------------------------------------------------- ảnh thu nhỏ bổ sung
+
+  /**
+   * Thêm ảnh thu nhỏ cho một tệp ẢNH chưa có (docs/DECISIONS.md #299 bổ sung 5): tệp tải trước giai đoạn 3 và dòng tham chiếu (kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện) không có ảnh thu nhỏ
+   * lúc tạo, nên trình duyệt — vừa tải ảnh gốc để hiện ô ảnh — vẽ lại thành ảnh nhỏ rồi gửi lên MỘT lần; các lần xem sau dùng ảnh nhỏ. Máy chủ không có thư viện xử lý ảnh nên không tự tạo.
+   * Người gửi trước thắng (các lần sau nhận lại ảnh thu nhỏ đã có). Chỉ người có quyền tải lên của loại tệp đó; người chỉ được xem thì không gắn được. Không đổi `version` của tệp.
+   */
+  async setThumbnail(tenantId: string, actorId: string, patientId: string, documentId: string, thumbnail: { buffer: Buffer } | undefined): Promise<{ thumbnailUrl: string }> {
+    await this.assertEnabled(tenantId);
+    const size = thumbnail?.buffer.byteLength ?? 0;
+    if (!thumbnail || size === 0 || size > PATIENT_DOCUMENT_THUMBNAIL_MAX_BYTES || sniffImageExtension(thumbnail.buffer) !== 'jpg') {
+      throw new PatientDocumentInvalidFileError(`Ảnh thu nhỏ phải là ảnh JPEG nhỏ hơn ${PATIENT_DOCUMENT_THUMBNAIL_MAX_BYTES / 1024} KB.`);
+    }
+    const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      await this.assertPatientExists(tx, tenantId, patientId);
+      const access = await this.resolveAccess(tx, tenantId, actorId);
+      const row = await this.repository.findById(tx, tenantId, patientId, documentId);
+      // Người không có quyền xem loại tệp này thấy "không tìm thấy" (không tiết lộ tệp có tồn tại).
+      if (!row || !access[patientDocumentGroupOf(row.category)].read) throw new NotFoundException();
+      this.assertCan(access, row.category, 'upload');
+      if (!row.contentType.startsWith('image/')) throw new PatientDocumentInvalidFileError('Chỉ tệp ảnh mới có ảnh thu nhỏ.');
+
+      let thumbKey = row.thumbKey;
+      if (!thumbKey) {
+        const newKey = `patient/${patientId}/documents/${randomUUID()}.thumb.jpg`;
+        await this.storage.save(tenantId, newKey, thumbnail.buffer, 'image/jpeg');
+        try {
+          const count = await this.repository.setThumbKeyIfEmpty(tx, tenantId, patientId, documentId, newKey);
+          if (count === 1) thumbKey = newKey;
+          else {
+            // Có người gắn trước trong lúc này: bỏ ảnh vừa lưu, dùng ảnh của người đó.
+            await this.storage.delete(tenantId, newKey);
+            thumbKey = (await this.repository.findById(tx, tenantId, patientId, documentId))?.thumbKey ?? null;
+          }
+        } catch (error) {
+          await this.storage.delete(tenantId, newKey);
+          throw error;
+        }
+      }
+      if (!thumbKey) throw new NotFoundException();
+      const exp = Math.floor(Date.now() / 1000) + URL_TTL_SECONDS;
+      return { thumbnailUrl: `/api/v1/files/${signFileToken({ tenantId, key: thumbKey, exp }, encryptionKey)}` };
+    });
+  }
+
   // ---------------------------------------------------------------- sửa / xoá tệp
 
   async update(tenantId: string, actorId: string, patientId: string, documentId: string, dto: UpdatePatientDocumentRequest, meta: RequestMeta): Promise<{ ok: true }> {

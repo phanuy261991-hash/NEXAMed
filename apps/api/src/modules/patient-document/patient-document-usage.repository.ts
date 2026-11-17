@@ -30,7 +30,7 @@ export class PatientDocumentUsageRepository {
     const [cards, photos, thumbs] = await Promise.all([
       tx.insuranceCard.findMany({ where: { tenantId }, select: { photoFrontKey: true, photoBackKey: true } }),
       tx.patient.findMany({ where: { tenantId, photoKey: { not: null } }, select: { photoKey: true } }),
-      tx.patientDocument.findMany({ where: { tenantId, sourceType: 'UPLOAD', thumbKey: { not: null } }, select: { thumbKey: true } }),
+      tx.patientDocument.findMany({ where: { tenantId, thumbKey: { not: null } }, select: { thumbKey: true } }),
     ]);
     const unsized: UsageFromDatabase['unsized'] = [];
     for (const c of cards) {

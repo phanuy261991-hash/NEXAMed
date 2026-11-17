@@ -55,8 +55,17 @@ function noisePng(w, h) {
     const json = await res.json().catch(() => ({}));
     return { status: res.status, body: json.data, error: json.error };
   };
+  const uploadWith = (token) => async (url, fields, file) => {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, String(v));
+    form.append('file', new Blob([file.buffer], { type: file.type }), file.name);
+    const res = await fetch(`${WEB}/api/v1${url}`, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: form });
+    const json = await res.json().catch(() => ({}));
+    return { status: res.status, body: json.data, error: json.error };
+  };
   const adminToken = await loginAs(USER, PASS);
   const api = apiWith(adminToken);
+  const apiUpload = uploadWith(adminToken);
 
   const settingsBefore = (await api('GET', '/clinic-settings')).body;
   const hadEnabled = settingsBefore?.patientDocumentsEnabled !== false;
@@ -112,7 +121,7 @@ function noisePng(w, h) {
     check('Cấu hình chung: dòng "Dung lượng đã dùng" kèm mô tả nguồn', /Dung lượng đã dùng/.test(cfg) && /Gồm cả ảnh kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện\./.test(cfg));
     const usageText = await page.getByText(/\d.* · [\d.]+ tệp$/).first().innerText();
     check('Cấu hình chung: số liệu dạng "12,4 GB · 4.310 tệp"', /^[\d.,]+ (B|KB|MB|GB) · [\d.]+ tệp$/.test(usageText), usageText);
-    check('Cấu hình chung: có thanh phần trăm theo ổ chứa kho', (await page.getByRole('img', { name: /ổ chứa/ }).count()) === 1);
+    check('Cấu hình chung: có thanh phần trăm theo ổ chứa kho', (await page.getByRole('img', { name: /Ổ chứa kho đã đầy/ }).count()) === 1);
     const toggle = page.getByRole('checkbox', { name: 'Dùng Hình ảnh & Tài liệu' });
     check('Cấu hình chung: công tắc đang BẬT (mặc định)', await toggle.isChecked());
     await page.getByText('Dung lượng đã dùng', { exact: true }).scrollIntoViewIfNeeded();
@@ -169,9 +178,33 @@ function noisePng(w, h) {
     check('xem lớn: dùng ảnh GỐC (900 px), không phải ảnh thu nhỏ', !!big && big.w === 900, JSON.stringify(big));
     await page.keyboard.press('Escape');
 
+    // ── Ảnh thu nhỏ BÙ (#299 bổ sung 5): tệp cũ (tải qua API, KHÔNG kèm ảnh thu nhỏ) → trình duyệt tự tạo và gửi lên → lần mở sau dùng ảnh nhỏ ──
+    const oldImage = noisePng(900, 700);
+    const oldDoc = await apiUpload(`/patients/${patient.id}/documents`, { category: 'CLINICAL_PHOTO' }, { buffer: oldImage, type: 'image/png', name: 'anh-cu.png' });
+    check('dữ liệu thử: tệp ảnh cũ chưa có ảnh thu nhỏ', oldDoc.status === 200 && oldDoc.body.thumbnailUrl === null, JSON.stringify(oldDoc.error ?? ''));
+    await openPatient(page);
+    await openTabButton(page).click();
+    await page.locator('button[title="anh-cu.png"] img').first().waitFor({ timeout: 20000 });
+    let backfilled = false;
+    for (let i = 0; i < 40 && !backfilled; i++) {
+      await page.waitForTimeout(500);
+      const docs = (await api('GET', `/patients/${patient.id}/documents`)).body.items;
+      backfilled = !!docs.find((d) => d.id === oldDoc.body.id)?.thumbnailUrl;
+    }
+    check('ảnh bù: mở tab thì trình duyệt tự tạo và gửi ảnh thu nhỏ cho tệp cũ (máy chủ đã có thumbnailUrl)', backfilled);
+    await openPatient(page);
+    await openTabButton(page).click();
+    await page.locator('button[title="anh-cu.png"] img').first().waitFor({ timeout: 20000 });
+    await page.waitForFunction(() => Array.from(document.querySelectorAll('button[title="anh-cu.png"] img')).some((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 });
+    const oldTile = await page.evaluate(() => {
+      const img = Array.from(document.querySelectorAll('button[title="anh-cu.png"] img')).find((i) => i.naturalWidth > 0);
+      return img ? { w: img.naturalWidth, h: img.naturalHeight } : null;
+    });
+    check('ảnh bù: lần mở sau ô ảnh dùng ảnh thu nhỏ (cạnh dài ≤ 320 px), không còn tải ảnh gốc 900×700', !!oldTile && Math.max(oldTile.w, oldTile.h) <= 320, JSON.stringify(oldTile));
+
     // ── Dung lượng tăng sau khi tải ảnh ──
     const usageAfter = (await api('GET', '/patient-documents/usage')).body;
-    check('dung lượng đã dùng tăng ít nhất bằng ảnh gốc, số tệp tăng đúng 1', usageAfter.totalBytes - usageBefore.totalBytes >= original.length && usageAfter.fileCount - usageBefore.fileCount === 1, `+${usageAfter.totalBytes - usageBefore.totalBytes} B, +${usageAfter.fileCount - usageBefore.fileCount} tệp`);
+    check('dung lượng đã dùng tăng ít nhất bằng hai ảnh gốc, số tệp tăng đúng 2 (ảnh thu nhỏ không tính là tệp)', usageAfter.totalBytes - usageBefore.totalBytes >= original.length + oldImage.length && usageAfter.fileCount - usageBefore.fileCount === 2, `+${usageAfter.totalBytes - usageBefore.totalBytes} B, +${usageAfter.fileCount - usageBefore.fileCount} tệp`);
 
     // ── Tắt công tắc ở Cấu hình chung → tab biến mất ở hồ sơ; máy chủ 409; bật lại thì còn đủ tệp ──
     await openGeneralConfig(page);

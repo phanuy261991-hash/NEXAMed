@@ -3,12 +3,14 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { formatBytes } from './patient-document-view';
 import { usePatientDocumentUsageQuery } from './patient-document.queries';
 
-/** Phần trăm ổ chứa kho mà các tệp gắn bệnh nhân đang chiếm (0–100, làm tròn); `null` khi kho không báo dung lượng ổ. Có tệp thì tối thiểu 1% để thanh còn nhìn thấy. Thuần để kiểm bằng unit test. */
-export function usagePercent(totalBytes: number, volumeTotalBytes: number | null): number | null {
-  if (volumeTotalBytes === null || volumeTotalBytes <= 0) return null;
-  const raw = (totalBytes / volumeTotalBytes) * 100;
-  if (totalBytes > 0 && raw < 1) return 1;
-  return Math.min(100, Math.round(raw));
+/**
+ * Phần trăm Ổ CHỨA KHO đã đầy (0–100, làm tròn) = (tổng − còn trống) ÷ tổng; `null` khi kho không báo dung lượng ổ. Đây là tín hiệu "ổ sắp đầy" để quản trị lo thêm ổ cho dữ liệu và bản sao lưu —
+ * khác dòng chữ bên dưới (dung lượng riêng của các tệp gắn bệnh nhân). Thuần để kiểm bằng unit test.
+ */
+export function diskUsedPercent(volumeTotalBytes: number | null, volumeFreeBytes: number | null): number | null {
+  if (volumeTotalBytes === null || volumeFreeBytes === null || volumeTotalBytes <= 0) return null;
+  const used = ((volumeTotalBytes - volumeFreeBytes) / volumeTotalBytes) * 100;
+  return Math.min(100, Math.max(0, Math.round(used)));
 }
 
 /** "12,4 GB · 4.310 tệp". */
@@ -17,13 +19,13 @@ export function usageText(totalBytes: number, fileCount: number): string {
 }
 
 /**
- * Dòng "Dung lượng đã dùng" ở Cấu hình chung (mockup màn 13): tổng dung lượng mọi tệp gắn bệnh nhân của công ty (tệp tải tay, kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện) kèm thanh
- * phần trăm so với ổ chứa kho — để quản trị biết khi nào cần thêm ổ sao lưu. Chỉ người có quyền xem Cấu hình chung (`clinic_config.read`) mở được; lỗi hiện tại chỗ kèm "Thử lại".
+ * Dòng "Dung lượng đã dùng" ở Cấu hình chung (mockup màn 13): dòng chữ là tổng dung lượng và số tệp gắn bệnh nhân của công ty (tệp tải tay, kết quả cận lâm sàng, thẻ BHYT, ảnh đại diện);
+ * thanh là phần trăm Ổ CHỨA KHO đã đầy (chủ dự án chọn phương án B ngày 16/11/2026) — để quản trị biết khi nào cần thêm ổ cho dữ liệu và bản sao lưu. Chỉ người có quyền xem Cấu hình chung (`clinic_config.read`) mở được; lỗi hiện tại chỗ kèm "Thử lại".
  */
 export function PatientDocumentUsageRow() {
   const usage = usePatientDocumentUsageQuery();
   const data = usage.data;
-  const percent = data ? usagePercent(data.totalBytes, data.volumeTotalBytes) : null;
+  const percent = data ? diskUsedPercent(data.volumeTotalBytes, data.volumeFreeBytes) : null;
 
   return (
     <div className="flex items-start justify-between gap-5">
@@ -42,7 +44,7 @@ export function PatientDocumentUsageRow() {
         {data && (
           <>
             {percent !== null && (
-              <div className="h-2 w-full overflow-hidden rounded bg-slate-200" role="img" aria-label={`Các tệp chiếm ${percent}% ổ chứa`}>
+              <div className="h-2 w-full overflow-hidden rounded bg-slate-200" role="img" aria-label={`Ổ chứa kho đã đầy ${percent}%`}>
                 <div className="h-full bg-blue-600" style={{ width: `${percent}%` }} />
               </div>
             )}

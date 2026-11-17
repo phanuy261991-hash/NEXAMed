@@ -157,6 +157,8 @@ Tìm nhầm khách? Dùng icon **kính lúp tìm kiếm** cạnh ô SĐT — m�
 
 **Tải lên** — bấm "Tải lên": kéo thả hoặc chọn nhiều tệp (JPG, PNG, PDF, DICOM, tối đa 15 MB mỗi tệp; ảnh lớn hơn được tự thu nhỏ), chọn loại cho từng tệp, tuỳ chọn thư mục, lượt khám và ghi chú. Trên máy tính bảng có nút **Chụp ảnh**. Không tải được hai tệp trùng tên trong cùng một bệnh nhân. Mất mạng giữa chừng thì bấm tải lại là an toàn, không tạo tệp trùng.
 
+**Ảnh nhỏ cho lưới** — ảnh tải lên được tạo ảnh nhỏ ngay để lưới tải nhanh. Tệp tải từ trước và các ảnh tự hiện từ nơi khác sẽ có ảnh nhỏ sau lần đầu một người có quyền tải lên mở hồ sơ (lần đầu ảnh còn tải bản gốc).
+
 **Tệp tự hiện từ nơi khác** — ảnh và PDF của **kết quả cận lâm sàng đã duyệt** (kể cả PDF của đối tác), ảnh **thẻ BHYT** (khi bật "Áp dụng BHYT") và **ảnh đại diện** tự xuất hiện ở tab, có nhãn nguồn. Các tệp này chỉ xem và tải về; muốn sửa hoặc gỡ thì làm ở chỗ gốc (kết quả cận lâm sàng thì đính chính ở kết quả). Nút **"Mở kết quả"** mở đúng phiếu kết quả.
 
 **Sửa, chuyển, xoá** — tệp tải tay có menu: đổi tên và ghi chú, chuyển thư mục, xoá (bắt buộc nhập lý do, tệp ẩn khỏi hồ sơ nhưng vẫn lưu vết). Thư mục chỉ xoá được khi trống.
@@ -166,7 +168,7 @@ Tìm nhầm khách? Dùng icon **kính lúp tìm kiếm** cạnh ô SĐT — m�
 **Quản trị: bật/tắt và dung lượng** — "Quản trị" → "Cấu hình hệ thống" → "Cấu hình chung" → khối **Hình ảnh & Tài liệu**:
 
 - Công tắc **"Dùng Hình ảnh & Tài liệu"** (mặc định bật). Tắt thì ẩn tab ở mọi hồ sơ; tệp đã tải vẫn được giữ, bật lại là thấy đủ.
-- Dòng **"Dung lượng đã dùng"**: tổng dung lượng và số tệp gắn bệnh nhân của cả công ty, thanh cho biết các tệp chiếm bao nhiêu phần trăm ổ chứa. Dùng để biết khi nào cần thêm ổ cho dữ liệu và bản sao lưu; tệp đã xoá vẫn nằm trên đĩa nên vẫn được tính.
+- Dòng **"Dung lượng đã dùng"**: dòng chữ là tổng dung lượng và số tệp gắn bệnh nhân của cả công ty (tệp đã xoá vẫn nằm trên đĩa nên vẫn được tính); **thanh là phần trăm ổ đĩa chứa dữ liệu đã đầy**. Dùng để biết khi nào cần thêm ổ cho dữ liệu và bản sao lưu.
 - Máy chủ cài bằng nginx cần ảnh web **mới** (bản có khối cho phép tải lên tới 17 MB); bản cũ chặn tệp lớn hơn 8 MB bằng lỗi "Dữ liệu gửi lên quá lớn".
 
 ---

@@ -6,11 +6,12 @@ import type {
   PatientDocument,
   PatientDocumentCategory,
   PatientDocumentFolder,
+  PatientDocumentThumbnailResult,
   PatientDocumentUsage,
   RenamePatientDocumentFolderRequest,
   UpdatePatientDocumentRequest,
 } from '@nexamed/shared';
-import { apiErrorFromResponse, getAccessToken, getApiClient, resolveApiUrl, unwrap } from '../../shared/api/client';
+import { apiErrorFromResponse, getAccessToken, getApiClient, resolveApiUrl, unwrap, uploadFile } from '../../shared/api/client';
 
 /** Hình ảnh & Tài liệu của bệnh nhân (docs/DECISIONS.md #299) — tệp đi theo bệnh nhân nên chung cả công ty. */
 export type ListPatientDocumentsParams = Partial<Omit<ListPatientDocumentsQuery, 'limit'>> & { limit?: number };
@@ -24,6 +25,13 @@ export async function listPatientDocuments(patientId: string, query: ListPatient
 /** Dung lượng mọi tệp gắn bệnh nhân của công ty — Cấu hình chung (cần `clinic_config.read`). */
 export async function getPatientDocumentUsage(): Promise<PatientDocumentUsage> {
   return unwrap(await getApiClient().GET('/api/v1/patient-documents/usage')) as PatientDocumentUsage;
+}
+
+/** Gửi ảnh thu nhỏ BÙ cho tệp ảnh chưa có (#299 bổ sung 5). Người gửi trước thắng; lỗi thì người gọi bỏ qua (chỉ là bộ nhớ đệm hiển thị). */
+export async function uploadDocumentThumbnail(patientId: string, documentId: string, thumbnail: Blob): Promise<PatientDocumentThumbnailResult> {
+  const form = new FormData();
+  form.append('thumbnail', thumbnail, 'thumb.jpg');
+  return uploadFile<PatientDocumentThumbnailResult>(`/api/v1/patients/${patientId}/documents/${documentId}/thumbnail`, form);
 }
 
 export async function listDocumentEncounterOptions(patientId: string): Promise<ListPatientDocumentEncounterOptionsResponse> {

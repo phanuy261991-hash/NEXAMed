@@ -39,6 +39,8 @@ describe('HTTP e2e — Hình ảnh & Tài liệu: công tắc, dung lượng, �
   let adminToken: string;
   let receptionistToken: string;
   let doctorToken: string;
+  let readOnlyToken: string;
+  let contractUploaderToken: string;
   let tenantBAdminToken: string;
 
   async function createPatient(token = adminToken) {
@@ -101,9 +103,21 @@ describe('HTTP e2e — Hình ảnh & Tài liệu: công tắc, dung lượng, �
     const receptionist = await h.createUser(fixture.tenantA.id, { name: 'receptionist' }, 'set-recep', [branchA]);
     const doctor = await h.createUser(fixture.tenantA.id, { name: 'doctor' }, 'set-doctor', [branchA]);
     const adminB = await h.createUser(fixture.tenantB.id, { name: 'clinic_admin' }, 'set-adminTB', []);
+    // Vai trò chỉ được XEM tệp lâm sàng (không có quyền tải lên): không được gắn ảnh thu nhỏ bù.
+    const readOnlyRole = await h.createRoleWithPermissions(fixture.tenantA.id, 'chi-xem-tai-lieu', [['patient_document', 'read']]);
+    const readOnly = await h.createUser(fixture.tenantA.id, { id: readOnlyRole }, 'set-readonly', [branchA]);
+    // Xem được cả hai nhóm nhưng chỉ được TẢI LÊN nhóm hợp đồng và giấy tờ: qua được cổng (alsoAccept) nhưng không được gắn ảnh cho tệp lâm sàng.
+    const contractUploaderRole = await h.createRoleWithPermissions(fixture.tenantA.id, 'tai-giay-to-xem-lam-sang', [
+      ['patient_document', 'read'],
+      ['patient_contract', 'read'],
+      ['patient_contract', 'upload'],
+    ]);
+    const contractUploader = await h.createUser(fixture.tenantA.id, { id: contractUploaderRole }, 'set-contractup', [branchA]);
     adminToken = await h.login(fixture.tenantA.id, admin.username);
     receptionistToken = await h.login(fixture.tenantA.id, receptionist.username);
     doctorToken = await h.login(fixture.tenantA.id, doctor.username);
+    readOnlyToken = await h.login(fixture.tenantA.id, readOnly.username);
+    contractUploaderToken = await h.login(fixture.tenantA.id, contractUploader.username);
     tenantBAdminToken = await h.login(fixture.tenantB.id, adminB.username);
   });
 
@@ -298,6 +312,137 @@ describe('HTTP e2e — Hình ảnh & Tài liệu: công tắc, dung lượng, �
       const [item] = (await http().get(`/api/v1/patients/${patient.id}/documents`).set(authed(adminToken))).body.data.items;
       expect(item.source).toBe('PARACLINICAL_IMAGE');
       expect(item.thumbnailUrl).toBeNull();
+    });
+  });
+
+  describe('đường dẫn ký kèm tên tệp (trình xem PDF hiện đúng tên)', () => {
+    it('thêm đoạn tên tệp ở cuối vẫn trả đúng tệp trong token và đặt tên hiển thị; tên không quyết định tệp nào được trả; token sai vẫn 403', async () => {
+      const patient = await createPatient();
+      const doc = await uploadOk(patient.id, PDF, 'hop-dong.pdf', undefined, 'CONTRACT');
+      const plain = await http().get(doc.url);
+      expect(plain.status).toBe(200);
+      expect(plain.headers['content-disposition']).toBeUndefined();
+
+      const named = await http().get(`${doc.url}/${encodeURIComponent('Hợp đồng gói khám.pdf')}`);
+      expect(named.status).toBe(200);
+      expect(named.headers['content-type']).toContain('application/pdf');
+      expect(named.headers['content-disposition']).toBe(`inline; filename*=UTF-8''${encodeURIComponent('Hợp đồng gói khám.pdf')}`);
+      expect(Buffer.from(named.body).equals(PDF)).toBe(true);
+
+      // Tên chứa ký tự nguy hiểm bị lọc; tên không thể đổi tệp được trả.
+      const sneaky = await http().get(`${doc.url}/${encodeURIComponent('..\\\\..\\\\"x".png')}`);
+      expect(sneaky.status).toBe(200);
+      expect(sneaky.headers['content-type']).toContain('application/pdf');
+      expect(sneaky.headers['content-disposition']).not.toMatch(/[\\\\"]/);
+      expect(Buffer.from(sneaky.body).equals(PDF)).toBe(true);
+
+      expect((await http().get(`${doc.url.slice(0, -3)}abc/ten.pdf`)).status).toBe(403);
+    });
+  });
+
+  describe('ảnh thu nhỏ BÙ cho tệp cũ và dòng tự gộp (#299 bổ sung 5)', () => {
+    const postThumb = (token: string, patientId: string, documentId: string, bytes?: Buffer) => {
+      let req = http().post(`/api/v1/patients/${patientId}/documents/${documentId}/thumbnail`).set(authed(token));
+      if (bytes) req = req.attach('thumbnail', bytes, { filename: 'thumb.jpg' });
+      return req;
+    };
+
+    it('tệp ảnh tải trước giai đoạn 3 (chưa có ảnh thu nhỏ): gắn được, mở được, không đổi version, người gửi trước thắng', async () => {
+      const patient = await createPatient();
+      const doc = await uploadOk(patient.id, JPG, 'cu.jpg'); // không kèm ảnh thu nhỏ
+      expect(doc.thumbnailUrl).toBeNull();
+
+      const first = await postThumb(adminToken, patient.id, doc.id, THUMB);
+      expect(first.status, JSON.stringify(first.body)).toBe(200);
+      expect(first.body.data.thumbnailUrl).toMatch(/^\/api\/v1\/files\//);
+      const file = await http().get(first.body.data.thumbnailUrl);
+      expect(file.status).toBe(200);
+      expect(file.headers['content-type']).toContain('image/jpeg');
+      expect(Buffer.from(file.body).equals(THUMB)).toBe(true);
+
+      const row = await privileged.patientDocument.findUniqueOrThrow({ where: { id: doc.id } });
+      expect(row.version).toBe(doc.version); // bộ nhớ đệm hiển thị, không phải thao tác sửa: không làm hỏng khoá lạc quan
+      expect(row.thumbKey).toMatch(/\.thumb\.jpg$/);
+      const listed = (await http().get(`/api/v1/patients/${patient.id}/documents`).set(authed(adminToken))).body.data.items[0];
+      expect(listed.thumbnailUrl).toMatch(/^\/api\/v1\/files\//);
+
+      // Lần gửi sau (ảnh khác) không ghi đè: vẫn là ảnh của người gửi trước, không để thêm tệp.
+      const keyBefore = row.thumbKey;
+      const second = await postThumb(doctorToken, patient.id, doc.id, Buffer.concat([THUMB, Buffer.from('khac')]));
+      expect(second.status).toBe(200);
+      expect((await privileged.patientDocument.findUniqueOrThrow({ where: { id: doc.id } })).thumbKey).toBe(keyBefore);
+      expect(await docFiles(fixture.tenantA.id, patient.id)).toHaveLength(2);
+    });
+
+    it('dòng tự gộp (ảnh kết quả cận lâm sàng) cũng gắn được; dung lượng đã dùng cộng thêm ảnh thu nhỏ nhưng không đổi số tệp', async () => {
+      const patient = await createPatient();
+      await seedClsResult(privileged, { tenantId: fixture.tenantA.id, branchId: branchA, patientId: patient.id, serviceName: 'Siêu âm tim', images: [{ storageKey: `paraclinical/${randomUUID()}/z.jpg` }] });
+      const [item] = (await http().get(`/api/v1/patients/${patient.id}/documents`).set(authed(adminToken))).body.data.items;
+      expect(item.source).toBe('PARACLINICAL_IMAGE');
+      expect(item.thumbnailUrl).toBeNull();
+
+      const before = await usageOk();
+      const res = await postThumb(adminToken, patient.id, item.id, THUMB);
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      const after = await usageOk();
+      expect(after.fileCount).toBe(before.fileCount);
+      expect(after.totalBytes - before.totalBytes).toBe(THUMB.byteLength);
+      const again = (await http().get(`/api/v1/patients/${patient.id}/documents`).set(authed(adminToken))).body.data.items[0];
+      expect(again.thumbnailUrl).toMatch(/^\/api\/v1\/files\//);
+    });
+
+    it('từ chối ảnh thu nhỏ không hợp lệ (không phải JPEG, quá 200 KB, thiếu tệp) và tệp không phải ảnh', async () => {
+      const patient = await createPatient();
+      const img = await uploadOk(patient.id, JPG, 'a.jpg');
+      const pdf = await uploadOk(patient.id, PDF, 'b.pdf', undefined, 'CONTRACT');
+      for (const res of [
+        await postThumb(adminToken, patient.id, img.id, PNG),
+        await postThumb(adminToken, patient.id, img.id, Buffer.concat([THUMB, Buffer.alloc(200 * 1024 + 1)])),
+        await postThumb(adminToken, patient.id, img.id),
+        await postThumb(adminToken, patient.id, pdf.id, THUMB),
+      ]) {
+        expect(res.status, JSON.stringify(res.body)).toBe(400);
+        expect(res.body.error.code).toBe('PATIENT_DOCUMENT_INVALID_FILE');
+      }
+      expect((await privileged.patientDocument.findUniqueOrThrow({ where: { id: img.id } })).thumbKey).toBeNull();
+      expect(await docFiles(fixture.tenantA.id, patient.id)).toHaveLength(2); // chỉ hai tệp chính, không rác
+    });
+
+    it('phân quyền: chỉ người có quyền TẢI LÊN đúng loại tệp; công ty khác và tệp không tồn tại → 404; công tắc tắt → 409', async () => {
+      const patient = await createPatient();
+      const photo = await uploadOk(patient.id, JPG, 'lam-sang.jpg'); // CLINICAL_PHOTO
+      const contract = await uploadOk(patient.id, JPG, 'giay-to.jpg', undefined, 'CONTRACT');
+
+      // Chỉ được xem (không có quyền tải lên): guard chặn 403.
+      expect((await postThumb(readOnlyToken, patient.id, photo.id, THUMB)).status).toBe(403);
+      // Xem được tệp lâm sàng + chỉ tải lên được giấy tờ: qua cổng nhưng KHÔNG gắn được cho tệp lâm sàng (kiểm theo loại của từng tệp), gắn được cho tệp giấy tờ.
+      expect((await postThumb(contractUploaderToken, patient.id, photo.id, THUMB)).status).toBe(403);
+      expect((await postThumb(contractUploaderToken, patient.id, contract.id, THUMB)).status).toBe(200);
+      // Lễ tân (chỉ nhóm hợp đồng và giấy tờ): tệp lâm sàng "không tồn tại" (không lộ tệp), tệp giấy tờ thì được.
+      expect((await postThumb(receptionistToken, patient.id, photo.id, THUMB)).status).toBe(404);
+      expect((await postThumb(receptionistToken, patient.id, contract.id, THUMB)).status).toBe(200); // đã có ảnh của người trước: vẫn 200, không ghi đè
+      expect((await postThumb(adminToken, patient.id, randomUUID(), THUMB)).status).toBe(404);
+      expect((await postThumb(tenantBAdminToken, patient.id, photo.id, THUMB)).status).toBe(404);
+      expect(await privileged.patientDocument.count({ where: { patientId: patient.id, thumbKey: { not: null } } })).toBe(1); // chỉ tệp giấy tờ có ảnh thu nhỏ
+
+      expect((await setToggle(adminToken, false)).status).toBe(200);
+      try {
+        const off = await postThumb(adminToken, patient.id, photo.id, THUMB);
+        expect(off.status).toBe(409);
+        expect(off.body.error.code).toBe('PATIENT_DOCUMENTS_DISABLED');
+      } finally {
+        expect((await setToggle(adminToken, true)).status).toBe(200);
+      }
+    });
+
+    it('nhiều yêu cầu gắn cùng lúc cho một tệp: tất cả 200, chỉ MỘT ảnh thu nhỏ được giữ, yêu cầu thua dọn sạch tệp của mình', async () => {
+      const patient = await createPatient();
+      const doc = await uploadOk(patient.id, JPG, 'dong-thoi.jpg');
+      const results = await Promise.all(Array.from({ length: 6 }, (_, i) => postThumb(adminToken, patient.id, doc.id, Buffer.concat([THUMB, Buffer.from(String(i))]))));
+      expect(results.map((r) => r.status)).toEqual([200, 200, 200, 200, 200, 200]);
+      const row = await privileged.patientDocument.findUniqueOrThrow({ where: { id: doc.id } });
+      expect(row.thumbKey).not.toBeNull();
+      expect(await docFiles(fixture.tenantA.id, patient.id)).toHaveLength(2); // tệp chính + đúng một ảnh thu nhỏ
     });
   });
 });

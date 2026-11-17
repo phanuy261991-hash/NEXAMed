@@ -160,6 +160,15 @@ export class PatientDocumentRepository {
     return result.count;
   }
 
+  /**
+   * Gắn ảnh thu nhỏ cho một tệp CHƯA có (người gửi trước thắng): trả số dòng đã đổi, 0 nghĩa là đã có người gắn trước. KHÔNG đổi `version` — đây là bộ nhớ đệm hiển thị, không phải
+   * thao tác sửa của người dùng nên không được làm hỏng khoá lạc quan của người đang sửa tệp.
+   */
+  async setThumbKeyIfEmpty(tx: Prisma.TransactionClient, tenantId: string, patientId: string, id: string, key: string): Promise<number> {
+    const result = await tx.patientDocument.updateMany({ where: { tenantId, patientId, id, deletedAt: null, thumbKey: null }, data: { thumbKey: key } });
+    return result.count;
+  }
+
   /** Xoá MỀM kèm lý do; tệp trên đĩa giữ nguyên (không xoá cứng dữ liệu nghiệp vụ). */
   async softDeleteIfVersionMatches(
     tx: Prisma.TransactionClient,

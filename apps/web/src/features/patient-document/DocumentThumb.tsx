@@ -3,11 +3,25 @@ import type { PatientDocumentKind } from '@nexamed/shared';
 import { resolveApiUrl } from '../../shared/api/client';
 
 /** Hình thu nhỏ của một tệp: ảnh thật, hoặc hình minh hoạ cho PDF/DICOM (và khi ảnh không tải được). Lấp đầy khung cha. */
-export function DocumentThumb({ kind, url, thumbnailUrl, category }: { kind: PatientDocumentKind; url?: string; /** Ảnh thu nhỏ do trình duyệt tạo lúc tải lên (nhẹ hơn nhiều); thiếu thì dùng ảnh gốc `url`. */ thumbnailUrl?: string | null; category?: string }) {
+export function DocumentThumb({
+  kind,
+  url,
+  thumbnailUrl,
+  category,
+  onOriginalLoad,
+}: {
+  kind: PatientDocumentKind;
+  url?: string;
+  /** Ảnh thu nhỏ (nhẹ hơn nhiều so với ảnh gốc); thiếu thì dùng ảnh gốc `url`. */
+  thumbnailUrl?: string | null;
+  category?: string;
+  /** Gọi khi ô ảnh vừa tải xong ảnh GỐC (chưa có ảnh thu nhỏ) — để tạo ảnh thu nhỏ bù và gửi lên một lần. */
+  onOriginalLoad?: (img: HTMLImageElement) => void;
+}) {
   const [broken, setBroken] = useState(false);
   const src = thumbnailUrl ?? url;
   if (kind === 'image' && src && !broken) {
-    return <img src={resolveApiUrl(src)} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full object-cover" />;
+    return <img src={resolveApiUrl(src)} alt="" loading="lazy" onError={() => setBroken(true)} onLoad={thumbnailUrl ? undefined : (e) => onOriginalLoad?.(e.currentTarget)} className="h-full w-full object-cover" />;
   }
   return <DocumentArt kind={kind} contract={category === 'CONTRACT'} />;
 }

@@ -72,7 +72,7 @@ export const patientDocumentSchema = z.object({
   branchName: z.string().nullable(),
   /** Đường dẫn ký có hạn 15 phút (làm mới mỗi lần gọi lại danh sách). */
   url: z.string(),
-  /** Ảnh thu nhỏ cho lưới và bảng (nhẹ hơn nhiều so với ảnh gốc); `null` khi không có (PDF, DICOM, dòng tham chiếu, tệp cũ) — giao diện rơi về `url`. */
+  /** Ảnh thu nhỏ cho lưới và bảng (nhẹ hơn nhiều so với ảnh gốc); `null` khi chưa có (PDF, DICOM, hoặc ảnh chưa được trình duyệt tạo bù) — giao diện rơi về `url`. */
   thumbnailUrl: z.string().nullable(),
   version: z.number().int(),
 });
@@ -191,3 +191,7 @@ export const patientDocumentUsageSchema = z.object({
   volumeFreeBytes: z.number().int().nonnegative().nullable(),
 });
 export type PatientDocumentUsage = z.infer<typeof patientDocumentUsageSchema>;
+
+/** `POST /patients/:patientId/documents/:documentId/thumbnail` — ảnh thu nhỏ đã gắn cho tệp (của người gửi trước nếu đã có). */
+export const patientDocumentThumbnailResultSchema = z.object({ thumbnailUrl: z.string() });
+export type PatientDocumentThumbnailResult = z.infer<typeof patientDocumentThumbnailResultSchema>;

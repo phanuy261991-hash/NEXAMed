@@ -63,7 +63,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-HinhAnhTaiLieu-GD3-2026-11-16.md`** (16/11/2026, ĐỌC TRƯỚC): tab "Hình ảnh & Tài liệu" GĐ1–GĐ3 XONG; mục 4 là việc cần chủ dự án quyết, mục 5 là bẫy đã gặp (kể cả lỗi nginx 8 MB và script khoá tài khoản thử).
+**`docs/handoffs/HANDOFF-HinhAnhTaiLieu-GD3-2026-11-16.md`** (cập nhật 17/11/2026, ĐỌC TRƯỚC): tab "Hình ảnh & Tài liệu" GĐ1–GĐ3 + hoàn thiện (#299 bổ sung 5) XONG, full test xanh (API 2423, core 900, shared 136, web 824, setup 112); mục 4 là việc cần chủ dự án quyết (9 câu mockup "Đính ảnh" + DICOM đang chờ duyệt, dựng gói on-prem), mục 5 là bẫy đã gặp.
 
 Các bản bàn giao cũ đã được gỡ khỏi thư mục làm việc (14/11/2026, chủ dự án chốt chỉ giữ bản mới nhất; không đọc lại). Khi cần tra một việc cũ: tìm theo số quyết định/ngày trong `docs/DECISIONS.md` và `docs/CHANGELOG.md` trước; cần đúng bản bàn giao thì `git log --all --diff-filter=D --name-only -- docs/handoffs` để tìm commit gỡ rồi `git show <commit>^:docs/handoffs/<tên tệp>`.
 

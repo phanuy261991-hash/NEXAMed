@@ -1,5 +1,5 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import {
   PATIENT_DOCUMENT_MAX_BYTES,
@@ -65,6 +65,24 @@ export class PatientDocumentController {
     const { tenantId, userId } = req.user!;
     const requestKey = req.headers['idempotency-key'];
     return this.service.uploadOnce(tenantId, userId, requireBranchId(req.user!), patientId, form, file, thumbnail, Array.isArray(requestKey) ? requestKey[0] : requestKey, req.originalUrl.split('?')[0] ?? req.originalUrl, extractRequestMeta(req));
+  }
+
+  /**
+   * Bổ sung ảnh thu nhỏ cho tệp ảnh chưa có (#299 bổ sung 5): trình duyệt vẽ lại ảnh đã tải rồi gửi lên một lần. Hạn mức multer nới hơn 200 KB để máy chủ trả câu 400 tiếng Việt
+   * (service kiểm JPEG + dung lượng) thay vì lỗi 413 thô của multer.
+   */
+  @Post(':documentId/thumbnail')
+  @RequirePermission('patient_document', 'upload', { alsoAccept: [{ module: 'patient_contract', action: 'upload' }] })
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('thumbnail', { limits: { fileSize: 1024 * 1024 } }))
+  async setThumbnail(
+    @Param('patientId', ParseUUIDPipe) patientId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: Request,
+  ) {
+    const { tenantId, userId } = req.user!;
+    return this.service.setThumbnail(tenantId, userId, patientId, documentId, file);
   }
 
   @Post('folders')

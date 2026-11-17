@@ -95,7 +95,7 @@ Khi code những chức năng trên: dùng chung một service ghi `patient_docu
 
 - **GĐ1** — Nền: migration + bảng, quyền, API liệt kê/tải lên/sửa/xoá mềm, tab web (xem theo Ngày + Loại, thư mục tự tạo, xem lớn). Test API (cô lập tenant B + chi nhánh, đột biến), Chrome IP LAN.
 - **GĐ2** — Tự gộp ảnh/PDF cận lâm sàng + thẻ BHYT + ảnh đại diện thành dòng tham chiếu chỉ đọc. **XONG 14/11/2026**; khác kế hoạch ban đầu: thay "ghi dòng trong transaction của nguồn + migration nạp bù" bằng tab tự đối chiếu nguồn mỗi lần mở trang đầu (#299 bổ sung 3).
-- **GĐ3** — Ảnh thu nhỏ, ghi dung lượng, công tắc, tài liệu hướng dẫn (`docs/pilot-onboarding.md` mục 3.11). **XONG 16/11/2026** (#299 bổ sung 4); "lọc/tìm nâng cao" không thêm vì mockup chỉ có 3 ô lọc đã làm ở GĐ1. Kèm sửa lỗi nginx on-prem chặn tệp > 8 MB.
+- **GĐ3** — Ảnh thu nhỏ, ghi dung lượng, công tắc, tài liệu hướng dẫn (`docs/pilot-onboarding.md` mục 3.11). **XONG 16/11/2026** (#299 bổ sung 4; hoàn thiện thêm ảnh thu nhỏ bù, khung PDF, quét quyền ở bổ sung 5 ngày 17/11); "lọc/tìm nâng cao" không thêm vì mockup chỉ có 3 ô lọc đã làm ở GĐ1. Kèm sửa lỗi nginx on-prem chặn tệp > 8 MB.
 - **Sau**: xem DICOM, sơ đồ răng/ảnh theo vị trí răng (cùng gói Nha khoa, đang bị chặn bởi module viện phí).
 
 ## 7. Quy trình trước khi code

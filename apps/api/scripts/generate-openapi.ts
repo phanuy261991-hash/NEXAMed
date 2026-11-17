@@ -225,6 +225,7 @@ import {
   stockRequestFeatureStatusSchema,
   patientDocumentsFeatureStatusSchema,
   patientDocumentUsageSchema,
+  patientDocumentThumbnailResultSchema,
   purchaseOrderSettingsSchema,
   getStockRequestRestockResponseSchema,
   purchaseOrderDetailSchema,
@@ -8544,6 +8545,19 @@ registry.registerPath({
     404: documentErrors[404],
     409: documentErrors[409],
   },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/patients/{patientId}/documents/{documentId}/thumbnail',
+  tags: ['patient-document'],
+  summary: 'Bổ sung ảnh thu nhỏ JPEG (≤ 200 KB) cho tệp ảnh chưa có — trình duyệt vẽ lại ảnh đã tải rồi gửi một lần; người gửi trước thắng, không đổi version của tệp',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: patientDocumentParams,
+    body: { content: { 'multipart/form-data': { schema: z.object({ thumbnail: z.string().openapi({ format: 'binary', description: 'Ảnh thu nhỏ JPEG' }) }) } } },
+  },
+  responses: { 200: jsonResponse('Thành công', envelope(patientDocumentThumbnailResultSchema)), ...documentErrors },
 });
 
 registry.registerPath({

@@ -2,6 +2,13 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 17/11/2026 — Tab "Hình ảnh & Tài liệu": hoàn thiện (`docs/DECISIONS.md` #299 bổ sung 5)
+
+- **Ảnh thu nhỏ bù**: tệp tải trước GĐ3 và dòng tự gộp (ảnh cận lâm sàng, thẻ BHYT, ảnh đại diện) được trình duyệt tự tạo ảnh nhỏ từ ảnh vừa tải rồi gửi lên một lần (`POST …/documents/:documentId/thumbnail`, người có quyền tải lên đúng loại tệp, người gửi trước thắng, không đổi version tệp); các lần xem sau và người khác tải nhẹ. Không thêm thư viện ảnh vào máy chủ.
+- **Thanh dung lượng** ở Cấu hình chung theo phương án B: phần trăm ổ chứa kho đã đầy; dòng chữ vẫn là dung lượng tệp.
+- **Khung PDF** ở hộp xem lớn: tên tệp nằm trên vùng xem (không đè thanh công cụ), khung PDF rộng hết chiều ngang, ẩn cột hình xem trước, vừa chiều ngang trang; đường dẫn ký nhận thêm đoạn tên tệp để thanh công cụ hiện đúng tên; màn hẹp vẫn thấy nút đóng.
+- Quét quyền theo vai trò đạt (7 vai trò mặc định + 4 vai trò tuỳ biến, route bệnh nhân); đã kiểm PDF bằng Chrome có giao diện ở 1440/768/390 px; `CLAUDE.md` ghi phạm vi tab, quy tắc "mọi hình ảnh/tài liệu gắn bệnh nhân về tab" và quy tắc kiểm tệp lớn qua nginx.
+
 ## 16/11/2026 — Tab "Hình ảnh & Tài liệu", giai đoạn 3: công tắc, dung lượng đã dùng, ảnh thu nhỏ; sửa lỗi nginx chặn tải tệp lớn (`docs/DECISIONS.md` #299 bổ sung 4)
 
 - **Công tắc "Dùng Hình ảnh & Tài liệu"** ở Cấu hình chung (mặc định bật): tắt thì ẩn tab ở hồ sơ bệnh nhân và máy chủ từ chối mọi API của tab (409); tệp đã tải giữ nguyên, bật lại là thấy đủ.

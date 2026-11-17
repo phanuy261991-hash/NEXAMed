@@ -27,7 +27,26 @@ function toBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
 }
 
-/** Tạo ảnh thu nhỏ JPEG; trả `null` nếu không phải ảnh, trình duyệt không giải mã/vẽ được, hoặc thử hết vẫn quá hạn mức. */
+/** Vẽ nguồn ảnh (đã giải mã) thành JPEG thu nhỏ vừa hạn mức; `null` nếu không vẽ/mã hoá được hoặc thử hết vẫn quá lớn. */
+async function encodeThumbnail(source: CanvasImageSource, sourceWidth: number, sourceHeight: number): Promise<Blob | null> {
+  const { width, height } = planThumbnailSize(sourceWidth, sourceHeight);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  // JPEG không có nền trong suốt: tô trắng trước (ảnh PNG có vùng trong suốt).
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, width, height);
+  context.drawImage(source, 0, 0, width, height);
+  for (const quality of THUMBNAIL_QUALITIES) {
+    const blob = await toBlob(canvas, quality);
+    if (blob && blob.size > 0 && blob.size <= THUMBNAIL_MAX_BYTES) return blob;
+  }
+  return null;
+}
+
+/** Tạo ảnh thu nhỏ JPEG từ tệp vừa chọn; trả `null` nếu không phải ảnh, trình duyệt không giải mã/vẽ được, hoặc thử hết vẫn quá hạn mức. */
 export async function makeThumbnail(file: File): Promise<Blob | null> {
   if (!isThumbnailable(file)) return null;
   let bitmap: ImageBitmap;
@@ -37,22 +56,21 @@ export async function makeThumbnail(file: File): Promise<Blob | null> {
     return null; // ảnh hỏng hoặc định dạng trình duyệt không giải mã được: bỏ qua ảnh thu nhỏ, tệp vẫn tải lên bình thường
   }
   try {
-    const { width, height } = planThumbnailSize(bitmap.width, bitmap.height);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    if (!context) return null;
-    // JPEG không có nền trong suốt: tô trắng trước (ảnh PNG có vùng trong suốt).
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, width, height);
-    context.drawImage(bitmap, 0, 0, width, height);
-    for (const quality of THUMBNAIL_QUALITIES) {
-      const blob = await toBlob(canvas, quality);
-      if (blob && blob.size > 0 && blob.size <= THUMBNAIL_MAX_BYTES) return blob;
-    }
-    return null;
+    return await encodeThumbnail(bitmap, bitmap.width, bitmap.height);
   } finally {
     bitmap.close();
+  }
+}
+
+/**
+ * Tạo ảnh thu nhỏ từ ảnh ĐÃ tải xong trong trang (bù cho tệp cũ và dòng tự gộp — #299 bổ sung 5), khỏi tải lại ảnh gốc. Ảnh cùng nguồn gốc (nginx proxy `/api`) nên canvas không bị chặn;
+ * nếu bị chặn (ảnh khác nguồn gốc) hoặc ảnh chưa giải mã xong thì trả `null`.
+ */
+export async function makeThumbnailFromImage(img: HTMLImageElement): Promise<Blob | null> {
+  if (!img.complete || img.naturalWidth === 0 || img.naturalHeight === 0) return null;
+  try {
+    return await encodeThumbnail(img, img.naturalWidth, img.naturalHeight);
+  } catch {
+    return null; // canvas bị chặn (SecurityError) hoặc trình duyệt không mã hoá được: bỏ qua, ô ảnh vẫn hiện ảnh gốc
   }
 }

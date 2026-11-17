@@ -57,19 +57,22 @@ export function DocumentViewerDialog({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 p-3" role="dialog" aria-modal="true" aria-label={doc.displayName}>
       <div className="grid max-h-full w-full max-w-[1000px] grid-cols-[minmax(0,1fr)_300px] overflow-hidden rounded-xl bg-[#0b1220] shadow-xl max-md:grid-cols-1 max-md:overflow-y-auto">
-        <div className="relative flex min-h-[420px] items-center justify-center p-4 text-slate-200">
-          <div className="absolute left-4 top-3 max-w-[70%] truncate text-sm font-semibold">
+        <div className="flex min-h-[420px] min-w-0 flex-col p-4 text-slate-200">
+          {/* Dòng tên tệp nằm TRÊN vùng xem (không đè lên ảnh hay thanh công cụ của trình xem PDF). */}
+          <div className="mb-2 truncate text-sm font-semibold">
             {doc.displayName} · {index + 1}/{items.length}
           </div>
+          <div className="relative flex min-h-0 flex-1 items-center justify-center">
           {hasPrev && (
-            <button type="button" aria-label="Tệp trước" onClick={() => onIndexChange(index - 1)} className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 hover:bg-white/25">
+            <button type="button" aria-label="Tệp trước" onClick={() => onIndexChange(index - 1)} className="absolute left-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 hover:bg-white/25">
               <CaretLeft size={18} weight="bold" aria-hidden="true" />
             </button>
           )}
           {doc.kind === 'image' ? (
             <img src={src} alt={doc.displayName} className="max-h-[70vh] max-w-full rounded border border-slate-700 object-contain" />
           ) : doc.kind === 'pdf' ? (
-            <iframe title={doc.displayName} src={src} className="h-[70vh] w-full max-w-[560px] rounded bg-white" />
+            // Trình xem PDF của trình duyệt: ẩn cột hình xem trước (`navpanes=0`) và cho trang vừa chiều ngang khung (`view=FitH`) để nội dung chính đủ lớn; khung chiếm hết chiều ngang vùng xem.
+            <iframe title={doc.displayName} src={`${src}/${encodeURIComponent(doc.fileName)}#navpanes=0&view=FitH`} className="h-[calc(100dvh-9rem)] min-h-[360px] w-full rounded bg-white max-md:h-[55dvh]" />
           ) : (
             <div className="flex w-full max-w-[420px] flex-col items-center gap-3 text-center">
               <div className="aspect-[4/3] w-full overflow-hidden rounded border border-slate-700">
@@ -79,10 +82,11 @@ export function DocumentViewerDialog({
             </div>
           )}
           {hasNext && (
-            <button type="button" aria-label="Tệp sau" onClick={() => onIndexChange(index + 1)} className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 hover:bg-white/25">
+            <button type="button" aria-label="Tệp sau" onClick={() => onIndexChange(index + 1)} className="absolute right-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 hover:bg-white/25">
               <CaretRight size={18} weight="bold" aria-hidden="true" />
             </button>
           )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 bg-white p-4 text-slate-900">

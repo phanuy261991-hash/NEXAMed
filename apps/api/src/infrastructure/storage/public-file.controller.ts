@@ -29,8 +29,12 @@ export class PublicFileController {
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {}
 
-  @Get(':token')
-  async getByToken(@Param('token') token: string, @Res() res: Response): Promise<void> {
+  /**
+   * `:filename` (tuỳ chọn) CHỈ để trình xem của trình duyệt hiện đúng tên tệp (trình xem PDF lấy tên từ đoạn cuối đường dẫn, nếu không sẽ hiện chuỗi chữ ký khó đọc). Không thuộc chữ ký, không quyết định
+   * tệp nào được trả — tệp luôn là tệp trong token; tên chỉ đi vào `Content-Disposition` sau khi lọc ký tự điều khiển và cắt độ dài.
+   */
+  @Get([':token', ':token/:filename'])
+  async getByToken(@Param('token') token: string, @Param('filename') filename: string | undefined, @Res() res: Response): Promise<void> {
     const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
     const payload = verifyFileToken(token, encryptionKey);
     if (!payload) {
@@ -48,6 +52,8 @@ export class PublicFileController {
     }
 
     res.setHeader('Content-Type', contentType);
+    const displayName = (filename ?? '').split('').filter((ch) => ch.charCodeAt(0) >= 32 && !'\\/"'.includes(ch)).join('').trim().slice(0, 200);
+    if (displayName) res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(displayName)}`);
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.send(Buffer.from(content));
   }
