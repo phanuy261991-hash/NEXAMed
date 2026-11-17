@@ -139,7 +139,7 @@
       return check(kind, s.title, s.detail, val);
     }).join('');
     return '<div><h2>' + title + '</h2></div><div class="progress" role="progressbar" aria-valuenow="' + job.percent + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + job.percent + '%"></i></div><div class="checks">' + steps + '</div>' +
-      (job.error ? '<div class="err"><span>' + esc(job.error) + '</span></div>' : '') + (job.log.length ? '<div class="logbox" id="logbox">' + esc(job.log.slice(-40).join('\n')) + '</div>' : '');
+      (job.error ? '<div class="err"><span>' + esc(job.error) + '</span></div>' : '') + (job.log.length ? '<div class="logbox" id="logbox">' + esc(job.log.slice(-150).join('\n')) + '</div>' : '');
   }
 
   /** "Có gì mới trong bản Y": ghi chú của bản sắp cài, theo nhóm (mockup 30/10/2026; chủ dự án chốt không gộp các bản ở giữa). Không có ghi chú (gói cũ) thì không hiện gì. */
@@ -336,6 +336,8 @@
     var active = document.activeElement && document.activeElement.id;
     var sel = active && document.activeElement.selectionStart != null ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     $('body').innerHTML = '<form id="stepform" novalidate>' + views[S.step]() + '</form>';
+    // Bước đang cài/nâng cấp: khung nhật ký giãn xuống sát chân trang (class `fill` ở styles.css).
+    $('wiz').classList.toggle('fill', S.step === 'progress');
     if (active && $(active) && (S.step === 'info' || S.step === 'backup' || S.step === 'otp')) { $(active).focus(); if (sel && $(active).setSelectionRange && $(active).type !== 'password') try { $(active).setSelectionRange(sel[0], sel[1]); } catch { /* một số kiểu ô không hỗ trợ */ } }
     var box = $('logbox'); if (box) box.scrollTop = box.scrollHeight;
     $('foot').innerHTML = footer();

@@ -7,6 +7,7 @@
 - Bước "Bản đang chạy" của trình cài đặt có mục **Dọn gói cũ**: xoá tệp nạp ảnh `.tar.gz` và gỡ ảnh Docker của các bản cũ để lấy lại ổ đĩa. Luôn giữ bản đang chạy, bản trước theo lần nâng cấp gần nhất (đúng với nút Quay lui) và bản mới trong gói; hộp xác nhận có ô tích "không quay lui được nữa"; bản sao lưu nâng cấp chỉ hiện dung lượng, không có nút xoá. Dọn một phần (ảnh đang dùng, Docker không trả lời) báo rõ và có "Dọn lại".
 - Bản chỉ còn bị container cũ (kể cả đã dừng) giữ ảnh hiện "Giữ · có container cũ đang dùng ảnh" kèm tên container và cách gỡ, không còn nút "Dọn lại" vô ích; khung kết quả vàng thay vì đỏ khi chỉ vì lý do này.
 - `compareVersions` theo SemVer: `0.9.6-beta.1` nhỏ hơn `0.9.6`, nên bản dev đồng hành nâng lên bản chính thức hiện đúng ghi chú cập nhật. Có ghi chú phát hành `0.9.6` (`apps/api/release-notes/0.9.6.json`).
+- Khung nhật ký ở bước "Đang cài/Đang nâng cấp" giãn xuống sát chân trang (tự cuộn khi dài) thay vì cao cố định 160px.
 - Quyết định giữ nguyên màu chữ xám toàn app sau khi xem mockup so sánh (#302), không đổi mã.
 - Kiểm: setup 132 test, Chrome thật 32/32, Docker thật 6/6. Lưu trữ `DECISIONS` #291–#295 sang `docs/archive/DECISIONS-291-295.md` (file gốc vượt 150 KB).
 

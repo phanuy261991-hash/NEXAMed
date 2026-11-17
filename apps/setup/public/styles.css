@@ -161,3 +161,12 @@ table.sum { width: 100%; border-collapse: collapse; }
 .dialog-f { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px 18px; flex-wrap: wrap; }
 .ack { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; color: var(--fg); margin-top: 4px; }
 .ack input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--brand); }
+
+/* Bước "Đang cài/Đang nâng cấp": khung nhật ký giãn xuống sát chân trang (dòng "Có thể mất vài phút…"), tự cuộn khi dài (chủ dự án 17/11/2026). */
+.wiz.fill { height: 100vh; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+.wiz.fill .main { min-height: 0; }
+.wiz.fill .body { min-height: 0; overflow: auto; }
+.wiz.fill #stepform { flex: 1 1 auto; min-height: 0; }
+.wiz.fill #stepform > :not(.logbox) { flex: none; } /* danh sách bước/thanh tiến độ giữ nguyên chiều cao, không bị ép khi nhật ký dài */
+.wiz.fill .logbox { flex: 1 1 0; min-height: 120px; max-height: none; }
+@media (max-width: 900px) { .wiz.fill { grid-template-rows: auto minmax(0, 1fr); } }
