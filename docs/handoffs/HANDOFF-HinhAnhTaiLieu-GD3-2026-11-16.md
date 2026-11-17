@@ -3,7 +3,7 @@
 (Tên file giữ nguyên vì CURRENT.md và memory đang trỏ tới; nội dung đã bao trùm GĐ1–GĐ3 và mọi việc của phiên 17/11/2026.)
 
 ## 1. Trạng thái một câu
-**Mọi việc đã giao đều LÀM XONG, ĐÃ ĐẨY lên `master` (HEAD `152f65ca`), cây làm việc sạch.** Còn đúng một việc: **dựng gói cài on-prem** để giao khách — chưa làm vì cần chủ dự án chốt số phiên bản (mỗi lần dựng sinh số phiên bản + release notes).
+**Mọi việc đã giao đều LÀM XONG, ĐÃ ĐẨY lên `master` (mã nguồn HEAD `152f65ca`, sau đó chỉ thêm commit tài liệu), cây làm việc sạch, bộ test đầy đủ đã chạy lại và XANH.** Còn đúng một việc: **dựng gói cài on-prem** để giao khách — chưa làm vì cần chủ dự án chốt số phiên bản (mỗi lần dựng sinh số phiên bản + release notes).
 
 Các commit của phiên: `16cea33c` (hoàn thiện tab, #299 bổ sung 5) → `1bf46b46` (thanh tab không cuộn, #300) → `28dea084` (tab Hình ảnh + hộp Đính ảnh ở màn khám) → `978e3f07` (chế độ DICOM) → `152f65ca` (dải "Tệp DICOM gốc" ở hộp xem kết quả).
 
@@ -21,7 +21,7 @@ Các commit của phiên: `16cea33c` (hoàn thiện tab, #299 bổ sung 5) → `
 
 **Chế độ DICOM tuỳ chọn (#299 bổ sung 6, Đợt 3)**: công tắc `dicomEnabled` (mặc định TẮT = như cũ; dòng dưới "Dùng Hình ảnh & Tài liệu" ở Cấu hình chung). Bật: (1) khối "Tệp DICOM gốc" ở màn nhập kết quả chẩn đoán hình ảnh (≤ 4 tệp, 50 MB, `POST /paraclinical/imaging/items/:itemId/dicom`, tệp nằm chung bảng `paraclinical_result_image` phân biệt `content_type='application/dicom'`, không lẫn vào `images`/phiếu in); (2) trình xem DICOM trong trình duyệt `features/dicom/` (`dicom-parser` + `dicom-decode.ts`: không nén Little Endian, đơn sắc 8/16 bit, RGB, nhiều khung, JPEG baseline do trình duyệt giải mã; nén khác → "Tải về"); (3) dải "Tệp DICOM gốc" ở hộp Xem kết quả (ngoài tờ phiếu); (4) tab hồ sơ/tab Hình ảnh của màn khám bấm tệp DICOM mở trình xem. Tên khác hồ sơ → cảnh báo vàng "Vẫn xem". Esc trong trình xem chỉ đóng lớp trên cùng.
 
-**Kiểm lần cuối**: Chrome qua IP LAN — `consultation-tabs-check.cjs` 23/23, `encounter-images-check.cjs` 25/25, `dicom-check.cjs` 41/41. API đầy đủ 2427 đạt (2 tệp lỗi do tải máy khi chạy song song với lint/web, chạy riêng đạt 36/36), core 900, shared 136, web 844, setup 112, typecheck + lint toàn cục sạch. Lần chạy API đầy đủ gần nhất KHÔNG gồm dải ở hộp xem kết quả (chỉ web) — nên chạy lại một lượt đầy đủ trước khi đóng gói.
+**Kiểm lần cuối (sau commit mã nguồn cuối `152f65ca`)**: Chrome qua IP LAN — `consultation-tabs-check.cjs` 23/23, `encounter-images-check.cjs` 25/25, `dicom-check.cjs` 41/41. **API đầy đủ chạy MỘT MÌNH: 156 tệp đạt, 2428 ca đạt, 1 bỏ qua có sẵn, 0 lỗi** (lần chạy song song trước đó từng có 2 tệp lỗi do tải máy, chạy riêng đạt — không lặp lại); core 900, shared 136, web 844, setup 112; typecheck + lint toàn cục sạch. Không còn việc kiểm nào treo trước khi đóng gói.
 
 ## 4. Việc còn / cần chủ dự án
 - **Dựng gói cài on-prem** (mục 2).
