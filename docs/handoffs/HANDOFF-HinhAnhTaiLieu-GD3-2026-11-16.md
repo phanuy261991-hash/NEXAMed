@@ -1,56 +1,46 @@
-# HANDOFF — Tab "Hình ảnh & Tài liệu" + Đính ảnh ở màn khám + Chế độ DICOM + Thanh tab — cập nhật 2026-11-17 (tối)
+# HANDOFF — Hình ảnh & Tài liệu / Đính ảnh ở màn khám / Chế độ DICOM / Thanh tab màn khám — chốt phiên 2026-11-17
+
+(Tên file giữ nguyên vì CURRENT.md và memory đang trỏ tới; nội dung đã bao trùm GĐ1–GĐ3 và mọi việc của phiên 17/11/2026.)
 
 ## 1. Trạng thái một câu
-**Mọi việc của #299 và các việc chủ dự án giao trong phiên 17/11 đều ĐÃ LÀM về code**: tab Hình ảnh & Tài liệu (GĐ1–GĐ3 + hoàn thiện), thanh tab màn khám không cuộn (#300, Cách 2), tab "Hình ảnh" + hộp "Đính ảnh" ở màn khám, chế độ DICOM tuỳ chọn (công tắc mặc định TẮT; #299 bổ sung 6). Mockup đã được chủ dự án CHỐT ("chốt tất cả mockup trước và mockup cách 2"): Đính ảnh/DICOM https://claude.ai/artifact/Vq4jrvzMeMSDjsNmKSwYRz, thanh tab https://claude.ai/artifact/XikNudn9xiA9Ce2UpeoNt6. Còn: **dựng gói cài on-prem** để giao khách (chưa làm, chờ chủ dự án chốt số phiên bản).
+**Mọi việc đã giao đều LÀM XONG, ĐÃ ĐẨY lên `master` (HEAD `152f65ca`), cây làm việc sạch.** Còn đúng một việc: **dựng gói cài on-prem** để giao khách — chưa làm vì cần chủ dự án chốt số phiên bản (mỗi lần dựng sinh số phiên bản + release notes).
+
+Các commit của phiên: `16cea33c` (hoàn thiện tab, #299 bổ sung 5) → `1bf46b46` (thanh tab không cuộn, #300) → `28dea084` (tab Hình ảnh + hộp Đính ảnh ở màn khám) → `978e3f07` (chế độ DICOM) → `152f65ca` (dải "Tệp DICOM gốc" ở hộp xem kết quả).
 
 ## 2. Việc đầu tiên của phiên sau
-1. Đọc `docs/CURRENT.md`, `docs/TASK.md` (mục #299), `docs/DECISIONS.md` cuối file (#300, #299 bổ sung 5–6 kể cả "Đợt 2" và "Đợt 3"), file này.
-2. Xem `git log`: nếu đợt 3 chưa được đẩy thì chạy lại bộ test đầy đủ rồi đẩy (xem CURRENT.md ghi kết quả lần chạy cuối).
-3. Hỏi chủ dự án muốn dựng gói on-prem số phiên bản nào. Cách dựng: `deploy/on-prem/build-and-export.ps1` bằng `powershell -File`, cần `release-notes/<số>.json`, mỗi lần dựng đổi số; nâng cấp = chép chồng vào `C:\NEXAMed-onprem-test` rồi chạy setup ở đó. Máy khác cần `pnpm install`, `pnpm db:deploy` (migration mới nhất vẫn `20261114150000_patient_document_thumbnail`; đợt 2 và 3 KHÔNG thêm migration), khởi động lại API, không cần `db:seed`. **Ảnh web phải dựng lại** vì `nginx.conf` có thêm khối cho đường dẫn đính DICOM (52m).
+1. Đọc `docs/CURRENT.md`, `docs/TASK.md` (mục #299), `docs/DECISIONS.md` cuối file (#300 và #299 bổ sung 5–6, gồm "Đợt 2", "Đợt 3" và bổ sung đợt 3), file này.
+2. Hỏi chủ dự án số phiên bản cho gói on-prem rồi dựng: `deploy/on-prem/build-and-export.ps1` chạy bằng `powershell -File`, cần `release-notes/<số>.json`, mỗi lần dựng phải đổi số (setup từ chối cùng số); diễn tập nâng cấp = chép chồng vào `C:\NEXAMed-onprem-test` rồi chạy setup ở đó. **Ảnh web phải dựng lại** vì `deploy/on-prem/nginx.conf` có thêm khối cho đường dẫn đính DICOM (`client_max_body_size 52m`) bên cạnh khối tab tài liệu (17m).
+3. Máy khác (không phải máy dev) cần: `pnpm install` (có thêm thư viện `dicom-parser`), `pnpm db:deploy` (migration mới nhất vẫn là `20261114150000_patient_document_thumbnail`; **đợt 2, đợt 3 và thanh tab KHÔNG thêm migration**), khởi động lại API. Không cần `db:seed` (không thêm quyền mới).
 
-## 3. Đã làm
-**GĐ3**
-- **Công tắc** `patient_documents_enabled` (`tenant_setting`, mặc định bật): `GET /clinic-settings/patient-documents-enabled` tự-phục vụ; tắt thì mọi API của tab trả 409 `PATIENT_DOCUMENTS_DISABLED` và web ẩn tab. Đọc công tắc qua `ClinicConfigReaderPort` trước khi mở transaction.
-- **Dung lượng** `GET /patient-documents/usage` (`clinic_config.read`): `StoragePort` có thêm `sizeOf` và `volumeUsage`; web `PatientDocumentUsageRow` trong `GeneralConfigPane`.
-- **Ảnh thu nhỏ khi tải lên**: cột `thumbnail_key` (Prisma `thumbKey`); `make-thumbnail.ts` (canvas ≤ 320 px, JPEG ≤ 200 KB) gửi ở trường `thumbnail`.
-- **Lỗi nginx**: khối `location ~ ^/api/v1/patients/[^/]+/documents$` với `client_max_body_size 17m` trong `deploy/on-prem/nginx.conf`; test chặn tái phạm ở `patient-document-constants-drift.spec.ts`.
+## 3. Đã làm (tóm tắt, chi tiết ở DECISIONS/CHANGELOG)
+**Tab Hình ảnh & Tài liệu của hồ sơ bệnh nhân (#299)**: GĐ1–GĐ3 như các bản bàn giao cũ (đã gỡ). Hoàn thiện ngày 17/11 (bổ sung 5): ảnh thu nhỏ BÙ do trình duyệt tạo cho tệp cũ và dòng tự gộp (không thêm `sharp` vào máy chủ), thanh dung lượng = % ổ chứa kho đã đầy (phương án B), khung PDF xem lớn sửa, quét quyền vai trò đạt, `CLAUDE.md` cập nhật.
 
-**Bổ sung 5 (17/11/2026)**
-- **Ảnh thu nhỏ BÙ** cho tệp tải trước GĐ3 và dòng tự gộp: trình duyệt tạo từ ảnh đã tải rồi gửi `POST /patients/:patientId/documents/:documentId/thumbnail` (quyền tải lên đúng loại tệp, người gửi trước thắng, không đổi version). Web: `thumbnail-backfill.ts` (hàng đợi lần lượt, mỗi tệp thử một lần mỗi phiên). Không thêm thư viện ảnh vào máy chủ (chủ dự án nói "thêm thư viện xử lý ảnh", tôi chọn cách ở trình duyệt, đã ghi lý do ở #299 bổ sung 5; đổi sang `sharp` được nếu họ muốn).
-- **Thanh dung lượng = phương án B**: phần trăm ổ chứa kho đã đầy (`diskUsedPercent`), dòng chữ là dung lượng tệp. Chưa đổi màu khi gần đầy.
-- **Khung PDF** ở hộp xem lớn: tên tệp nằm trên vùng xem, khung rộng hết chiều ngang, `#navpanes=0&view=FitH`, đường dẫn ký nhận thêm đoạn tên tệp (chỉ hiển thị, `Content-Disposition` lọc ký tự). Kiểm bằng Chrome CÓ giao diện 1440/768/390 px (Chrome ngầm không vẽ được trình xem PDF).
-- **Quét quyền theo vai trò** (`role-access-sweep.cjs`): 7 vai trò mặc định + 4 vai trò tuỳ biến, không trang nào vừa cho vào vừa lỗi quyền.
-- `CLAUDE.md`: phạm vi tab, quy tắc "mọi file gắn bệnh nhân về tab", quy tắc kiểm tệp lớn qua nginx thật, `docs/ERD-3.md` vào danh sách tài liệu.
-- **Kiểm**: API `patient-document-settings-http.spec` +6 ca, đột biến 10/10 bị bắt; web +7; Chrome IP LAN `patient-document-settings-check.cjs` 25/25 và `patient-document-reference-check.cjs` 31/31; typecheck + lint sạch. Bộ test đầy đủ chạy lại trước push (xem CURRENT.md nếu đã ghi kết quả).
+**Thanh tab màn khám (#300, Cách 2)**: `shared/ui/OverflowTabs.tsx` + `overflow-tabs-layout.ts` — nhãn rút ngắn ("Điều trị & Tái khám", "Chỉ định CLS", "Kết quả CLS", "Vật tư"), hết chỗ thì tab ưu tiên thấp vào nút "Thêm ▾", tab đang chọn luôn hiện, không còn cuộn ngang. Thêm tab mới chỉ cần khai báo `priority`. `ui-guidelines.md` mục 15a.
 
-**Mockup (17/11/2026, ĐÃ CHỐT)** — Artifact https://claude.ai/artifact/Vq4jrvzMeMSDjsNmKSwYRz (file gốc ở scratchpad phiên, không nằm trong repo):
-- A1 tab "Hình ảnh" ở màn khám (cuối thanh tab, số ảnh, lọc theo loại, ảnh tự gộp từ cận lâm sàng chỉ đọc); A2 hộp "Đính ảnh" (kéo thả, dán Ctrl+V, tải từng tệp, tệp lỗi nằm lại); A3 các trạng thái (trống, đã hoàn thành, không quyền, lỗi tải, sai định dạng, hết phiên).
-- B1 trình xem DICOM (kéo, phóng, sáng/tương phản, đảo màu, xoay, lật, nhiều khung, lớp chữ bốn góc, cột chi tiết + series); B2 các trạng thái (đang đọc, kiểu nén chưa đọc được, tên không khớp hồ sơ, tệp hỏng, ảnh quá lớn, mất mạng).
+**Đính ảnh ở màn khám (#299 bổ sung 6, Đợt 2)**: tab "Hình ảnh" (`EncounterImagesTab`, lọc theo loại, số trên tab, xem lớn) + hộp "Đính ảnh" (`DocumentUploadDialog` chế độ `encounter`: gắn sẵn lượt khám, ô Loại chung Ảnh lâm sàng/Khác, dán Ctrl+V). `GET /patients/:id/documents` nhận `encounterId`. Lượt khám đã hoàn thành vẫn đính thêm được (thẻ "Bổ sung"). Nút "Chụp ảnh" (camera điện thoại) chỉ hiện trên máy cảm ứng.
+
+**Chế độ DICOM tuỳ chọn (#299 bổ sung 6, Đợt 3)**: công tắc `dicomEnabled` (mặc định TẮT = như cũ; dòng dưới "Dùng Hình ảnh & Tài liệu" ở Cấu hình chung). Bật: (1) khối "Tệp DICOM gốc" ở màn nhập kết quả chẩn đoán hình ảnh (≤ 4 tệp, 50 MB, `POST /paraclinical/imaging/items/:itemId/dicom`, tệp nằm chung bảng `paraclinical_result_image` phân biệt `content_type='application/dicom'`, không lẫn vào `images`/phiếu in); (2) trình xem DICOM trong trình duyệt `features/dicom/` (`dicom-parser` + `dicom-decode.ts`: không nén Little Endian, đơn sắc 8/16 bit, RGB, nhiều khung, JPEG baseline do trình duyệt giải mã; nén khác → "Tải về"); (3) dải "Tệp DICOM gốc" ở hộp Xem kết quả (ngoài tờ phiếu); (4) tab hồ sơ/tab Hình ảnh của màn khám bấm tệp DICOM mở trình xem. Tên khác hồ sơ → cảnh báo vàng "Vẫn xem". Esc trong trình xem chỉ đóng lớp trên cùng.
+
+**Kiểm lần cuối**: Chrome qua IP LAN — `consultation-tabs-check.cjs` 23/23, `encounter-images-check.cjs` 25/25, `dicom-check.cjs` 41/41. API đầy đủ 2427 đạt (2 tệp lỗi do tải máy khi chạy song song với lint/web, chạy riêng đạt 36/36), core 900, shared 136, web 844, setup 112, typecheck + lint toàn cục sạch. Lần chạy API đầy đủ gần nhất KHÔNG gồm dải ở hộp xem kết quả (chỉ web) — nên chạy lại một lượt đầy đủ trước khi đóng gói.
 
 ## 4. Việc còn / cần chủ dự án
-- **Dựng gói cài on-prem** (mục 2 điểm 3) — chờ chủ dự án chốt số phiên bản.
-- **Chủ dự án xem các chỗ khác mockup**: #299 bổ sung 1, 3, 4, 5 và "Đợt 2"/"Đợt 3" của bổ sung 6 (nút Chụp ảnh nay chỉ hiện trên máy cảm ứng ở CẢ hộp Tải lên của tab hồ sơ; thẻ "Bổ sung" ở góc ảnh; hàng DICOM không ghi số khung; hộp xem kết quả kiểu phiếu in chỉ có DICOM ở dải riêng dưới tờ phiếu (đã thêm theo yêu cầu 17/11)); #300 giữ icon từ 1440px.
-- **Khi làm SaaS**: chốt cùng lúc adapter kho đối tượng cho `StoragePort`, hạn mức dung lượng theo công ty (thay thanh "% ổ đĩa"), giới hạn tải lên riêng cho DICOM ở bộ chia tải, camera chỉ khi có HTTPS.
-- Chưa làm (ngoài #299): gói Nha khoa. Quy tắc thường trực: mọi file gắn bệnh nhân làm sau phải gộp về tab này; chú thích trong mockup không chép vào sản phẩm (chỉ giữ mô tả của công tắc).
+- **Dựng gói cài on-prem** (mục 2).
+- **Chủ dự án xem các chỗ khác mockup** (ghi ở DECISIONS #299 bổ sung 6): nút Chụp ảnh nay chỉ hiện trên máy cảm ứng ở CẢ hộp "Tải lên" của tab hồ sơ; thẻ "Bổ sung" ở góc ảnh; hàng DICOM không ghi số khung; cột chi tiết trình xem chỉ một chuỗi ảnh; bỏ các câu gợi ý của mockup (quy tắc không chép ghi chú duyệt); thanh tab giữ icon từ 1440px (mockup không vẽ).
+- **Khi làm SaaS**: chốt cùng lúc adapter kho đối tượng cho `StoragePort` (cần `sizeOf`/`volumeUsage`), hạn mức dung lượng theo công ty (thay thanh "% ổ đĩa"), giới hạn tải lên riêng cho DICOM ở bộ chia tải, camera chỉ khi có HTTPS. Trình xem chạy ở trình duyệt nên không đổi.
+- Chưa làm (ngoài phạm vi): gói Nha khoa, PACS, kết nối máy chụp, đọc DICOM nén JPEG 2000/JPEG-LS/RLE, công cụ đo/vẽ trên ảnh. Quy tắc thường trực: mọi file gắn bệnh nhân làm sau phải gộp về tab Hình ảnh & Tài liệu.
 
 ## 5. Bẫy đã gặp (đọc trước khi làm)
-- **Tải tệp lớn phải kiểm qua nginx thật**, không chỉ Vite dev proxy. Cách kiểm nhanh: container `nginx:alpine` với `--add-host api:host-gateway` + máy chủ Node giả ở cổng 3000, `curl --data-binary @tệp` các cỡ 3/9/16/18 MB.
-- **`prisma format` căn lại cả các model khác** khi tên trường mới dài hơn tên dài nhất của model → nhiễu diff. Đặt tên trường ngắn hoặc hoàn tác phần format.
-- **`prisma migrate deploy` bằng role ứng dụng thất bại và để lại bản ghi "failed"**. Luôn dùng `pnpm db:deploy`; nếu lỡ: `pnpm exec node scripts/with-migrate-url.mjs migrate resolve --rolled-back <tên>` rồi `pnpm db:deploy`.
-- **`prisma generate` báo EPERM** khi còn tiến trình Node giữ file engine — tắt tiến trình rồi sinh lại.
-- **Script kiểm không được tin "đã dọn xong"**: dùng `PATCH /users/:id {isActive:false, version}` và liệt kê lại theo ĐÚNG tiền tố. Phiên bị ngắt giữa lúc kiểm có thể để công tắc tắt và `config.json` ở chế độ LAN: kiểm `GET /clinic-settings/patient-documents-enabled` và `apps/web/public/config.json.lan-backup`.
-- **Tắt `dev-lan` bằng `taskkill /T` thì `config.json` không được trả về** — khôi phục tay từ `config.json.lan-backup`, xoá file sao lưu, `git status apps/web/public` phải sạch.
-- **Shell ăn dấu `\`** (regex `\d`, `\/`): vá bằng công cụ Edit hoặc Write + `node --check`.
-- **Chrome ngầm không vẽ được trình xem PDF**: muốn kiểm khung PDF phải chạy Chrome có giao diện (`pdf-headed.cjs` kiểu script, `headless: false`).
-- **Cache react-query che trạng thái lỗi**: muốn thấy lỗi tải phải tải lại trang trước khi chặn mạng.
-- Địa chỉ IP LAN máy dev đổi theo mạng: đọc từ dòng "Network" của `dev-lan`, đừng nhớ cứng.
-- Ô tích của `ToggleSwitch` là `<input type="checkbox" class="sr-only">`: trong Playwright dùng `getByRole('checkbox', …)` rồi bấm vào nhãn bao ngoài (`xpath=ancestor::label`).
-
-- **Công cụ Edit/Write giải mã `\uXXXX`** trong tham số: không gõ `\u0300` vào mã được; dùng `\p{M}` (cờ `u`) hoặc tạo bằng `String.fromCharCode`. Shell cũng ăn dấu `\` và backtick: vá bằng Write một tệp `.cjs` rồi chạy `node`.
-- **Playwright `setInputFiles({buffer})` giới hạn 50 MB**: tệp lớn hơn phải ghi ra đĩa rồi truyền đường dẫn.
-- **Hai tệp giống hệt nhau (cùng loại/ghi chú) đính liền nhau bị máy chủ coi là một lần gửi lại** (`Idempotency-Key`) nên chỉ lưu một: ở script kiểm, mỗi ảnh phải khác nội dung. Tên tệp có dấu bị multer đọc sai: dùng tên ASCII trong test.
-- **Thanh tab**: bản sao ẩn dùng để đo phải bọc trong khung 0×0 `overflow-hidden`, nếu không nó kéo giãn `scrollWidth` của trang. Hàm chia tab coi bề rộng 0 (chưa đo/jsdom) là "hiện hết".
-- **dev-lan cần API chạy riêng** (`pnpm --filter @nexamed/api dev`, cổng 3001) và nhớ trả `config.json` (xem mục trên).
+- **Tải tệp lớn phải kiểm qua nginx thật**, không chỉ Vite dev proxy (nginx từng chặn 413 tệp 9–15 MB mà dev không thấy). Cách kiểm nhanh: container `nginx:alpine` với `--add-host api:host-gateway` + máy chủ Node giả ở cổng 3000, `curl --data-binary @tệp`. Đường dẫn tải tệp mới nào > 8 MB đều cần khối `location` riêng + test chống lệch ở `patient-document-constants-drift.spec.ts`.
+- **`apps/web` chỉ import KIỂU từ `@nexamed/shared`**: hằng số dùng ở web phải khai lại và có test chống lệch ở API (ví dụ hạn mức DICOM ở `ResultDicomPanel.tsx`).
+- **`prisma format` căn lại cả model khác** khi tên trường mới dài hơn → đặt tên trường ngắn. **`prisma migrate deploy` bằng role ứng dụng để lại bản ghi "failed"**: luôn `pnpm db:deploy`; lỡ thì `pnpm exec node scripts/with-migrate-url.mjs migrate resolve --rolled-back <tên>`. **`prisma generate` EPERM** khi còn tiến trình Node giữ engine.
+- **dev-lan**: cần API chạy riêng (`pnpm --filter @nexamed/api dev`, cổng 3001); IP LAN đổi theo mạng (đọc dòng "Network"); tắt bằng `taskkill` thì `config.json` KHÔNG tự trả về — khôi phục từ `config.json.lan-backup`, xoá bản sao lưu, `git status apps/web/public` phải sạch.
+- **Script kiểm không được tin "đã dọn xong"**: khoá tài khoản thử bằng `PATCH /users/:id {isActive:false, version}`, liệt kê lại theo ĐÚNG tiền tố; phiên bị ngắt có thể để công tắc ở trạng thái sai (kiểm `GET /clinic-settings/...-enabled`).
+- **Công cụ Edit/Write giải mã `\uXXXX`** trong tham số: dùng `\p{M}` (cờ `u`) hoặc `String.fromCharCode`. **Shell ăn dấu `\` và backtick** (đã làm hỏng regex nhiều lần): vá bằng Write một tệp `.cjs` rồi `node`, luôn `node --check`.
+- **Playwright**: `setInputFiles({buffer})` tối đa 50 MB (tệp lớn hơn ghi ra đĩa rồi truyền đường dẫn); Chrome ngầm không vẽ trình xem PDF (cần `headless:false`); cache react-query che trạng thái lỗi (tải lại trang trước khi chặn mạng); `ToggleSwitch` là `<input type="checkbox" class="sr-only">` (dùng `getByRole('checkbox')` rồi bấm nhãn `xpath=ancestor::label`).
+- **Máy chủ coi hai tệp giống hệt nhau (cùng loại/ghi chú) đính liền nhau là một lần gửi lại** (`Idempotency-Key`) nên chỉ lưu một; tên tệp có dấu bị multer đọc sai nên test dùng tên ASCII.
+- **Thanh tab**: bản sao ẩn để đo phải bọc trong khung 0×0 `overflow-hidden` (nếu không kéo giãn `scrollWidth` của trang); hàm chia tab coi bề rộng 0 (chưa đo/jsdom) là "hiện hết".
+- **Hộp chồng nhau cùng nghe Esc**: lớp trên phải bắt ở capture + `stopImmediatePropagation` (như `DicomViewerDialog`) kẻo đóng cả lớp dưới.
+- **Chạy test song song làm lệch thời gian**: hai tệp API (`technical-service-import-http`, `medical-record-http`) từng lỗi khi chạy cùng lint + web; chạy riêng thì đạt. Chạy bộ đầy đủ một mình.
 
 ## 6. Quy tắc chủ dự án nhắc (đã ghi memory)
-- Tuân thủ mockup tuyệt đối, đối chiếu từng phần tử; **"tiếp tục"/"làm luôn" KHÔNG phải duyệt mockup**; commit/push thẳng `master`, không PR; trả lời bằng tiếng Việt; chỉ đọc file bàn giao mới nhất (đây là bản duy nhất còn trong repo).
+- Tuân thủ mockup tuyệt đối, đối chiếu từng phần tử; **"tiếp tục"/"làm luôn" KHÔNG phải duyệt mockup** (khi chủ dự án nói "chốt" mockup thì được code); **chú thích trong mockup KHÔNG chép vào sản phẩm** (chỉ giữ mô tả của công tắc); commit/push thẳng `master`, không PR; trả lời bằng tiếng Việt; chỉ đọc file bàn giao mới nhất (đây là bản duy nhất còn trong repo).
