@@ -22,11 +22,12 @@ afterEach(async () => {
   await rm(workDir, { recursive: true, force: true });
 });
 
-function makeService() {
+function makeService(containers: Array<[string, string]> = []) {
   // Kho ảnh Docker giả CÓ trạng thái: `image rm` làm ảnh biến mất khỏi lần liệt kê sau.
   const images = new Set(VERSIONS.flatMap((v) => REPOS.map((r) => `nexamed-${r} ${v}`)));
   const shell = new FakeShell([
     (c) => (c.line.includes(' ps --all --format json') ? { stdout: psJson([{ Service: 'api', Health: 'healthy' }]) } : undefined),
+    (c) => (c.args[0] === 'ps' ? { stdout: containers.map(([name, image]) => `${name} ${image}`).join('\n') } : undefined),
     (c) => (c.line.includes('image ls') ? { stdout: [...images].join('\n') } : undefined),
     (c) => (c.args[0] === 'image' && c.args[1] === 'rm' ? (images.delete(String(c.args[2]).replace(':', ' ')), {}) : undefined),
   ]);
@@ -90,6 +91,18 @@ describe('SetupService — dọn gói cũ', () => {
     expect(left.filter((n) => /-0\.9\.(0|1)\./.test(n))).toEqual([]);
     expect(left.filter((n) => /-0\.9\.(5|6)\./.test(n))).toHaveLength(8);
     expect(await service.cleanupView()).toMatchObject({ cleanVersions: [] });
+  });
+
+  it('bản chỉ còn bị container cũ giữ ảnh: hiện ở "held", không nằm trong danh sách dọn và không dọn được', async () => {
+    await installedAt('0.9.6');
+    await rm(join(workDir, 'images', 'nexamed-api-0.9.0.tar.gz'));
+    for (const r of ['web', 'backup', 'setup']) await rm(join(workDir, 'images', `nexamed-${r}-0.9.0.tar.gz`));
+    const { service, shell } = makeService([['old-api-1', 'nexamed-api:0.9.0'], ['old-web-1', 'nexamed-web:0.9.0'], ['old-bk-1', 'nexamed-backup:0.9.0'], ['old-st-1', 'nexamed-setup:0.9.0']]);
+    const view = await service.cleanupView();
+    expect(view?.held).toEqual([{ version: '0.9.0', containers: expect.arrayContaining(['old-api-1', 'old-web-1']) }]);
+    expect(view?.cleanVersions).not.toContain('0.9.0');
+    expect(await service.beginCleanup(['0.9.0'])).toMatchObject({ ok: false });
+    expect(shell.calls.some((c) => c.args[1] === 'rm')).toBe(false);
   });
 
   it('đang có việc chạy thì không bắt đầu việc dọn thứ hai', async () => {

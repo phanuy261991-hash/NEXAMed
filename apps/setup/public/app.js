@@ -164,7 +164,7 @@
     if (n >= 1024) return f(n / 1024, 0) + ' KB';
     return n + ' B';
   }
-  var CLEAN_ACTION = { running: ['Giữ · đang chạy', 'keep'], previous: ['Giữ · bản trước, để quay lui', 'keep'], package: ['Giữ · bản mới trong gói', 'keep'], clean: ['Sẽ dọn', 'go'] };
+  var CLEAN_ACTION = { running: ['Giữ · đang chạy', 'keep'], previous: ['Giữ · bản trước, để quay lui', 'keep'], package: ['Giữ · bản mới trong gói', 'keep'], held: ['Giữ · có container cũ đang dùng ảnh', 'keep'], clean: ['Sẽ dọn', 'go'] };
   var CLEAN_FAIL = {
     'docker-unavailable': function (v) { return 'Docker không trả lời nên chưa gỡ được ảnh Docker của ' + v + '.'; },
     'in-use': function (v) { return 'Ảnh Docker của ' + v + ' đang được dùng nên được giữ lại.'; },
@@ -181,15 +181,24 @@
   function backupRow(c) {
     return '<div class="tbl"><table class="vers"><tbody><tr><td><b>Bản sao lưu nâng cấp</b></td><td class="num">' + esc(fmtBytes(c.backups.bytes)) + '</td><td>' + c.backups.count + ' tệp trong thư mục upgrade-backups</td><td><span class="pill skip">Không tự xoá</span></td></tr></tbody></table></div>';
   }
+  function heldAlert(c) {
+    if (!c.held || !c.held.length) return '';
+    return '<div class="alert">' + c.held.map(function (h) {
+      return 'Ảnh Docker của bản ' + esc(h.version) + ' đang bị container cũ giữ lại' + (h.containers.length ? ' (' + esc(h.containers.join(', ')) + ')' : '') + '.';
+    }).join('<br>') + '<br>Gỡ các container đó trong Docker Desktop (hoặc bằng lệnh docker rm) rồi tải lại trang để dọn tiếp.</div>';
+  }
   function cleanupResultHtml(c) {
     var r = S.cleanJustDone && c.lastResult;
     if (!r) return '';
     var n = r.removedVersions.length;
+    var did = n ? 'Đã dọn ' + n + ' bản, xoá ' + esc(fmtBytes(r.freedBytes)) + ' tệp nạp ảnh. ' : '';
     if (!r.failures.length) return '<div class="done-box"><b>Đã dọn ' + n + ' bản cũ, xoá ' + esc(fmtBytes(r.freedBytes)) + ' tệp nạp ảnh và gỡ ảnh Docker của các bản này.</b><span>Còn giữ ' + esc(keepsText(c)) + '. Hệ thống vẫn chạy bình thường.</span></div>';
+    var heldOnly = r.failures.every(function (f) { return f.reason === 'in-use'; });
+    if (heldOnly) return '<div class="alert">' + did + esc('Ảnh Docker của ' + versionsText(r.failures.map(function (f) { return f.version; })) + ' được giữ lại vì còn container cũ dùng (xem bên dưới). Hệ thống đang chạy không bị ảnh hưởng.') + '</div>';
     var byReason = {};
     r.failures.forEach(function (f) { (byReason[f.reason] = byReason[f.reason] || []).push(f.version); });
     var lines = Object.keys(byReason).map(function (k) { return '<span class="sub">' + esc((CLEAN_FAIL[k] || CLEAN_FAIL.other)(versionsText(byReason[k]))) + '</span>'; }).join('');
-    return '<div class="err"><span>Chưa dọn hết.</span>' + lines + '<span class="sub">' + (n ? 'Đã dọn ' + n + ' bản, xoá ' + esc(fmtBytes(r.freedBytes)) + ' tệp nạp ảnh. ' : '') + 'Hệ thống đang chạy không bị ảnh hưởng. Sửa nguyên nhân rồi bấm Dọn lại.</span></div>';
+    return '<div class="err"><span>Chưa dọn hết.</span>' + lines + '<span class="sub">' + did + 'Hệ thống đang chạy không bị ảnh hưởng. Sửa nguyên nhân rồi bấm Dọn lại.</span></div>';
   }
   function cleanDialog(c) {
     var n = c.cleanVersions.length;
@@ -214,15 +223,18 @@
     if (!c) return '<div class="box col">' + head + '<p class="muted">Đang đọc danh sách…</p></div>';
     var n = c.cleanVersions.length, retry = S.cleanJustDone && c.lastResult && c.lastResult.failures.length > 0;
     var inner = '';
-    if (n) {
-      inner += '<div class="sumline"><span>Có thể dọn <b>' + n + ' bản cũ</b></span>' + (c.cleanBytes > 0 ? '<span>Tệp nạp ảnh <b>' + esc(fmtBytes(c.cleanBytes)) + '</b></span>' : '') + '<span class="muted">' + (c.cleanBytes > 0 ? 'cộng ' : '') + 'ảnh Docker của các bản này</span></div>' +
-        '<div class="tbl"><table class="vers"><thead><tr><th>Phiên bản</th><th class="num">Tệp nạp ảnh</th><th>Ảnh trong Docker</th><th>Xử lý</th></tr></thead><tbody>' +
+    var held = c.held && c.held.length > 0;
+    if (n) inner += '<div class="sumline"><span>Có thể dọn <b>' + n + ' bản cũ</b></span>' + (c.cleanBytes > 0 ? '<span>Tệp nạp ảnh <b>' + esc(fmtBytes(c.cleanBytes)) + '</b></span>' : '') + '<span class="muted">' + (c.cleanBytes > 0 ? 'cộng ' : '') + 'ảnh Docker của các bản này</span></div>';
+    if (n || held) {
+      inner += '<div class="tbl"><table class="vers"><thead><tr><th>Phiên bản</th><th class="num">Tệp nạp ảnh</th><th>Ảnh trong Docker</th><th>Xử lý</th></tr></thead><tbody>' +
         c.rows.map(function (r) {
           var a = CLEAN_ACTION[r.action];
           return '<tr><td class="v">' + esc(r.version) + '</td><td class="num">' + (r.fileCount ? esc(fmtBytes(r.fileBytes)) : '—') + '</td><td>' + (r.dockerImages ? 'Có' : 'Không') + '</td><td><span class="pill ' + a[1] + '">' + a[0] + '</span></td></tr>';
-        }).join('') + '</tbody></table></div>' +
-        '<div class="row-actions"><button class="btn primary" type="button" id="cleanOpen">' + (retry ? 'Dọn lại ' + n + ' bản…' : 'Dọn ' + n + ' bản cũ…') + '</button></div>';
-    } else inner += '<p>' + (S.cleanJustDone ? 'Không còn gói cũ nào để dọn.' : 'Chưa có gói cũ nào cần dọn.') + '</p>';
+        }).join('') + '</tbody></table></div>';
+    }
+    if (n) inner += '<div class="row-actions"><button class="btn primary" type="button" id="cleanOpen">' + (retry ? 'Dọn lại ' + n + ' bản…' : 'Dọn ' + n + ' bản cũ…') + '</button></div>';
+    else inner += '<p>' + (held ? 'Không còn gói cũ nào dọn được ngay.' : S.cleanJustDone ? 'Không còn gói cũ nào để dọn.' : 'Chưa có gói cũ nào cần dọn.') + '</p>';
+    inner += heldAlert(c);
     if (!c.dockerAvailable) inner += '<div class="alert">Docker không trả lời nên danh sách có thể thiếu ảnh Docker.</div>';
     inner += backupRow(c);
     return cleanupResultHtml(c) + '<div class="box col">' + head + inner + '</div>' + (S.cleanDlg && n ? cleanDialog(c) : '');

@@ -24,9 +24,10 @@ async function writeVersionFiles(...versions: string[]) {
   for (const v of versions) for (const r of REPOS) await writeFile(join(workDir, 'images', `nexamed-${r}-${v}.tar.gz`), 'x'.repeat(100));
 }
 
-function dockerWith(imageVersions: string[] | null, extra: Handler[] = []) {
+function dockerWith(imageVersions: string[] | null, extra: Handler[] = [], containers: Array<[string, string]> = []) {
   const shell = new FakeShell([
     ...extra,
+    (c) => (c.args[0] === 'ps' ? { stdout: containers.map(([name, image]) => `${name} ${image}`).join('\n') } : undefined),
     (c) => {
       if (!c.line.includes('image ls')) return undefined;
       if (imageVersions === null) return { code: 1, stderr: 'Cannot connect to the Docker daemon' };
@@ -87,6 +88,36 @@ describe('kế hoạch dọn gói cũ', () => {
     const { docker } = dockerWith(null);
     const plan = await buildCleanupPlan({ docker, workDir }, KEEP);
     expect(plan.dockerAvailable).toBe(false);
+    expect(plan.cleanVersions).toEqual(['0.9.1']);
+  });
+
+  it('bản chỉ còn bị container cũ (kể cả đã dừng) giữ ảnh: hiện "held" kèm tên container, KHÔNG đưa vào danh sách dọn', async () => {
+    await writeVersionFiles('0.9.6');
+    const stale: Array<[string, string]> = [['clever_torvalds', 'nexamed-api:0.9.1'], ['objective_bose', 'nexamed-web:0.9.1'], ['amazing_dhawan', 'nexamed-backup:0.9.1'], ['x4', 'nexamed-setup:0.9.1'], ['nexamed-onprem-test-api-1', 'nexamed-api:0.9.6']];
+    const { docker } = dockerWith(['0.9.1', '0.9.6'], [], stale);
+    const plan = await buildCleanupPlan({ docker, workDir }, KEEP);
+    expect(plan.rows.find((r) => r.version === '0.9.1')).toMatchObject({ action: 'held', dockerImages: 4, heldImages: 4, fileCount: 0 });
+    expect(plan.cleanVersions).toEqual([]);
+    expect(plan.held).toHaveLength(1);
+    expect(plan.held[0]!.version).toBe('0.9.1');
+    expect(plan.held[0]!.containers.sort()).toEqual(['amazing_dhawan', 'clever_torvalds', 'objective_bose', 'x4']);
+  });
+
+  it('còn tệp nạp ảnh hoặc chỉ một phần ảnh bị giữ: vẫn là "sẽ dọn" (tệp xoá được, ảnh bị giữ sẽ báo lúc dọn)', async () => {
+    await writeVersionFiles('0.9.1', '0.9.2', '0.9.6');
+    const { docker } = dockerWith(['0.9.1', '0.9.2', '0.9.6'], [], [['old-1', 'nexamed-api:0.9.1'], ['old-2', 'nexamed-api:0.9.2']]);
+    const plan = await buildCleanupPlan({ docker, workDir }, KEEP);
+    expect(plan.cleanVersions).toEqual(['0.9.2', '0.9.1']); // có tệp → vẫn dọn được phần tệp
+    expect(plan.held).toEqual([]);
+    expect(plan.rows.find((r) => r.version === '0.9.2')?.heldImages).toBe(1); // 1/4 ảnh bị giữ
+  });
+
+  it('không đọc được danh sách container: coi như không có ai giữ (không chặn nhầm), Docker thật sẽ từ chối lúc gỡ', async () => {
+    await writeVersionFiles('0.9.6');
+    const shell = new FakeShell([(c) => (c.args[0] === 'ps' ? { code: 1, stderr: 'x' } : c.line.includes('image ls') ? { stdout: 'nexamed-api 0.9.1' } : undefined)]);
+    const docker = new DockerClient(shell, { workDir, hostInstallDir: '/c/NEXAMed', probeImage: 'img' }, async () => undefined);
+    const plan = await buildCleanupPlan({ docker, workDir }, KEEP);
+    expect(plan.held).toEqual([]);
     expect(plan.cleanVersions).toEqual(['0.9.1']);
   });
 
@@ -172,6 +203,12 @@ describe('DockerClient — ảnh ứng dụng', () => {
     expect(await mk('Error: No such image: nexamed-api:1').removeImage('nexamed-api:1')).toEqual({ ok: true });
     expect(await mk('conflict: image is being used by stopped container').removeImage('nexamed-api:1')).toEqual({ ok: false, reason: 'in-use' });
     expect(await mk('boom').removeImage('nexamed-api:1')).toEqual({ ok: false, reason: 'other' });
+  });
+  it('listContainerImages đọc tên container và ảnh (kể cả đã dừng); Docker lỗi thì null', async () => {
+    const { docker } = dockerWith([], [], [['a-1', 'nexamed-api:0.9.1'], ['b-2', 'postgres:18']]);
+    expect(await docker.listContainerImages()).toEqual([{ name: 'a-1', image: 'nexamed-api:0.9.1' }, { name: 'b-2', image: 'postgres:18' }]);
+    const down = new DockerClient(new FakeShell([(c) => (c.args[0] === 'ps' ? { code: 1 } : undefined)]), { workDir, hostInstallDir: '/x', probeImage: 'i' });
+    expect(await down.listContainerImages()).toBeNull();
   });
   it('removeImage không bao giờ dùng cờ ép buộc -f', async () => {
     const { docker, shell } = dockerWith([]);

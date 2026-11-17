@@ -86,6 +86,18 @@ export class DockerClient {
     return images;
   }
 
+  /** Mọi container (kể cả đã dừng) và ảnh chúng dùng, để biết ảnh nào đang bị giữ; `null` nếu Docker không trả lời. */
+  async listContainerImages(): Promise<Array<{ name: string; image: string }> | null> {
+    const result = await this.docker(['ps', '-a', '--format', '{{.Names}} {{.Image}}']);
+    if (result.code !== 0) return null;
+    const out: Array<{ name: string; image: string }> = [];
+    for (const line of result.stdout.split(/\r?\n/)) {
+      const [name, image] = line.trim().split(/\s+/);
+      if (name && image) out.push({ name, image });
+    }
+    return out;
+  }
+
   /**
    * Gỡ MỘT nhãn ảnh, không ép buộc (không `-f`): Docker từ chối nếu có container (kể cả đã dừng) đang dùng ảnh, nên ảnh của hệ thống đang chạy không thể bị gỡ nhầm.
    * Ảnh đã không còn thì coi như xong.

@@ -13,7 +13,8 @@ import { BACKUP_DIR_NAME } from './upgrade';
 /** Tệp nạp ảnh của một bản: `nexamed-<api|web|backup|setup>-<phiên bản>.tar[.gz]`. Tệp bên thứ ba (`third-party-*`) không khớp nên không bao giờ bị xoá. */
 const APP_IMAGE_FILE = /^(nexamed-(?:api|web|backup|setup))-(.+)\.tar(?:\.gz)?$/;
 
-export type CleanupAction = 'running' | 'previous' | 'package' | 'clean';
+/** `held`: ảnh Docker của bản này đang bị container cũ (kể cả đã dừng) giữ nên KHÔNG gỡ được, và không còn tệp nào để xoá. */
+export type CleanupAction = 'running' | 'previous' | 'package' | 'held' | 'clean';
 
 export interface CleanupVersionRow {
   version: string;
@@ -21,6 +22,8 @@ export interface CleanupVersionRow {
   fileBytes: number;
   /** Số ảnh Docker của bản này đang có trên máy. */
   dockerImages: number;
+  /** Trong số đó, số ảnh đang bị container giữ. */
+  heldImages: number;
   action: CleanupAction;
 }
 
@@ -29,6 +32,8 @@ export interface CleanupPlan {
   dockerAvailable: boolean;
   /** Mọi bản có tệp hoặc ảnh trên máy: các bản được giữ ở trên, bản sẽ dọn ở dưới (mới trước). */
   rows: CleanupVersionRow[];
+  /** Bản chỉ còn bị kẹt vì container cũ, kèm tên container để người dùng gỡ (tối đa 6 tên mỗi bản). */
+  held: Array<{ version: string; containers: string[] }>;
   cleanVersions: string[];
   cleanBytes: number;
   backups: { count: number; bytes: number };
@@ -115,20 +120,30 @@ export async function buildCleanupPlan(deps: CleanupDeps, keep: CleanupKeep): Pr
   const imageCount = new Map<string, number>();
   for (const image of images ?? []) imageCount.set(image.tag, (imageCount.get(image.tag) ?? 0) + 1);
 
+  // Container (kể cả đã dừng) và ảnh chúng dùng: Docker không cho gỡ ảnh khi còn container tham chiếu.
+  const containers = (await deps.docker.listContainerImages()) ?? [];
+  const holders = (version: string): string[] => {
+    const refs = new Set((images ?? []).filter((i) => i.tag === version).map((i) => `${i.repo}:${i.tag}`));
+    return [...new Set(containers.filter((c) => refs.has(c.image)).map((c) => c.name))];
+  };
+  const heldImageCount = (version: string): number => {
+    const refs = (images ?? []).filter((i) => i.tag === version).map((i) => `${i.repo}:${i.tag}`);
+    return refs.filter((ref) => containers.some((c) => c.image === ref)).length;
+  };
+
   const versions = new Set<string>([...files.keys(), ...imageCount.keys()]);
   // Bản đang chạy luôn có mặt trong danh sách (kể cả khi tệp nạp ảnh đã bị xoá) để người dùng thấy rõ nó được giữ.
   versions.add(keep.installed);
   const rows: CleanupVersionRow[] = [...versions].map((version) => {
     const list = files.get(version) ?? [];
-    return {
-      version,
-      fileCount: list.length,
-      fileBytes: list.reduce((sum, f) => sum + f.bytes, 0),
-      dockerImages: imageCount.get(version) ?? 0,
-      action: actionOf(version, keep),
-    };
+    const dockerImages = imageCount.get(version) ?? 0;
+    const heldImages = heldImageCount(version);
+    let action = actionOf(version, keep);
+    // Không còn tệp nào để xoá và MỌI ảnh còn lại đều bị container giữ: chỉ người dùng gỡ container mới dọn tiếp được, đừng mời bấm "Dọn".
+    if (action === 'clean' && list.length === 0 && dockerImages > 0 && heldImages === dockerImages) action = 'held';
+    return { version, fileCount: list.length, fileBytes: list.reduce((sum, f) => sum + f.bytes, 0), dockerImages, heldImages, action };
   });
-  const keepOrder: Record<CleanupAction, number> = { running: 0, previous: 1, package: 2, clean: 3 };
+  const keepOrder: Record<CleanupAction, number> = { running: 0, previous: 1, package: 2, held: 3, clean: 4 };
   rows.sort((a, b) => keepOrder[a.action] - keepOrder[b.action] || compareVersions(b.version, a.version));
 
   // Chỉ bản còn thứ gì đó để dọn (tệp hoặc ảnh) mới đáng liệt kê là "sẽ dọn".
@@ -137,6 +152,7 @@ export async function buildCleanupPlan(deps: CleanupDeps, keep: CleanupKeep): Pr
   return {
     dockerAvailable: images !== null,
     rows: visible,
+    held: rows.filter((r) => r.action === 'held').map((r) => ({ version: r.version, containers: holders(r.version).slice(0, 6) })),
     cleanVersions: clean.map((r) => r.version),
     cleanBytes: clean.reduce((sum, r) => sum + r.fileBytes, 0),
     backups: await backupsInfo(deps.workDir),
