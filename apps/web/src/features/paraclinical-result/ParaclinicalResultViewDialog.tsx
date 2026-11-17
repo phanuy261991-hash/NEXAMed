@@ -7,6 +7,8 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import type { ParaclinicalGroup } from './paraclinical-group';
 import { useParaclinicalResultQuery } from './paraclinical-result.queries';
 import { ParaclinicalResultPrintView } from './ParaclinicalResultPrintView';
+import { ResultDicomStrip } from './ResultDicomPanel';
+import { useDicomEnabledQuery } from '../clinic/clinic.queries';
 
 /**
  * Hộp thoại CHỈ XEM kết quả cận lâm sàng (nút "Xem" ở khối "Kết quả đã có của lượt khám này", màn khám — docs/DECISIONS.md #215). Dùng lại đúng bản phiếu kết quả
@@ -15,6 +17,8 @@ import { ParaclinicalResultPrintView } from './ParaclinicalResultPrintView';
  */
 export function ParaclinicalResultViewDialog({ group, itemId, patientId, onClose }: { group: ParaclinicalGroup; itemId: string; /** Có khi mở từ tab "Kết quả cận lâm sàng" ở hồ sơ bệnh nhân — đọc kết quả ở mọi chi nhánh (#234). */ patientId?: string; onClose: () => void }) {
   const query = useParaclinicalResultQuery(group, itemId, patientId);
+  // Tệp DICOM gốc (#299 bổ sung 6): phiếu in không in DICOM nên hiện thành một dải riêng dưới phiếu, chỉ khi công tắc "Dùng tệp DICOM" bật.
+  const dicomEnabled = useDicomEnabledQuery().data?.enabled === true;
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -43,6 +47,7 @@ export function ParaclinicalResultViewDialog({ group, itemId, patientId, onClose
             </div>
           )}
         </div>
+        {dicomEnabled && query.data && <ResultDicomStrip files={query.data.form.sections.flatMap((section) => section.dicomFiles ?? [])} recordName={query.data.form.patientName} />}
         <div className="mt-4 flex justify-end">
           <Button type="button" variant="secondary" onClick={onClose}>
             Đóng

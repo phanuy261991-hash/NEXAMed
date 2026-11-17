@@ -34,11 +34,14 @@ export function DicomViewerDialog({
   const [acknowledged, acknowledge] = useMismatchAck(url);
 
   useEffect(() => {
+    // Bắt ở giai đoạn capture rồi chặn lan: trình xem có thể mở chồng lên hộp khác (hộp xem kết quả) cũng nghe Esc — chỉ đóng lớp trên cùng.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      onClose();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
   const download = () => downloadPatientDocument({ url, fileName });

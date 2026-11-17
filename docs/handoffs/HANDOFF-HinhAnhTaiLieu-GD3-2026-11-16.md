@@ -29,7 +29,7 @@
 
 ## 4. Việc còn / cần chủ dự án
 - **Dựng gói cài on-prem** (mục 2 điểm 3) — chờ chủ dự án chốt số phiên bản.
-- **Chủ dự án xem các chỗ khác mockup**: #299 bổ sung 1, 3, 4, 5 và "Đợt 2"/"Đợt 3" của bổ sung 6 (nút Chụp ảnh nay chỉ hiện trên máy cảm ứng ở CẢ hộp Tải lên của tab hồ sơ; thẻ "Bổ sung" ở góc ảnh; hàng DICOM không ghi số khung; hộp xem kết quả kiểu phiếu in không có khối DICOM); #300 giữ icon từ 1440px.
+- **Chủ dự án xem các chỗ khác mockup**: #299 bổ sung 1, 3, 4, 5 và "Đợt 2"/"Đợt 3" của bổ sung 6 (nút Chụp ảnh nay chỉ hiện trên máy cảm ứng ở CẢ hộp Tải lên của tab hồ sơ; thẻ "Bổ sung" ở góc ảnh; hàng DICOM không ghi số khung; hộp xem kết quả kiểu phiếu in chỉ có DICOM ở dải riêng dưới tờ phiếu (đã thêm theo yêu cầu 17/11)); #300 giữ icon từ 1440px.
 - **Khi làm SaaS**: chốt cùng lúc adapter kho đối tượng cho `StoragePort`, hạn mức dung lượng theo công ty (thay thanh "% ổ đĩa"), giới hạn tải lên riêng cho DICOM ở bộ chia tải, camera chỉ khi có HTTPS.
 - Chưa làm (ngoài #299): gói Nha khoa. Quy tắc thường trực: mọi file gắn bệnh nhân làm sau phải gộp về tab này; chú thích trong mockup không chép vào sản phẩm (chỉ giữ mô tả của công tắc).
 

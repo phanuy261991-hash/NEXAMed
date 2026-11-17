@@ -125,3 +125,39 @@ export function ResultDicomPanel({
     </aside>
   );
 }
+
+/**
+ * Dải "Tệp DICOM gốc" ở hộp XEM kết quả (nút "Xem" ở màn khám, docs/DECISIONS.md #299 bổ sung 6): nằm NGOÀI tờ phiếu nên không lẫn vào bản in. Mỗi tệp có tên, dung lượng, "Xem" (trình xem DICOM,
+ * đối chiếu tên bệnh nhân) và "Tải về". Người gọi chỉ vẽ khi công tắc "Dùng tệp DICOM" bật; không có tệp thì không vẽ gì.
+ */
+export function ResultDicomStrip({ files, recordName }: { files: readonly ParaclinicalResultDicom[]; recordName: string }) {
+  const [viewing, setViewing] = useState<ParaclinicalResultDicom | null>(null);
+  if (files.length === 0) return null;
+  return (
+    <section aria-label="Tệp DICOM gốc" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+      <span className="text-sm font-semibold text-slate-800">Tệp DICOM gốc</span>
+      <ul className="flex flex-1 flex-wrap gap-2">
+        {files.map((f) => (
+          <li key={f.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 py-1 pl-2 pr-1">
+            <span className="flex h-7 w-7 items-center justify-center rounded bg-[#0d1220] text-[9px] font-semibold tracking-wide text-slate-400" aria-hidden="true">
+              DCM
+            </span>
+            <span className="min-w-0">
+              <span className="block max-w-[200px] truncate text-[13px] font-semibold text-slate-900" title={f.fileName}>
+                {f.fileName}
+              </span>
+              <span className="block text-[11.5px] text-slate-500">{formatBytes(f.sizeBytes)}</span>
+            </span>
+            <Button type="button" variant="secondary" onClick={() => setViewing(f)}>
+              Xem
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => downloadPatientDocument(f)}>
+              Tải về
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {viewing && <DicomViewerDialog title={viewing.fileName} fileName={viewing.fileName} url={viewing.url} sizeBytes={viewing.sizeBytes} typeLabel="Kết quả cận lâm sàng" recordName={recordName} onClose={() => setViewing(null)} />}
+    </section>
+  );
+}

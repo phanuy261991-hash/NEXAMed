@@ -323,6 +323,31 @@ function dicom({ rows, cols, bits = 16, frames = 1, patientName, ts = '1.2.840.1
     check('tab Hình ảnh: bấm tệp DICOM mở trình xem (công tắc bật)', true);
     await page.keyboard.press('Escape');
 
+    // ── Hộp "Xem" kết quả ở màn khám: dải "Tệp DICOM gốc" nằm ngoài tờ phiếu ──
+    const openResultView = async () => {
+      await page.locator('[role="tablist"][aria-label="Các phần của màn khám"]').getByRole('button', { name: /^Kết quả cận lâm sàng/ }).click();
+      await page.getByRole('button', { name: 'Xem', exact: true }).first().click();
+      const dlg = page.getByRole('dialog', { name: 'Xem kết quả cận lâm sàng' });
+      await dlg.waitFor({ timeout: 20000 });
+      await page.waitForTimeout(800);
+      return dlg;
+    };
+    const rv = await openResultView();
+    const strip = rv.getByLabel('Tệp DICOM gốc', { exact: true });
+    await strip.waitFor({ timeout: 15000 });
+    const stripText = await strip.innerText();
+    check('hộp Xem kết quả: dải "Tệp DICOM gốc" liệt kê tệp kèm dung lượng, Xem và Tải về', stripText.includes('nguc-' + stamp + '.dcm') && /KB|MB/.test(stripText) && (await strip.getByRole('button', { name: 'Xem' }).count()) >= 1 && (await strip.getByRole('button', { name: 'Tải về' }).count()) >= 1, stripText.split('\n').join(' | ').slice(0, 160));
+    check('hộp Xem kết quả: dải nằm ngoài tờ phiếu (không lẫn vào bản in)', (await rv.locator('.print-preview-shrink').getByText('Tệp DICOM gốc').count()) === 0);
+    await shot('06b-hop-xem-ket-qua.png');
+    await strip.locator('li', { hasText: 'nguc-' + stamp + '.dcm' }).getByRole('button', { name: 'Xem' }).click();
+    const rvViewer = page.getByRole('dialog', { name: 'nguc-' + stamp + '.dcm' });
+    await rvViewer.locator('canvas[aria-label="Ảnh DICOM"]').waitFor({ timeout: 15000 });
+    check('hộp Xem kết quả: bấm Xem mở trình xem DICOM, vẽ được ảnh', true);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    check('Esc trong trình xem chỉ đóng trình xem, hộp xem kết quả bên dưới vẫn mở', (await rvViewer.count()) === 0 && (await rv.count()) === 1);
+    await page.keyboard.press('Escape');
+
     // ── Công tắc tắt lại: tệp đã đính vẫn giữ, nhưng chỉ tải về ──
     await api('PATCH', '/clinic-settings', { dicomEnabled: false });
     await page.waitForTimeout(300);
@@ -332,6 +357,12 @@ function dicom({ rows, cols, bits = 16, frames = 1, patientName, ts = '1.2.840.1
     const v7 = page.getByRole('dialog', { name: new RegExp(`nguc-${stamp}`) });
     await v7.waitFor({ timeout: 10000 });
     check('công tắc tắt lại: tệp đã đính còn đó nhưng không có trình xem (chỉ tải về như cũ)', /Chưa xem được tệp DICOM trong hệ thống/.test(await v7.innerText()) && (await v7.locator('canvas').count()) === 0);
+    await page.keyboard.press('Escape');
+    await page.goto(WEB + '/encounters/' + encounterId);
+    await page.locator('[role="tablist"][aria-label="Các phần của màn khám"]').waitFor({ timeout: 20000 });
+    await page.waitForTimeout(500);
+    const rvOff = await openResultView();
+    check('công tắc tắt lại: hộp Xem kết quả không có dải DICOM', (await rvOff.getByLabel('Tệp DICOM gốc', { exact: true }).count()) === 0);
     await page.keyboard.press('Escape');
     await page.goto(resultUrl);
     await page.getByText('Hình ảnh đính kèm').first().waitFor({ timeout: 20000 });

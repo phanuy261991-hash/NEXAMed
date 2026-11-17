@@ -4,6 +4,7 @@
 
 ## 17/11/2026 (phần 4) — Chế độ DICOM tuỳ chọn (`docs/DECISIONS.md` #299 bổ sung 6, đợt 3)
 
+- Hộp "Xem" kết quả ở màn khám có thêm dải "Tệp DICOM gốc" dưới tờ phiếu (Xem + Tải về) khi công tắc bật; Esc trong trình xem chỉ đóng lớp trên cùng.
 - Công tắc "Dùng tệp DICOM" ở Cấu hình chung (mặc định TẮT = như cũ). Bật: kết quả chẩn đoán hình ảnh đính được tệp DICOM gốc (khối "Tệp DICOM gốc", ≤ 4 tệp, 50 MB) và có trình xem DICOM trong trình duyệt (kéo, phóng, sáng/tương phản, đảo màu, xoay, lật, nhiều khung, tên khác hồ sơ thì cảnh báo, kiểu nén chưa đọc được thì Tải về). Không có migration; nginx on-prem thêm khối 52m cho đường dẫn đính DICOM (bản cài cần dựng lại ảnh web).
 
 ## 17/11/2026 (phần 3) — Đính ảnh ở màn khám (`docs/DECISIONS.md` #299 bổ sung 6)
