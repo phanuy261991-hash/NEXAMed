@@ -74,6 +74,31 @@ export class DockerClient {
     if (result.code !== 0) throw new Error(`Không nạp được ảnh ${file}: ${result.stderr.trim() || result.stdout.trim()}`);
   }
 
+  /** Ảnh ứng dụng NEXAMed (api/web/backup/setup) đang có trên máy theo từng nhãn phiên bản; `null` nếu Docker không trả lời. Bỏ ảnh không có nhãn. */
+  async listAppImages(): Promise<Array<{ repo: string; tag: string }> | null> {
+    const result = await this.docker(['image', 'ls', '--format', '{{.Repository}} {{.Tag}}']);
+    if (result.code !== 0) return null;
+    const images: Array<{ repo: string; tag: string }> = [];
+    for (const line of result.stdout.split(/\r?\n/)) {
+      const [repo, tag] = line.trim().split(/\s+/);
+      if (repo && tag && tag !== '<none>' && /^nexamed-(?:api|web|backup|setup)$/.test(repo)) images.push({ repo, tag });
+    }
+    return images;
+  }
+
+  /**
+   * Gỡ MỘT nhãn ảnh, không ép buộc (không `-f`): Docker từ chối nếu có container (kể cả đã dừng) đang dùng ảnh, nên ảnh của hệ thống đang chạy không thể bị gỡ nhầm.
+   * Ảnh đã không còn thì coi như xong.
+   */
+  async removeImage(ref: string): Promise<{ ok: true } | { ok: false; reason: 'in-use' | 'other' }> {
+    const result = await this.docker(['image', 'rm', ref], { timeoutMs: 5 * 60_000 });
+    if (result.code === 0) return { ok: true };
+    const text = `${result.stderr} ${result.stdout}`;
+    if (/no such image/i.test(text)) return { ok: true };
+    if (/being used|in use|conflict/i.test(text)) return { ok: false, reason: 'in-use' };
+    return { ok: false, reason: 'other' };
+  }
+
   /** Trạng thái các dịch vụ của hệ thống đang cài (rỗng nếu chưa chạy dịch vụ nào). */
   async services(): Promise<ServiceState[]> {
     const result = await this.compose(['ps', '--all', '--format', 'json']);

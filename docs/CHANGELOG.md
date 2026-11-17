@@ -2,6 +2,13 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 17/11/2026 (phần 5) — Trình cài đặt: "Dọn gói cũ", so sánh phiên bản theo SemVer (`docs/DECISIONS.md` #301)
+
+- Bước "Bản đang chạy" của trình cài đặt có mục **Dọn gói cũ**: xoá tệp nạp ảnh `.tar.gz` và gỡ ảnh Docker của các bản cũ để lấy lại ổ đĩa. Luôn giữ bản đang chạy, bản trước theo lần nâng cấp gần nhất (đúng với nút Quay lui) và bản mới trong gói; hộp xác nhận có ô tích "không quay lui được nữa"; bản sao lưu nâng cấp chỉ hiện dung lượng, không có nút xoá. Dọn một phần (ảnh đang dùng, Docker không trả lời) báo rõ và có "Dọn lại".
+- `compareVersions` theo SemVer: `0.9.6-beta.1` nhỏ hơn `0.9.6`, nên bản dev đồng hành nâng lên bản chính thức hiện đúng ghi chú cập nhật. Có ghi chú phát hành `0.9.6` (`apps/api/release-notes/0.9.6.json`).
+- Quyết định giữ nguyên màu chữ xám toàn app sau khi xem mockup so sánh (#302), không đổi mã.
+- Kiểm: setup 132 test, Chrome thật 32/32, Docker thật 6/6. Lưu trữ `DECISIONS` #291–#295 sang `docs/archive/DECISIONS-291-295.md` (file gốc vượt 150 KB).
+
 ## 17/11/2026 (phần 4) — Chế độ DICOM tuỳ chọn (`docs/DECISIONS.md` #299 bổ sung 6, đợt 3)
 
 - Hộp "Xem" kết quả ở màn khám có thêm dải "Tệp DICOM gốc" dưới tờ phiếu (Xem + Tải về) khi công tắc bật; Esc trong trình xem chỉ đóng lớp trên cùng.

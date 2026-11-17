@@ -14,7 +14,8 @@
     "Thanh tab của màn khám không còn phải cuộn ngang: nhãn gọn hơn, tab ít dùng gom vào nút \"Thêm\", tab đang mở luôn hiện.",
     "Sổ công nợ nhà cung cấp có thêm cột \"Diễn giải\".",
     "Cấu hình chung hiện dung lượng đã dùng của hình ảnh và tài liệu bệnh nhân; ảnh thu nhỏ giúp danh sách tải nhanh hơn.",
-    "Trình cài đặt nhận biết đúng thứ tự bản thử (beta) và bản chính thức cùng số, nên nâng cấp từ bản thử lên bản chính thức hiện đúng danh sách thay đổi."
+    "Trình cài đặt nhận biết đúng thứ tự bản thử (beta) và bản chính thức cùng số, nên nâng cấp từ bản thử lên bản chính thức hiện đúng danh sách thay đổi.",
+    "Trình cài đặt có thêm mục \"Dọn gói cũ\" ở bước Bản đang chạy: xoá tệp và ảnh Docker của các bản cũ để lấy lại ổ đĩa, luôn giữ bản đang chạy và bản trước để còn quay lui."
   ],
   "fixes": [
     "Tải tệp từ 9 đến 15 MB lên tab tài liệu không còn bị từ chối ở bản cài tại phòng khám.",

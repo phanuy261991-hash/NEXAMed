@@ -18,6 +18,7 @@
     a: { backupHourVn: 2, backupRetentionDays: 14, webPort: 80, lanAddress: '' },
     pre: null, errors: {}, extra: [], password: null, cert: null, review: null, job: null, result: null, otp: null,
     ack: false, ackKey: false, keyDownloaded: false, busy: false, error: null, closed: false, skipDns: false, timer: null,
+    cleanup: null, cleanupError: false, cleanDlg: false, cleanAck: false, cleaning: false, cleanJob: null, cleanJustDone: false, cleanTimer: null,
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -155,6 +156,104 @@
     return any ? '<div class="box"><span class="t">Có gì mới trong bản ' + esc(n.version) + '</span>' + html + '</div>' : '';
   }
 
+  /* ---------- Dọn gói cũ (docs/DECISIONS.md #301): bước "Bản đang chạy", danh sách + hộp xác nhận + tiến độ + kết quả ---------- */
+  function fmtBytes(n) {
+    var f = function (x, d) { return x.toFixed(d).replace('.', ','); };
+    if (n >= 1073741824) return f(n / 1073741824, 2) + ' GB';
+    if (n >= 1048576) return f(n / 1048576, 1) + ' MB';
+    if (n >= 1024) return f(n / 1024, 0) + ' KB';
+    return n + ' B';
+  }
+  var CLEAN_ACTION = { running: ['Giữ · đang chạy', 'keep'], previous: ['Giữ · bản trước, để quay lui', 'keep'], package: ['Giữ · bản mới trong gói', 'keep'], clean: ['Sẽ dọn', 'go'] };
+  var CLEAN_FAIL = {
+    'docker-unavailable': function (v) { return 'Docker không trả lời nên chưa gỡ được ảnh Docker của ' + v + '.'; },
+    'in-use': function (v) { return 'Ảnh Docker của ' + v + ' đang được dùng nên được giữ lại.'; },
+    'file': function (v) { return 'Không xoá được tệp nạp ảnh của ' + v + ' (thư mục images không cho ghi).'; },
+    'other': function (v) { return 'Chưa gỡ được ảnh Docker của ' + v + '.'; },
+  };
+  function versionsText(list) { return (list.length > 1 ? 'các bản ' : 'bản ') + list.join(', '); }
+  function keepsText(c) {
+    var out = [c.keep.installed + ' (đang chạy)'];
+    if (c.keep.previous && c.keep.previous !== c.keep.installed) out.push(c.keep.previous + ' (bản trước)');
+    if (c.keep.packageVersion && c.keep.packageVersion !== c.keep.installed && c.keep.packageVersion !== c.keep.previous) out.push(c.keep.packageVersion + ' (bản mới trong gói)');
+    return out.join(' và ');
+  }
+  function backupRow(c) {
+    return '<div class="tbl"><table class="vers"><tbody><tr><td><b>Bản sao lưu nâng cấp</b></td><td class="num">' + esc(fmtBytes(c.backups.bytes)) + '</td><td>' + c.backups.count + ' tệp trong thư mục upgrade-backups</td><td><span class="pill skip">Không tự xoá</span></td></tr></tbody></table></div>';
+  }
+  function cleanupResultHtml(c) {
+    var r = S.cleanJustDone && c.lastResult;
+    if (!r) return '';
+    var n = r.removedVersions.length;
+    if (!r.failures.length) return '<div class="done-box"><b>Đã dọn ' + n + ' bản cũ, xoá ' + esc(fmtBytes(r.freedBytes)) + ' tệp nạp ảnh và gỡ ảnh Docker của các bản này.</b><span>Còn giữ ' + esc(keepsText(c)) + '. Hệ thống vẫn chạy bình thường.</span></div>';
+    var byReason = {};
+    r.failures.forEach(function (f) { (byReason[f.reason] = byReason[f.reason] || []).push(f.version); });
+    var lines = Object.keys(byReason).map(function (k) { return '<span class="sub">' + esc((CLEAN_FAIL[k] || CLEAN_FAIL.other)(versionsText(byReason[k]))) + '</span>'; }).join('');
+    return '<div class="err"><span>Chưa dọn hết.</span>' + lines + '<span class="sub">' + (n ? 'Đã dọn ' + n + ' bản, xoá ' + esc(fmtBytes(r.freedBytes)) + ' tệp nạp ảnh. ' : '') + 'Hệ thống đang chạy không bị ảnh hưởng. Sửa nguyên nhân rồi bấm Dọn lại.</span></div>';
+  }
+  function cleanDialog(c) {
+    var n = c.cleanVersions.length;
+    return '<div class="scrim" id="cleanScrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="cleanTitle">' +
+      '<div class="dialog-h" id="cleanTitle">Dọn ' + n + ' bản cũ?</div>' +
+      '<div class="dialog-b"><span>Sẽ xoá tệp nạp ảnh và ảnh Docker của ' + esc(versionsText(c.cleanVersions)) + '.</span>' +
+      '<ul><li>Giữ lại: ' + esc(keepsText(c)) + '.</li><li>Dữ liệu, cấu hình và bản sao lưu không bị đụng tới.</li><li>Muốn cài lại bản cũ phải có gói cài đặt của bản đó.</li></ul>' +
+      '<label class="ack"><input type="checkbox" id="cleanAck"' + (S.cleanAck ? ' checked' : '') + '><span>Tôi hiểu các bản này sẽ không quay lui được nữa.</span></label></div>' +
+      '<div class="dialog-f"><button class="btn" type="button" id="cleanCancel">Huỷ</button><button class="btn danger" type="button" id="cleanGo"' + (S.cleanAck ? '' : ' disabled') + '>Dọn ' + n + ' bản cũ</button></div></div></div>';
+  }
+  function cleanupBlock() {
+    if (S.step !== 'current') return '';
+    var head = '<span class="t">Dọn gói cũ</span>';
+    if (S.cleanupError) return '<div class="box col">' + head + '<div class="err"><span>Chưa đọc được danh sách gói cũ.</span><span class="sub">Kiểm tra Docker đang chạy rồi bấm Thử lại.</span></div><div class="row-actions"><button class="btn" type="button" id="cleanReload">Thử lại</button></div></div>';
+    if (S.cleaning) {
+      var steps = (S.cleanJob && S.cleanJob.steps) || [];
+      var pct = S.cleanJob ? S.cleanJob.percent : 0;
+      return '<div class="box col">' + head + '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div><div class="checks">' +
+        steps.map(function (s) { return check(s.status === 'ok' ? 'ok' : s.status === 'bad' ? 'bad' : s.status === 'run' ? 'run' : 'wait', s.title, s.note || (s.status === 'run' ? 'Đang dọn' : 'Chờ'), ''); }).join('') + '</div></div>';
+    }
+    var c = S.cleanup;
+    if (!c) return '<div class="box col">' + head + '<p class="muted">Đang đọc danh sách…</p></div>';
+    var n = c.cleanVersions.length, retry = S.cleanJustDone && c.lastResult && c.lastResult.failures.length > 0;
+    var inner = '';
+    if (n) {
+      inner += '<div class="sumline"><span>Có thể dọn <b>' + n + ' bản cũ</b></span>' + (c.cleanBytes > 0 ? '<span>Tệp nạp ảnh <b>' + esc(fmtBytes(c.cleanBytes)) + '</b></span>' : '') + '<span class="muted">' + (c.cleanBytes > 0 ? 'cộng ' : '') + 'ảnh Docker của các bản này</span></div>' +
+        '<div class="tbl"><table class="vers"><thead><tr><th>Phiên bản</th><th class="num">Tệp nạp ảnh</th><th>Ảnh trong Docker</th><th>Xử lý</th></tr></thead><tbody>' +
+        c.rows.map(function (r) {
+          var a = CLEAN_ACTION[r.action];
+          return '<tr><td class="v">' + esc(r.version) + '</td><td class="num">' + (r.fileCount ? esc(fmtBytes(r.fileBytes)) : '—') + '</td><td>' + (r.dockerImages ? 'Có' : 'Không') + '</td><td><span class="pill ' + a[1] + '">' + a[0] + '</span></td></tr>';
+        }).join('') + '</tbody></table></div>' +
+        '<div class="row-actions"><button class="btn primary" type="button" id="cleanOpen">' + (retry ? 'Dọn lại ' + n + ' bản…' : 'Dọn ' + n + ' bản cũ…') + '</button></div>';
+    } else inner += '<p>' + (S.cleanJustDone ? 'Không còn gói cũ nào để dọn.' : 'Chưa có gói cũ nào cần dọn.') + '</p>';
+    if (!c.dockerAvailable) inner += '<div class="alert">Docker không trả lời nên danh sách có thể thiếu ảnh Docker.</div>';
+    inner += backupRow(c);
+    return cleanupResultHtml(c) + '<div class="box col">' + head + inner + '</div>' + (S.cleanDlg && n ? cleanDialog(c) : '');
+  }
+  function loadCleanup() {
+    S.cleanupError = false;
+    return api('/cleanup').then(function (c) { S.cleanup = c; render(); }).catch(function () { S.cleanupError = true; render(); });
+  }
+  function startClean() {
+    var versions = S.cleanup.cleanVersions.slice();
+    S.cleanDlg = false; S.cleaning = true; S.cleanJob = null; S.cleanJustDone = false; S.error = null; render();
+    api('/cleanup', { versions: versions }).then(pollClean).catch(function (e) { S.cleaning = false; S.error = e.message; render(); loadCleanup(); });
+  }
+  function pollClean() {
+    if (S.cleanTimer) return;
+    var stop = function () { clearInterval(S.cleanTimer); S.cleanTimer = null; };
+    var tick = function () {
+      api('/job').then(function (job) {
+        S.cleanJob = job;
+        if (!job || job.kind !== 'cleanup') { stop(); S.cleaning = false; loadCleanup(); return; }
+        if (job.state === 'running' || job.state === 'idle') { render(); return; }
+        stop(); S.cleaning = false; S.cleanJustDone = true;
+        if (job.state === 'failed') S.error = 'Việc dọn dừng giữa chừng. Bấm Dọn lại để dọn tiếp.';
+        loadCleanup();
+      }).catch(function () { /* tạm mất kết nối: thử lại ở nhịp sau */ });
+    };
+    S.cleanTimer = setInterval(tick, 700);
+    tick();
+  }
+  function closeCleanDialog() { S.cleanDlg = false; S.cleanAck = false; render(); }
+
   function viewCurrent() {
     var d = S.detect, rows = '';
     rows += '<tr><th>Đang chạy</th><td>NEXAMed ' + esc(d.installedVersion) + '</td></tr>';
@@ -165,7 +264,7 @@
     if (d.upToDate) body += '<div class="done-box"><b style="font-size:16px">Hệ thống đã là bản mới nhất.</b><span>Không cần nâng cấp. Để cập nhật, giải nén gói cài đặt mới đè lên thư mục này rồi chạy lại nexamed-setup.</span></div>';
     else if (d.packageVersion) body += releaseNotesBlock(d.releaseNotes) + '<div class="alert">Hệ thống tự sao lưu trước khi nâng cấp. Nâng cấp mất vài phút, nhân viên không dùng được trong lúc này.</div>';
     if (d.lastUpgrade) body += '<div class="alert">Lần nâng cấp gần nhất (' + esc(d.lastUpgrade.from) + ' → ' + esc(d.lastUpgrade.to) + ') có thể quay lui bằng bản sao lưu đã lưu. <button class="btn" type="button" id="rollbackBtn" style="margin-left:8px">Quay lui về bản cũ</button></div>';
-    return body + errBox(S.error);
+    return body + cleanupBlock() + errBox(S.error);
   }
 
   function viewOtp() {
@@ -246,7 +345,8 @@
       case 'review': return back(false) + '<button class="btn primary big" type="submit" form="stepform"' + (busy || !S.review ? ' disabled' : '') + '>Cài đặt</button>';
       case 'current': {
         var can = S.detect && S.detect.packageVersion && !S.detect.upToDate;
-        return back(false).replace('id="back"', 'id="back" disabled') + (can ? '<button class="btn primary big" type="submit" form="stepform"' + busy + '>Nâng cấp</button>' : '<button class="btn primary" type="button" id="finishBtn">Đóng trình cài đặt</button>');
+        var lock = S.cleaning ? ' disabled' : '';
+        return back(false).replace('id="back"', 'id="back" disabled') + (can ? '<button class="btn primary big" type="submit" form="stepform"' + busy + lock + '>Nâng cấp</button>' : '<button class="btn primary" type="button" id="finishBtn"' + lock + '>Đóng trình cài đặt</button>');
       }
       case 'progress':
         if (job && job.state === 'failed') return '<span class="muted">Có thể sửa nguyên nhân rồi thử lại.</span><span style="display:flex;gap:10px">' + (S.scene === 'install' ? '<button class="btn" type="button" id="back">Sửa thông tin</button>' : '') + '<button class="btn primary" type="button" id="retry">Thử lại</button></span>';
@@ -264,6 +364,7 @@
 
   function onEnter(id) {
     if (id === 'check') loadPre();
+    if (id === 'current') { loadCleanup(); if (S.cleaning) pollClean(); }
     if (id === 'review') loadReview();
     if (id === 'progress') startPolling();
     if (id === 'otp') loadOtp();
@@ -323,7 +424,9 @@
 
   function onSubmit(ev) {
     ev.preventDefault();
-    if (S.busy) return;
+    if (S.busy || S.cleaning) return;
+    // Hộp xác nhận dọn gói cũ đang mở: Enter chỉ xác nhận việc dọn (khi đã tích), không được kích hoạt nâng cấp ở sau lớp phủ.
+    if (S.cleanDlg) { if (S.cleanAck) startClean(); return; }
     var id = S.step;
     if (id === 'check') return go(S.scene === 'upgrade' ? 'current' : 'profile');
     if (id === 'profile') return go('info');
@@ -396,6 +499,12 @@
   }
 
   document.addEventListener('submit', onSubmit);
+  document.addEventListener('keydown', function (e) {
+    if (!S.cleanDlg) return;
+    if (e.key === 'Escape') return closeCleanDialog();
+    // Enter trong hộp xác nhận: xác nhận dọn khi đã tích ô "Tôi hiểu…" (Chrome không gửi form khi bấm Enter ở ô tích); chưa tích thì không làm gì. Nút đang focus tự xử lý Enter của nó.
+    if (e.key === 'Enter' && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); if (S.cleanAck) startClean(); }
+  });
 
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target : null; if (!t) return;
@@ -404,6 +513,10 @@
     if ((b = t.closest('[data-copy]'))) { var old = b.textContent; copyText(b.getAttribute('data-copy')).then(function () { b.textContent = 'Đã chép'; setTimeout(function () { b.textContent = old; }, 1500); }); return; }
     if (t.closest('#back')) { var ids = stepIds(); var i = ids.indexOf(S.step); return go(S.step === 'progress' ? 'review' : ids[Math.max(0, i - 1)]); }
     if (t.closest('#recheck')) return loadPre();
+    if (t.closest('#cleanOpen')) { S.cleanDlg = true; S.cleanAck = false; render(); var ak = $('cleanAck'); if (ak) ak.focus(); return; }
+    if (t.closest('#cleanCancel') || t.id === 'cleanScrim') return closeCleanDialog();
+    if (t.closest('#cleanGo')) { if (S.cleanAck) startClean(); return; }
+    if (t.closest('#cleanReload')) return loadCleanup();
     if (t.closest('#retry')) { var path = S.scene === 'upgrade' || (S.job && S.job.kind !== 'install') ? '/upgrade' : '/install'; return api(path, { retry: true }).then(function () { S.job.state = 'running'; startPolling(); render(); }).catch(function (er) { S.error = er.message; render(); }); }
     if (t.closest('#rollbackBtn')) {
       if (!window.confirm('Khôi phục dữ liệu về thời điểm trước lần nâng cấp gần nhất? Dữ liệu nhập SAU lần nâng cấp đó sẽ mất.')) return;
@@ -434,6 +547,7 @@
     if (el.id === 'ack') { S.ack = el.checked; var f = $('finishBtn'); if (f) f.disabled = !canFinish(); }
     if (el.id === 'ackKey') { S.ackKey = el.checked; var fk = $('finishBtn'); if (fk) fk.disabled = !canFinish(); }
     if (el.id === 'skipDns') S.skipDns = el.checked;
+    if (el.id === 'cleanAck') { S.cleanAck = el.checked; var cg = $('cleanGo'); if (cg) cg.disabled = !el.checked; }
     if (el.id === 'crtFile' || el.id === 'keyFile') {
       var file = el.files && el.files[0]; if (!file) return;
       var reader = new FileReader();
@@ -453,6 +567,12 @@
     S.scene = st.detect.mode;
     S.a.backupDir = defaultBackupDir(st.detect.hostInstallDir);
     S.a.lanAddress = (st.detect.hostIps && st.detect.hostIps[0]) || 'localhost';
+    if (st.job && st.job.kind === 'cleanup') {
+      // Việc dọn gói cũ không phải một bước của luồng cài/nâng cấp: đang chạy thì nối lại màn tiến độ ngay trong bước "Bản đang chạy", đã xong thì bỏ qua.
+      if (st.job.state === 'running') { S.scene = 'upgrade'; S.cleaning = true; S.cleanJob = st.job; go('current'); return; }
+      go('check');
+      return;
+    }
     if (st.job) {
       // Tải lại trang giữa chừng: nối lại đúng chỗ đang chạy.
       S.scene = st.job.kind === 'install' ? 'install' : 'upgrade';

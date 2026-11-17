@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { resolve4 } from 'node:dns/promises';
 import { type CertCheck, checkWildcardCertificate } from './lib/cert';
+import { type CleanupKeep, type CleanupPlan, type CleanupState, buildCleanupPlan, buildCleanupSteps, newCleanupState } from './lib/cleanup';
 import { type DnsCheck, checkDomainPointsHere } from './lib/dns';
 import type { DockerClient } from './lib/docker';
 import { buildHandoffText } from './lib/handoff';
@@ -84,7 +85,8 @@ const defaultDnsDeps: DnsDepsFactory = () => ({
 
 export class SetupService {
   private job: Job | null = null;
-  private jobKind: 'install' | 'upgrade' | 'rollback' | null = null;
+  private jobKind: 'install' | 'upgrade' | 'rollback' | 'cleanup' | null = null;
+  private cleanupState: CleanupState | null = null;
   private installState: { result?: InstallResult } = {};
   private upgradeState: { record?: UpgradeRecord } = {};
   private answers: InstallAnswers | null = null;
@@ -222,7 +224,7 @@ export class SetupService {
     return { summary: [...plan.summary, ['Phiên bản', `NEXAMed ${this.env.setupVersion}`] as [string, string]], publicUrl: plan.publicUrl };
   }
 
-  jobView(): (JobView & { kind: 'install' | 'upgrade' | 'rollback' }) | null {
+  jobView(): (JobView & { kind: 'install' | 'upgrade' | 'rollback' | 'cleanup' }) | null {
     return this.job && this.jobKind ? { ...this.job.view(), kind: this.jobKind } : null;
   }
 
@@ -315,6 +317,41 @@ export class SetupService {
     if (!lastUpgrade || lastUpgrade.rolledBack) return { ok: false, error: 'Không có lần nâng cấp nào để quay lui.' };
     this.job = new Job(buildManualRollbackSteps(lastUpgrade, { docker: this.docker, workDir: this.env.workDir, now: () => this.now() }));
     this.jobKind = 'rollback';
+    void this.job.run();
+    return { ok: true };
+  }
+
+  /** Bản phải giữ khi dọn gói cũ, hoặc `null` nếu hệ thống chưa cài xong (không có gì để dọn). */
+  private async cleanupKeep(): Promise<CleanupKeep | null> {
+    const detail = await this.detect();
+    if (detail.mode !== 'upgrade' || !detail.installedVersion) return null;
+    return { installed: detail.installedVersion, packageVersion: detail.packageVersion, previous: detail.lastUpgrade?.from ?? null };
+  }
+
+  /** Danh sách gói cũ (bước "Bản đang chạy") kèm kết quả lần dọn gần nhất; `null` khi chưa cài hệ thống. */
+  async cleanupView(): Promise<(CleanupPlan & { keep: CleanupKeep; lastResult: CleanupState | null; busy: boolean }) | null> {
+    const keep = await this.cleanupKeep();
+    if (!keep) return null;
+    const plan = await buildCleanupPlan({ docker: this.docker, workDir: this.env.workDir }, keep);
+    return { ...plan, keep, lastResult: this.cleanupState ? { ...this.cleanupState, removedVersions: [...this.cleanupState.removedVersions], failures: [...this.cleanupState.failures] } : null, busy: this.job?.view().state === 'running' };
+  }
+
+  /**
+   * Bắt đầu dọn các bản cũ. Giao diện gửi danh sách bản NGƯỜI DÙNG ĐÃ THẤY; máy chủ tính lại kế hoạch và chỉ dọn khi mọi bản trong danh sách vẫn đúng là "sẽ dọn"
+   * (có thể đã đổi giữa lúc xem và lúc bấm). Không bao giờ dọn bản đang chạy, bản trước, bản mới trong gói.
+   */
+  async beginCleanup(versions: string[]): Promise<{ ok: true } | { ok: false; error: string }> {
+    if (this.job?.view().state === 'running') return { ok: false, error: 'Đang chạy, vui lòng chờ.' };
+    if (this.jobKind === 'upgrade' && this.job?.view().state === 'failed') return { ok: false, error: 'Lần nâng cấp vừa rồi chưa xong. Xử lý xong rồi hãy dọn gói cũ.' };
+    const keep = await this.cleanupKeep();
+    if (!keep) return { ok: false, error: 'Hệ thống chưa cài xong nên chưa có gì để dọn.' };
+    if (versions.length === 0) return { ok: false, error: 'Chưa chọn bản nào để dọn.' };
+    const deps = { docker: this.docker, workDir: this.env.workDir };
+    const plan = await buildCleanupPlan(deps, keep);
+    if (!versions.every((v) => plan.cleanVersions.includes(v))) return { ok: false, error: 'Danh sách gói cũ đã thay đổi. Tải lại trang để xem danh sách mới rồi dọn lại.' };
+    this.cleanupState = newCleanupState();
+    this.job = new Job(buildCleanupSteps(versions, deps, keep, this.cleanupState));
+    this.jobKind = 'cleanup';
     void this.job.run();
     return { ok: true };
   }

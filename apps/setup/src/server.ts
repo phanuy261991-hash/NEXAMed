@@ -180,6 +180,14 @@ export function createSetupServer(options: ServerOptions): Server {
         const started = await service.beginRollback();
         return sendJson(res, started.ok ? 200 : 409, started.ok ? { data: { ok: true } } : { error: { message: started.error } });
       }
+      case 'GET /api/cleanup':
+        return sendJson(res, 200, { data: await service.cleanupView() });
+      case 'POST /api/cleanup': {
+        const versions = body.versions;
+        if (!Array.isArray(versions) || versions.length > 100 || !versions.every((v) => typeof v === 'string' && v.length > 0 && v.length <= 64)) throw new HttpError(400, 'Danh sách bản cần dọn không hợp lệ.');
+        const started = await service.beginCleanup(versions as string[]);
+        return sendJson(res, started.ok ? 200 : 409, started.ok ? { data: { ok: true } } : { error: { message: started.error } });
+      }
       case 'GET /api/job':
         return sendJson(res, 200, { data: service.jobView() });
       case 'GET /api/otp': {
