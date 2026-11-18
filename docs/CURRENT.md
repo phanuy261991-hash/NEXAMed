@@ -66,7 +66,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-Phat-hanh-0.9.6-HieuNang-2026-11-18.md`** (chốt 18/11/2026, ĐỌC TRƯỚC): `0.9.6` đã phát hành + gói giao khách (ZIP + SHA-256 + hướng dẫn ở `C:\Projects\NEXAMed-demo-package\giao-khach`); trình cài đặt có "Dọn gói cũ" + khung nhật ký giãn; hiệu năng A/B/C/F xong và đã push (`64b29efd`); D (tải trước chunk JS) đã kiểm Chrome thật và commit ngày 18/11/2026 (#304); việc kế tiếp: dựng `0.9.7` khi chủ dự án đồng ý (có migration + nginx mới nên phải dựng lại ảnh).
+**`docs/handoffs/HANDOFF-Phat-hanh-0.9.7-2026-11-18.md`** (chốt 18/11/2026, ĐỌC TRƯỚC): `0.9.7` đã phát hành, đã push (tag `v0.9.7`, `f2d42cf8`) và đã dựng gói giao khách (ZIP + SHA-256 + hướng dẫn ở `C:\Projects\NEXAMed-demo-package\giao-khach-0.9.7`); hiệu năng #303/#304 xong kể cả D (tải trước chunk JS, lợi ích thời gian nhỏ); không còn việc code dở; việc chờ chủ dự án: số liên hệ hỗ trợ vào hướng dẫn cài, thử cài MỚI từ ZIP, gỡ luật tường lửa 8181.
 
 Các bản bàn giao cũ đã được gỡ khỏi thư mục làm việc (chủ dự án chốt chỉ giữ bản mới nhất; không đọc lại). Khi cần tra một việc cũ: tìm theo số quyết định/ngày trong `docs/DECISIONS.md` và `docs/CHANGELOG.md` trước; cần đúng bản bàn giao thì `git log --all --diff-filter=D --name-only -- docs/handoffs` để tìm commit gỡ rồi `git show <commit>^:docs/handoffs/<tên tệp>`.
 
