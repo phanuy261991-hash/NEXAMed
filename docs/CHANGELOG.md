@@ -2,6 +2,11 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 18/11/2026 (phần 2) — Sửa gốc API chậm: Postgres "kế hoạch chung" (`docs/DECISIONS.md` #304)
+
+- Báo cáo doanh thu theo kỳ/theo dịch vụ và tổng quan toàn hệ thống chậm 1–1,7 giây vì Postgres chuyển sang "kế hoạch chung" sau 5 lần chạy cùng một câu lệnh có tham số và quét lại cả bảng hoá đơn cho từng lượt khám (tăng theo bình phương dữ liệu). Migration mới ép role ứng dụng luôn lập kế hoạch theo giá trị thật: 1.069 → 61 ms, 1.015 → 58 ms, 1.702 → 132 ms. Áp cho mọi truy vấn có tham số của API.
+- **Cần khởi động lại API sau `db:deploy`** (kết nối đang mở chưa nhận cấu hình mới); bản cài tự áp migration khi nâng cấp.
+
 ## 18/11/2026 — Chuyển trang nhanh hơn: nén gzip, staleTime an toàn, cuộn ảo bảng nặng (`docs/DECISIONS.md` #303)
 
 - Đo thật bằng Chrome (45 trang, CPU chậm ×4): máy chủ không chậm; phần chậm là dựng giao diện ở máy khách với danh sách lớn và gọi lại dữ liệu mỗi lần vào trang.
