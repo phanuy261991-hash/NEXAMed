@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Archive,
   ArrowsLeftRight,
@@ -45,6 +45,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { prefetchRoute, queueIdlePrefetch } from '../routing/route-prefetch';
 import { useAuthStore } from '../../features/auth/auth.store';
 import { useHasAnyPermission, useDataScope, useFilterByPermission, useHasPermission, useHasPermissionAtLeast } from '../../features/auth/usePermission';
 import { REPORT_CATALOG } from '../../features/report/report-catalog';
@@ -171,11 +172,19 @@ interface NavItemProps {
 }
 
 function NavItem({ to, label, icon: IconComponent, end, collapsed, indent, badge, badgeTone = 'amber' }: NavItemProps) {
+  // Tải trước chunk của trang: lúc rảnh (xếp hàng khi mục này hiện ra) và NGAY khi rê chuột/focus/chạm (docs/DECISIONS.md #304).
+  useEffect(() => {
+    queueIdlePrefetch(to);
+  }, [to]);
+  const warm = () => prefetchRoute(to);
   return (
     <li>
       <NavLink
         to={to}
         end={end}
+        onMouseEnter={warm}
+        onFocus={warm}
+        onTouchStart={warm}
         title={collapsed ? label : undefined}
         className={({ isActive }) =>
           `flex items-center gap-3 rounded-md py-2 text-sm font-medium transition-colors ${

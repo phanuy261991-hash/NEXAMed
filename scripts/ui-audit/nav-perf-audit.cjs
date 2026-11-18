@@ -65,6 +65,17 @@ const pct = (arr, p) => { if (!arr.length) return 0; const s = [...arr].sort((a,
   });
   const cdp = await ctx.newCDPSession(page);
   if (CPU > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
+  // Giả lập mạng có độ trễ (VPS/SaaS): NET_LATENCY_MS (độ trễ mỗi yêu cầu), NET_KBPS (băng thông tải xuống, kilobit/giây; mặc định 20000).
+  const NET_LATENCY_MS = Number(process.env.NET_LATENCY_MS || 0);
+  if (NET_LATENCY_MS > 0) {
+    const bytesPerSec = (Number(process.env.NET_KBPS || 20000) * 1000) / 8;
+    await cdp.send('Network.enable');
+    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: NET_LATENCY_MS, downloadThroughput: bytesPerSec, uploadThroughput: bytesPerSec });
+    console.log(`Mạng giả lập: trễ ${NET_LATENCY_MS} ms, ${process.env.NET_KBPS || 20000} kbps`);
+  }
+  // Chờ để tải trước lúc rảnh (D, #304) chạy xong trước khi đo; đặt 0 để đo như người dùng bấm ngay sau đăng nhập.
+  const WARMUP_MS = Number(process.env.WARMUP_MS || 0);
+  if (WARMUP_MS > 0) { console.log(`Chờ ${WARMUP_MS} ms cho tải trước lúc rảnh...`); await page.waitForTimeout(WARMUP_MS); }
 
   async function navigate(href) {
     tracker = { start: new Map(), done: [] };

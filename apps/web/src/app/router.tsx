@@ -1,5 +1,6 @@
-import { lazy } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { lazyRoute } from '../shared/routing/lazy-route';
+import { registerRouteTable } from '../shared/routing/route-prefetch';
 import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
@@ -25,128 +26,128 @@ import { NotFoundPage } from './NotFoundPage';
  * nhận default export. Không đổi các file trang sang default export để giữ nguyên quy ước
  * named export của toàn bộ codebase.
  */
-const PharmacyCatalogPage = lazy(() => import('../features/drug/PharmacyCatalogPage').then((m) => ({ default: m.PharmacyCatalogPage })));
+const PharmacyCatalogPage = lazyRoute(() => import('../features/drug/PharmacyCatalogPage').then((m) => ({ default: m.PharmacyCatalogPage })));
 // "Danh mục kho" — tách khỏi "Thuốc & Vật tư" thành trang riêng (docs/DECISIONS.md #157).
-const WarehouseCatalogPage = lazy(() => import('../features/drug/WarehouseCatalogPage').then((m) => ({ default: m.WarehouseCatalogPage })));
+const WarehouseCatalogPage = lazyRoute(() => import('../features/drug/WarehouseCatalogPage').then((m) => ({ default: m.WarehouseCatalogPage })));
 // "Quản lý nhà cung cấp" — tách khỏi "Danh mục Thuốc và Vật Tư" thành trang/nhóm menu riêng.
-const SupplierManagementPage = lazy(() =>
+const SupplierManagementPage = lazyRoute(() =>
   import('../features/drug/SupplierManagementPage').then((m) => ({ default: m.SupplierManagementPage })),
 );
 // "Công nợ nhà cung cấp" Phần A (docs/DECISIONS.md #180/#182) — trang chi tiết NCC.
-const SupplierDetailPage = lazy(() =>
+const SupplierDetailPage = lazyRoute(() =>
   import('../features/supplier-debt/SupplierDetailPage').then((m) => ({ default: m.SupplierDetailPage })),
 );
 // "Đơn thuốc mẫu" — trang quản lý đầy đủ trong Quản trị (docs/DECISIONS.md #196), khác popup chọn
 // mẫu lúc kê đơn (`PrescriptionPanel.tsx`, không tách route).
-const PrescriptionTemplateCatalogPage = lazy(() =>
+const PrescriptionTemplateCatalogPage = lazyRoute(() =>
   import('../features/drug/PrescriptionTemplateCatalogPage').then((m) => ({ default: m.PrescriptionTemplateCatalogPage })),
 );
 // "Quản lý mẫu in" (docs/DECISIONS.md #211) — trang riêng trong Quản trị.
-const PrintTemplatePage = lazy(() => import('../features/print-template/PrintTemplatePage').then((m) => ({ default: m.PrintTemplatePage })));
+const PrintTemplatePage = lazyRoute(() => import('../features/print-template/PrintTemplatePage').then((m) => ({ default: m.PrintTemplatePage })));
 // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — tổng hợp mọi NCC + lịch sử thanh toán.
-const SupplierDebtListPage = lazy(() =>
+const SupplierDebtListPage = lazyRoute(() =>
   import('../features/supplier-debt/SupplierDebtListPage').then((m) => ({ default: m.SupplierDebtListPage })),
 );
-const InteropSubmissionListPage = lazy(() =>
+const InteropSubmissionListPage = lazyRoute(() =>
   import('../features/prescription-interop/InteropSubmissionListPage').then((m) => ({ default: m.InteropSubmissionListPage })),
 );
-const SupplierPaymentListPage = lazy(() =>
+const SupplierPaymentListPage = lazyRoute(() =>
   import('../features/supplier-debt/SupplierPaymentListPage').then((m) => ({ default: m.SupplierPaymentListPage })),
 );
-const PatientListPage = lazy(() => import('../features/patient/PatientListPage').then((m) => ({ default: m.PatientListPage })));
-const PatientNewPage = lazy(() => import('../features/patient/PatientNewPage').then((m) => ({ default: m.PatientNewPage })));
-const PatientDetailPage = lazy(() => import('../features/patient/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
-const AppointmentSchedulePage = lazy(() =>
+const PatientListPage = lazyRoute(() => import('../features/patient/PatientListPage').then((m) => ({ default: m.PatientListPage })));
+const PatientNewPage = lazyRoute(() => import('../features/patient/PatientNewPage').then((m) => ({ default: m.PatientNewPage })));
+const PatientDetailPage = lazyRoute(() => import('../features/patient/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
+const AppointmentSchedulePage = lazyRoute(() =>
   import('../features/appointment/AppointmentSchedulePage').then((m) => ({ default: m.AppointmentSchedulePage })),
 );
-const FollowUpListPage = lazy(() => import('../features/follow-up/FollowUpListPage').then((m) => ({ default: m.FollowUpListPage })));
-const ReceptionListPage = lazy(() => import('../features/reception/ReceptionListPage').then((m) => ({ default: m.ReceptionListPage })));
-const ReceptionRegisterPage = lazy(() =>
+const FollowUpListPage = lazyRoute(() => import('../features/follow-up/FollowUpListPage').then((m) => ({ default: m.FollowUpListPage })));
+const ReceptionListPage = lazyRoute(() => import('../features/reception/ReceptionListPage').then((m) => ({ default: m.ReceptionListPage })));
+const ReceptionRegisterPage = lazyRoute(() =>
   import('../features/reception/ReceptionRegisterPage').then((m) => ({ default: m.ReceptionRegisterPage })),
 );
-const ReceptionDoctorQueuePage = lazy(() =>
+const ReceptionDoctorQueuePage = lazyRoute(() =>
   import('../features/reception/ReceptionDoctorQueuePage').then((m) => ({ default: m.ReceptionDoctorQueuePage })),
 );
-const EncounterConsultationPage = lazy(() =>
+const EncounterConsultationPage = lazyRoute(() =>
   import('../features/encounter/EncounterConsultationPage').then((m) => ({ default: m.EncounterConsultationPage })),
 );
 // Cận lâm sàng GĐ4 đợt 1 — Hàng đợi + nhập/duyệt kết quả (docs/DECISIONS.md #212).
-const ParaclinicalQueuePage = lazy(() => import('../features/paraclinical-result/ParaclinicalQueuePage').then((m) => ({ default: m.ParaclinicalQueuePage })));
+const ParaclinicalQueuePage = lazyRoute(() => import('../features/paraclinical-result/ParaclinicalQueuePage').then((m) => ({ default: m.ParaclinicalQueuePage })));
 // Cận lâm sàng — 2 menu tra cứu (docs/DECISIONS.md #232): "Phiếu chỉ định" (sổ phiếu theo nhóm) và "Tra cứu kết quả" (kết quả đã duyệt, xem + in lại).
-const ClinicalOrderBookPage = lazy(() => import('../features/clinical-order/ClinicalOrderBookPage').then((m) => ({ default: m.ClinicalOrderBookPage })));
-const ParaclinicalResultLookupPage = lazy(() => import('../features/paraclinical-result/ParaclinicalResultLookupPage').then((m) => ({ default: m.ParaclinicalResultLookupPage })));
-const ParaclinicalResultPage = lazy(() => import('../features/paraclinical-result/ParaclinicalResultPage').then((m) => ({ default: m.ParaclinicalResultPage })));
+const ClinicalOrderBookPage = lazyRoute(() => import('../features/clinical-order/ClinicalOrderBookPage').then((m) => ({ default: m.ClinicalOrderBookPage })));
+const ParaclinicalResultLookupPage = lazyRoute(() => import('../features/paraclinical-result/ParaclinicalResultLookupPage').then((m) => ({ default: m.ParaclinicalResultLookupPage })));
+const ParaclinicalResultPage = lazyRoute(() => import('../features/paraclinical-result/ParaclinicalResultPage').then((m) => ({ default: m.ParaclinicalResultPage })));
 // Gửi mẫu xét nghiệm cho đối tác (docs/DECISIONS.md #291) — hàng đợi "Gửi mẫu đối tác".
-const LabPartnerQueuePage = lazy(() => import('../features/lab-partner/LabPartnerQueuePage').then((m) => ({ default: m.LabPartnerQueuePage })));
+const LabPartnerQueuePage = lazyRoute(() => import('../features/lab-partner/LabPartnerQueuePage').then((m) => ({ default: m.LabPartnerQueuePage })));
 // Thu ngân cơ bản (Sprint 5/6, BIL-01→04).
-const InvoiceListPage = lazy(() => import('../features/billing/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })));
-const InvoiceDetailPage = lazy(() => import('../features/billing/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
-const CashierShiftListPage = lazy(() =>
+const InvoiceListPage = lazyRoute(() => import('../features/billing/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })));
+const InvoiceDetailPage = lazyRoute(() => import('../features/billing/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
+const CashierShiftListPage = lazyRoute(() =>
   import('../features/cashier-shift/CashierShiftListPage').then((m) => ({ default: m.CashierShiftListPage })),
 );
 // Sổ quỹ & Thu chi (GĐ1, ngoài kế hoạch, 2026-09-05).
-const CashVoucherListPage = lazy(() => import('../features/cash-book/CashVoucherListPage').then((m) => ({ default: m.CashVoucherListPage })));
+const CashVoucherListPage = lazyRoute(() => import('../features/cash-book/CashVoucherListPage').then((m) => ({ default: m.CashVoucherListPage })));
 // Sổ quỹ & Thu chi Giai đoạn 2 (Sổ quỹ + Báo cáo dòng tiền).
-const CashBookPage = lazy(() => import('../features/cash-book/CashBookPage').then((m) => ({ default: m.CashBookPage })));
-const CashFlowReportPage = lazy(() => import('../features/cash-book/CashFlowReportPage').then((m) => ({ default: m.CashFlowReportPage })));
-const ReportCenterPage = lazy(() => import('../features/report/ReportCenterPage').then((m) => ({ default: m.ReportCenterPage })));
-const DailyReportPage = lazy(() => import('../features/report/DailyReportPage').then((m) => ({ default: m.DailyReportPage })));
-const DoctorReportPage = lazy(() => import('../features/report/doctors/DoctorReportPage').then((m) => ({ default: m.DoctorReportPage })));
-const RevenueReportPage = lazy(() => import('../features/report/revenue/RevenueReportPage').then((m) => ({ default: m.RevenueReportPage })));
-const SystemReportPage = lazy(() => import('../features/report/system/SystemReportPage').then((m) => ({ default: m.SystemReportPage })));
-const QualityReportPage = lazy(() => import('../features/report/quality/QualityReportPage').then((m) => ({ default: m.QualityReportPage })));
-const ClinicalReportPage = lazy(() => import('../features/report/clinical/ClinicalReportPage').then((m) => ({ default: m.ClinicalReportPage })));
-const PatientReportPage = lazy(() => import('../features/report/patients/PatientReportPage').then((m) => ({ default: m.PatientReportPage })));
-const PharmacyReportPage = lazy(() => import('../features/report/pharmacy/PharmacyReportPage').then((m) => ({ default: m.PharmacyReportPage })));
-const ServiceConsumptionReportPage = lazy(() => import('../features/report/service-consumption/ServiceConsumptionReportPage').then((m) => ({ default: m.ServiceConsumptionReportPage })));
-const OperationsReportPage = lazy(() => import('../features/report/operations/OperationsReportPage').then((m) => ({ default: m.OperationsReportPage })));
-const WalletListPage = lazy(() => import('../features/patient-wallet/WalletListPage').then((m) => ({ default: m.WalletListPage })));
+const CashBookPage = lazyRoute(() => import('../features/cash-book/CashBookPage').then((m) => ({ default: m.CashBookPage })));
+const CashFlowReportPage = lazyRoute(() => import('../features/cash-book/CashFlowReportPage').then((m) => ({ default: m.CashFlowReportPage })));
+const ReportCenterPage = lazyRoute(() => import('../features/report/ReportCenterPage').then((m) => ({ default: m.ReportCenterPage })));
+const DailyReportPage = lazyRoute(() => import('../features/report/DailyReportPage').then((m) => ({ default: m.DailyReportPage })));
+const DoctorReportPage = lazyRoute(() => import('../features/report/doctors/DoctorReportPage').then((m) => ({ default: m.DoctorReportPage })));
+const RevenueReportPage = lazyRoute(() => import('../features/report/revenue/RevenueReportPage').then((m) => ({ default: m.RevenueReportPage })));
+const SystemReportPage = lazyRoute(() => import('../features/report/system/SystemReportPage').then((m) => ({ default: m.SystemReportPage })));
+const QualityReportPage = lazyRoute(() => import('../features/report/quality/QualityReportPage').then((m) => ({ default: m.QualityReportPage })));
+const ClinicalReportPage = lazyRoute(() => import('../features/report/clinical/ClinicalReportPage').then((m) => ({ default: m.ClinicalReportPage })));
+const PatientReportPage = lazyRoute(() => import('../features/report/patients/PatientReportPage').then((m) => ({ default: m.PatientReportPage })));
+const PharmacyReportPage = lazyRoute(() => import('../features/report/pharmacy/PharmacyReportPage').then((m) => ({ default: m.PharmacyReportPage })));
+const ServiceConsumptionReportPage = lazyRoute(() => import('../features/report/service-consumption/ServiceConsumptionReportPage').then((m) => ({ default: m.ServiceConsumptionReportPage })));
+const OperationsReportPage = lazyRoute(() => import('../features/report/operations/OperationsReportPage').then((m) => ({ default: m.OperationsReportPage })));
+const WalletListPage = lazyRoute(() => import('../features/patient-wallet/WalletListPage').then((m) => ({ default: m.WalletListPage })));
 // Kho Thuốc GĐ2 — "Phiếu nhập kho"/"Tồn kho" (docs/DECISIONS.md #146, kế hoạch precious-humming-goblet.md).
-const StockReceiptListPage = lazy(() => import('../features/inventory/StockReceiptListPage').then((m) => ({ default: m.StockReceiptListPage })));
-const StockReceiptFormPage = lazy(() => import('../features/inventory/StockReceiptFormPage').then((m) => ({ default: m.StockReceiptFormPage })));
-const StockBalancePage = lazy(() => import('../features/inventory/StockBalancePage').then((m) => ({ default: m.StockBalancePage })));
+const StockReceiptListPage = lazyRoute(() => import('../features/inventory/StockReceiptListPage').then((m) => ({ default: m.StockReceiptListPage })));
+const StockReceiptFormPage = lazyRoute(() => import('../features/inventory/StockReceiptFormPage').then((m) => ({ default: m.StockReceiptFormPage })));
+const StockBalancePage = lazyRoute(() => import('../features/inventory/StockBalancePage').then((m) => ({ default: m.StockBalancePage })));
 // Kho Thuốc GĐ3 — "Phát thuốc" (docs/DECISIONS.md #163, kế hoạch fluttering-scribbling-liskov.md).
-const DispenseQueuePage = lazy(() => import('../features/inventory/DispenseQueuePage').then((m) => ({ default: m.DispenseQueuePage })));
+const DispenseQueuePage = lazyRoute(() => import('../features/inventory/DispenseQueuePage').then((m) => ({ default: m.DispenseQueuePage })));
 // "Phiếu xuất kho" — rà soát lỗ hổng quy trình 22/09/2026 (docs/DECISIONS.md #171): liệt kê MỌI
 // phiếu xuất (phát thuốc + xuất cân bằng kiểm kê), khác "Phát thuốc" chỉ phục vụ luồng dược sĩ.
-const StockIssueListPage = lazy(() => import('../features/inventory/StockIssueListPage').then((m) => ({ default: m.StockIssueListPage })));
+const StockIssueListPage = lazyRoute(() => import('../features/inventory/StockIssueListPage').then((m) => ({ default: m.StockIssueListPage })));
 // Kho Thuốc GĐ4, phần "Kiểm kê" (docs/DECISIONS.md #170, kế hoạch bright-bubbling-axolotl.md).
-const StockCountListPage = lazy(() => import('../features/inventory/StockCountListPage').then((m) => ({ default: m.StockCountListPage })));
-const StockCountFormPage = lazy(() => import('../features/inventory/StockCountFormPage').then((m) => ({ default: m.StockCountFormPage })));
+const StockCountListPage = lazyRoute(() => import('../features/inventory/StockCountListPage').then((m) => ({ default: m.StockCountListPage })));
+const StockCountFormPage = lazyRoute(() => import('../features/inventory/StockCountFormPage').then((m) => ({ default: m.StockCountFormPage })));
 // Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170, kế hoạch bright-bubbling-axolotl.md).
-const StockTransferListPage = lazy(() => import('../features/inventory/StockTransferListPage').then((m) => ({ default: m.StockTransferListPage })));
-const StockTransferFormPage = lazy(() => import('../features/inventory/StockTransferFormPage').then((m) => ({ default: m.StockTransferFormPage })));
-const StockRequestListPage = lazy(() => import('../features/inventory/StockRequestListPage').then((m) => ({ default: m.StockRequestListPage })));
-const StockRequestFormPage = lazy(() => import('../features/inventory/StockRequestFormPage').then((m) => ({ default: m.StockRequestFormPage })));
-const StockRequestDetailPage = lazy(() => import('../features/inventory/StockRequestDetailPage').then((m) => ({ default: m.StockRequestDetailPage })));
+const StockTransferListPage = lazyRoute(() => import('../features/inventory/StockTransferListPage').then((m) => ({ default: m.StockTransferListPage })));
+const StockTransferFormPage = lazyRoute(() => import('../features/inventory/StockTransferFormPage').then((m) => ({ default: m.StockTransferFormPage })));
+const StockRequestListPage = lazyRoute(() => import('../features/inventory/StockRequestListPage').then((m) => ({ default: m.StockRequestListPage })));
+const StockRequestFormPage = lazyRoute(() => import('../features/inventory/StockRequestFormPage').then((m) => ({ default: m.StockRequestFormPage })));
+const StockRequestDetailPage = lazyRoute(() => import('../features/inventory/StockRequestDetailPage').then((m) => ({ default: m.StockRequestDetailPage })));
 import { StockRequestFeatureGate } from '../features/inventory/StockRequestFeatureGate';
-const PurchaseOrderListPage = lazy(() => import('../features/inventory/PurchaseOrderListPage').then((m) => ({ default: m.PurchaseOrderListPage })));
-const PurchaseOrderFormPage = lazy(() => import('../features/inventory/PurchaseOrderFormPage').then((m) => ({ default: m.PurchaseOrderFormPage })));
-const PurchaseOrderDetailPage = lazy(() => import('../features/inventory/PurchaseOrderDetailPage').then((m) => ({ default: m.PurchaseOrderDetailPage })));
+const PurchaseOrderListPage = lazyRoute(() => import('../features/inventory/PurchaseOrderListPage').then((m) => ({ default: m.PurchaseOrderListPage })));
+const PurchaseOrderFormPage = lazyRoute(() => import('../features/inventory/PurchaseOrderFormPage').then((m) => ({ default: m.PurchaseOrderFormPage })));
+const PurchaseOrderDetailPage = lazyRoute(() => import('../features/inventory/PurchaseOrderDetailPage').then((m) => ({ default: m.PurchaseOrderDetailPage })));
 // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" + "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170, kế
 // hoạch bright-bubbling-axolotl.md mục 4+5, mockup NVC5A4uZsmX9kFsAk5Td88 đã duyệt).
-const StockIssueFormPage = lazy(() => import('../features/inventory/StockIssueFormPage').then((m) => ({ default: m.StockIssueFormPage })));
-const StockLedgerReportPage = lazy(() => import('../features/inventory/StockLedgerReportPage').then((m) => ({ default: m.StockLedgerReportPage })));
+const StockIssueFormPage = lazyRoute(() => import('../features/inventory/StockIssueFormPage').then((m) => ({ default: m.StockIssueFormPage })));
+const StockLedgerReportPage = lazyRoute(() => import('../features/inventory/StockLedgerReportPage').then((m) => ({ default: m.StockLedgerReportPage })));
 // Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
 // chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
-const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
-const CatalogParaclinicalPage = lazy(() =>
+const CatalogAdminPage = lazyRoute(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
+const CatalogParaclinicalPage = lazyRoute(() =>
   import('../features/paraclinical/CatalogParaclinicalPage').then((m) => ({ default: m.CatalogParaclinicalPage })),
 );
 // Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — "Bảng giá" có thời hạn: danh sách + Tra thử giá, và trang chi tiết/tạo.
-const PriceListPage = lazy(() => import('../features/pricing/PriceListPage').then((m) => ({ default: m.PriceListPage })));
-const PriceListDetailPage = lazy(() => import('../features/pricing/PriceListDetailPage').then((m) => ({ default: m.PriceListDetailPage })));
-const CatalogClinicalPage = lazy(() =>
+const PriceListPage = lazyRoute(() => import('../features/pricing/PriceListPage').then((m) => ({ default: m.PriceListPage })));
+const PriceListDetailPage = lazyRoute(() => import('../features/pricing/PriceListDetailPage').then((m) => ({ default: m.PriceListDetailPage })));
+const CatalogClinicalPage = lazyRoute(() =>
   import('../features/catalog-clinical/CatalogClinicalPage').then((m) => ({ default: m.CatalogClinicalPage })),
 );
-const RolePermissionPage = lazy(() => import('../features/role/RolePermissionPage').then((m) => ({ default: m.RolePermissionPage })));
-const ClinicConfigPage = lazy(() => import('../features/clinic/ClinicConfigPage').then((m) => ({ default: m.ClinicConfigPage })));
-const ActivityLogPage = lazy(() => import('../features/audit/ActivityLogPage').then((m) => ({ default: m.ActivityLogPage })));
+const RolePermissionPage = lazyRoute(() => import('../features/role/RolePermissionPage').then((m) => ({ default: m.RolePermissionPage })));
+const ClinicConfigPage = lazyRoute(() => import('../features/clinic/ClinicConfigPage').then((m) => ({ default: m.ClinicConfigPage })));
+const ActivityLogPage = lazyRoute(() => import('../features/audit/ActivityLogPage').then((m) => ({ default: m.ActivityLogPage })));
 // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
-const MyWorkSchedulePage = lazy(() =>
+const MyWorkSchedulePage = lazyRoute(() =>
   import('../features/work-shift-assignment/MyWorkSchedulePage').then((m) => ({ default: m.MyWorkSchedulePage })),
 );
-const StaffWorkSchedulePage = lazy(() =>
+const StaffWorkSchedulePage = lazyRoute(() =>
   import('../features/work-shift-assignment/StaffWorkSchedulePage').then((m) => ({ default: m.StaffWorkSchedulePage })),
 );
 
@@ -404,3 +405,6 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
+// Bảng route cho tải trước chunk trang (rê chuột/lúc rảnh ở Sidebar), docs/DECISIONS.md #304.
+registerRouteTable(router.routes);

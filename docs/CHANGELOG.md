@@ -2,6 +2,12 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 18/11/2026 (phần 3) — Tải trước chunk JS của trang khi rảnh/rê chuột menu (`docs/DECISIONS.md` #304, mục D)
+
+- Sidebar tải trước mã của từng trang: ngay khi rê chuột/focus/chạm vào mục menu, và dần từng trang lúc trình duyệt rảnh (mỗi lúc một trang, bỏ qua mạng 2G/tiết kiệm dữ liệu/tab ẩn). Lần đầu vào trang sau đó không còn phải tải thêm tệp JS: Chrome thật, CPU ×4, 167 tệp JS rải 43/45 trang → 0.
+- Đo thật: lợi ích về thời gian nhỏ (mạng trễ 60 ms: trung vị nhanh hơn 43 ms; localhost không khác biệt), đổi lại tải nền khoảng 1,1 MB gzip trong phiên đầu. Không tệp nào bị tải hai lần; không thêm lỗi Console.
+- Bộ đo `scripts/ui-audit/nav-perf-audit.cjs` thêm `WARMUP_MS`, `NET_LATENCY_MS`, `NET_KBPS`. Không migration, không `db:seed`.
+
 ## 18/11/2026 (phần 2) — Sửa gốc API chậm: Postgres "kế hoạch chung" (`docs/DECISIONS.md` #304)
 
 - Báo cáo doanh thu theo kỳ/theo dịch vụ và tổng quan toàn hệ thống chậm 1–1,7 giây vì Postgres chuyển sang "kế hoạch chung" sau 5 lần chạy cùng một câu lệnh có tham số và quét lại cả bảng hoá đơn cho từng lượt khám (tăng theo bình phương dữ liệu). Migration mới ép role ứng dụng luôn lập kế hoạch theo giá trị thật: 1.069 → 61 ms, 1.015 → 58 ms, 1.702 → 132 ms. Áp cho mọi truy vấn có tham số của API.
