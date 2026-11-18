@@ -65,9 +65,9 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-HinhAnhTaiLieu-GD3-2026-11-16.md`** (cập nhật 17/11/2026 tối, ĐỌC TRƯỚC): mọi việc #299 + thanh tab màn khám (#300, Cách 2) + tab "Hình ảnh"/hộp "Đính ảnh" ở màn khám + chế độ DICOM tuỳ chọn (công tắc mặc định TẮT, #299 bổ sung 6) đã LÀM và kiểm Chrome IP LAN (thanh tab 23/23, Đính ảnh 25/25, DICOM 41/41); mockup đã được chủ dự án chốt. Lần chạy cuối (17/11, sau commit mã nguồn cuối 152f65ca): API 2428 đạt, 0 lỗi (chạy một mình), core 900, shared 136, web 844, setup 112, typecheck + lint sạch. Còn: dựng gói on-prem (chờ chủ dự án chốt số phiên bản; cần dựng lại ảnh web vì nginx có khối mới), việc SaaS (kho đối tượng, hạn mức dung lượng, giới hạn tải DICOM).
+**`docs/handoffs/HANDOFF-Phat-hanh-0.9.6-HieuNang-2026-11-18.md`** (chốt 18/11/2026, ĐỌC TRƯỚC): `0.9.6` đã phát hành + gói giao khách (ZIP + SHA-256 + hướng dẫn ở `C:\Projects\NEXAMed-demo-package\giao-khach`); trình cài đặt có "Dọn gói cũ" + khung nhật ký giãn; hiệu năng A/B/C/F xong và đã push (`64b29efd`); **còn D (tải trước chunk JS) mã xong nhưng CHƯA kiểm Chrome, CHƯA commit** (3 đường dẫn: `router.tsx`, `Sidebar.tsx`, `shared/routing/`); việc kế tiếp: kiểm D, rồi dựng `0.9.7` khi chủ dự án đồng ý (có migration + nginx mới nên phải dựng lại ảnh).
 
-Các bản bàn giao cũ đã được gỡ khỏi thư mục làm việc (14/11/2026, chủ dự án chốt chỉ giữ bản mới nhất; không đọc lại). Khi cần tra một việc cũ: tìm theo số quyết định/ngày trong `docs/DECISIONS.md` và `docs/CHANGELOG.md` trước; cần đúng bản bàn giao thì `git log --all --diff-filter=D --name-only -- docs/handoffs` để tìm commit gỡ rồi `git show <commit>^:docs/handoffs/<tên tệp>`.
+Các bản bàn giao cũ đã được gỡ khỏi thư mục làm việc (chủ dự án chốt chỉ giữ bản mới nhất; không đọc lại). Khi cần tra một việc cũ: tìm theo số quyết định/ngày trong `docs/DECISIONS.md` và `docs/CHANGELOG.md` trước; cần đúng bản bàn giao thì `git log --all --diff-filter=D --name-only -- docs/handoffs` để tìm commit gỡ rồi `git show <commit>^:docs/handoffs/<tên tệp>`.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 
