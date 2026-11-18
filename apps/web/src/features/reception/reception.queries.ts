@@ -11,6 +11,7 @@ import type {
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { cancelEncounter, checkIn, exportReceptionList, getDoctorUnseenResults, getReceptionList, reassignEncounter, registerReception, releaseEncounter, startConsultation } from './reception.api';
+import { STALE_COUNTER_MS } from '../../shared/api/stale-time';
 
 /**
  * "Danh sách tiếp nhận" (không `doctorId`) / "Hàng đợi khám" (kèm `doctorId`, `includeDepartmentPool`
@@ -60,6 +61,7 @@ export function useDoctorUnseenResultsQuery(enabled: boolean) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'reception', 'doctor-unseen-results'),
+    staleTime: STALE_COUNTER_MS,
     queryFn: getDoctorUnseenResults,
     refetchInterval: 30_000,
     enabled,

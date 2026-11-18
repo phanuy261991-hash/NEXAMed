@@ -8,7 +8,7 @@ import { createDepartment, listDepartmentOptions, listDepartments, updateDepartm
 /** Chỉ đủ cho Combobox "Khoa/Phòng" trong form tài khoản (mở rộng ADM-01) — không phân trang. Yêu cầu `user_account.read` (chỉ clinic_admin/system_admin). */
 export function useDepartmentsQuery() {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'departments'), queryFn: listDepartments });
+  return useQuery({ queryKey: queryKey(tenantId, 'departments'), queryFn: listDepartments, staleTime: STALE_OPTIONS_MS });
 }
 
 /**

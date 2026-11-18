@@ -12,6 +12,7 @@ import {
   updateUserAccount,
   uploadUserAccountSignature,
 } from './user-account.api';
+import { STALE_OPTIONS_MS } from '../../shared/api/stale-time';
 
 /**
  * Quy mô nhân sự một phòng khám 1-3 bác sĩ rất nhỏ (khác bệnh nhân, mục tiêu 50.000 hồ sơ) — lấy
@@ -24,6 +25,7 @@ export function useUserAccountsQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'users'),
     queryFn: () => listUserAccounts({ limit: 100 }),
+    staleTime: STALE_OPTIONS_MS,
   });
 }
 

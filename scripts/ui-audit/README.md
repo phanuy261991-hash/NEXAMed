@@ -35,3 +35,8 @@ Tab/pill con trong trang, hộp thoại, trạng thái có dữ liệu lớn, tr
 - `consultation-tabs-check.cjs` — thanh tab màn khám không cuộn ở 1280/1366/1440/1536/1920/2560, nút "Thêm" + menu + chọn tab trong menu ở 1000 px, rất hẹp 760 px. Tạo lượt khám thử tiền tố KIEMTAB, cuối chạy khoá bác sĩ thử. Kỳ vọng 23/23.
 - `encounter-images-check.cjs` — tab "Hình ảnh" + hộp "Đính ảnh" ở màn khám (#299 bổ sung 6): rỗng, hộp Đính ảnh, dán Ctrl+V, số trên tab, lọc, xem lớn, ảnh nằm ở hồ sơ bệnh nhân, bổ sung sau hoàn tất, chỉ xem thì nút mờ, lỗi tải/lỗi đính, công tắc tắt ẩn tab. Tiền tố KIEMIMG. Kỳ vọng 25/25.
 - `dicom-check.cjs` — chế độ DICOM tuỳ chọn (#299 bổ sung 6): công tắc, khối "Tệp DICOM gốc" ở màn nhập kết quả, trình xem (vẽ ảnh thật, công cụ, nhiều khung), tên khác hồ sơ, kiểu nén chưa đọc được, mất mạng + Thử lại, đã duyệt, tab Hình ảnh, tệp hỏng, ảnh lớn. Dựng DICOM tổng hợp trong script. Tiền tố KIEMDCM. Kỳ vọng 41/41 (gồm dải "Tệp DICOM gốc" ở hộp Xem kết quả).
+
+## Hiệu năng chuyển trang (#303, 18/11/2026)
+
+- `nav-perf-audit.cjs` — chuyển SPA qua từng trang menu, hai lượt (chunk chưa có/đã có trong cache): paint, hết skeleton, số yêu cầu API/JS, yêu cầu chậm nhất, long task, endpoint chậm nhất và bị gọi lặp. `CPU=4` giả lập máy cũ, `ONLY=chuoi1,chuoi2` đo vài trang (nên đo CẶP trang khác nhau để lượt 2 có nội dung đổi). Cần bản PRODUCTION: `pnpm --filter @nexamed/web build`, đặt `apiBaseUrl` rỗng ở `apps/web/dist/config.json`, chạy API (`node apps/api/dist/main.js`) + `VITE_DEV_API_PROXY=http://localhost:3001 pnpm exec vite preview --port 4173`.
+- `windowed-tables-check.cjs` — các bảng cuộn ảo (Phát thuốc, Tồn kho, Sổ kho, Chất lượng): chỉ dựng ít hàng, cuộn tới cuối đúng hàng cuối, cột thẳng đầu bảng, bấm nút trong hàng, không lỗi Console.

@@ -35,6 +35,7 @@ import {
   updateStockRequest,
   withdrawStockRequestLines,
 } from './stock-request.api';
+import { STALE_COUNTER_MS } from '../../shared/api/stale-time';
 
 // Hook cho "Yêu cầu cấp hàng" (docs/DECISIONS.md #298).
 
@@ -61,6 +62,7 @@ export function useStockRequestPendingCountsQuery(enabled = true) {
   return useQuery({
     queryKey: queryKey(tenantId, 'stock-request', 'pending-counts'),
     queryFn: getStockRequestPendingCounts,
+    staleTime: STALE_COUNTER_MS,
     enabled,
     refetchInterval: 60_000,
   });

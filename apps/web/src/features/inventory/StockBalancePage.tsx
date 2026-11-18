@@ -21,6 +21,7 @@ import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useExportStockBalancesMutation } from '../report/report-exports';
 import { buildStockBalancePrintSpec } from '../report/report-print-builders';
 import { useStockBalancesQuery, useStockExpiryWarningsQuery } from './inventory.queries';
+import { useWindowedRows } from '../../shared/hooks/useWindowedRows';
 
 type ViewMode = 'byitem' | 'expiry';
 
@@ -189,6 +190,7 @@ function BalanceByItemTable({
   // DRUG_MANAGE_PERMISSIONS) — bác sĩ/điều dưỡng chỉ có `drug.read` sẽ bị chặn route nếu bấm vào,
   // nên ẩn hẳn nút cho các vai trò đó (không phải chỉ đổi màu chữ).
   const canOpenDrugDetail = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
+  const win = useWindowedRows(items.length, 56);
   if (isError) return <ErrorBanner message={error instanceof ApiError ? error.message : 'Không tải được tồn kho.'} onRetry={onRetry} />;
   if (isPending) {
     return (
@@ -203,7 +205,7 @@ function BalanceByItemTable({
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div role="table" aria-label="Tồn kho theo mặt hàng" className="scroll-hover h-full overflow-x-auto">
+      <div role="table" aria-label="Tồn kho theo mặt hàng" aria-rowcount={items.length + 1} className="scroll-hover h-full overflow-x-auto">
         <div className="flex h-full flex-col" style={{ minWidth: 900 }}>
           <div role="row" style={{ gridTemplateColumns: '130px 1.6fr 110px 1fr 90px 130px 150px 130px 90px' }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <div role="columnheader" className="py-2.5 text-center">Mã</div>
@@ -216,9 +218,12 @@ function BalanceByItemTable({
             <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
             <div role="columnheader" className="py-2.5 text-center">Thao tác</div>
           </div>
-          <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
-            {items.map((item) => (
-              <div key={`${item.drugId}-${item.warehouseName}`} role="row" style={{ gridTemplateColumns: '130px 1.6fr 110px 1fr 90px 130px 150px 130px 90px', minHeight: 56 }} className="grid items-center gap-x-3 border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
+          <div ref={win.scrollRef} className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
+            <div style={win.containerStyle}>
+            {win.rows.map((vr) => {
+              const item = items[vr.index]!;
+              return (
+              <div key={`${item.drugId}-${item.warehouseName}`} ref={win.measureRow} data-index={vr.index} role="row" aria-rowindex={vr.index + 2} style={{ ...win.rowStyle(vr.start), gridTemplateColumns: '130px 1.6fr 110px 1fr 90px 130px 150px 130px 90px', minHeight: 56 }} className="grid items-center gap-x-3 border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
                 <div role="cell" className="min-w-0 truncate text-center font-semibold text-slate-800" title={item.drugCode}>{item.drugCode}</div>
                 <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900" title={item.drugName}>{item.drugName}</div>
                 <div role="cell" className="text-center">
@@ -241,7 +246,9 @@ function BalanceByItemTable({
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
+            </div>
           </div>
         </div>
       </div>
@@ -262,6 +269,7 @@ function ExpiryWarningTable({
   onRetry: () => void;
   items: StockExpiryWarningItem[];
 }) {
+  const win = useWindowedRows(items.length, 56);
   if (isError) return <ErrorBanner message={error instanceof ApiError ? error.message : 'Không tải được cảnh báo hạn dùng.'} onRetry={onRetry} />;
   if (isPending) {
     return (
@@ -276,7 +284,7 @@ function ExpiryWarningTable({
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div role="table" aria-label="Cảnh báo hạn dùng" className="scroll-hover h-full overflow-x-auto">
+      <div role="table" aria-label="Cảnh báo hạn dùng" aria-rowcount={items.length + 1} className="scroll-hover h-full overflow-x-auto">
         <div className="flex h-full flex-col" style={{ minWidth: 1010 }}>
           <div role="row" style={{ gridTemplateColumns: '130px 1.6fr 130px 110px 1fr 100px 140px' }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <div role="columnheader" className="py-2.5 text-center">Số lô</div>
@@ -287,9 +295,12 @@ function ExpiryWarningTable({
             <div role="columnheader" className="py-2.5 text-center">Tồn</div>
             <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
           </div>
-          <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
-            {items.map((item) => (
-              <div key={item.batchId} role="row" style={{ gridTemplateColumns: '130px 1.6fr 130px 110px 1fr 100px 140px', minHeight: 56 }} className="grid items-center gap-x-3 border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
+          <div ref={win.scrollRef} className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
+            <div style={win.containerStyle}>
+            {win.rows.map((vr) => {
+              const item = items[vr.index]!;
+              return (
+              <div key={item.batchId} ref={win.measureRow} data-index={vr.index} role="row" aria-rowindex={vr.index + 2} style={{ ...win.rowStyle(vr.start), gridTemplateColumns: '130px 1.6fr 130px 110px 1fr 100px 140px', minHeight: 56 }} className="grid items-center gap-x-3 border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
                 <div role="cell" className="min-w-0 truncate text-center font-semibold text-slate-800" title={item.batchNo}>{item.batchNo}</div>
                 <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900" title={item.drugName}>{item.drugName}</div>
                 <div role="cell" className="truncate text-center font-medium text-slate-700">{item.warehouseName}</div>
@@ -300,7 +311,9 @@ function ExpiryWarningTable({
                   <StatusBadge tone={item.status === 'EXPIRED' ? 'danger' : 'warning'}>{item.status === 'EXPIRED' ? 'Đã hết hạn' : 'Sắp hết hạn'}</StatusBadge>
                 </div>
               </div>
-            ))}
+              );
+            })}
+            </div>
           </div>
         </div>
       </div>

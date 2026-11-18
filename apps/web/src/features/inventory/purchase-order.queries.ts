@@ -27,6 +27,7 @@ import {
   submitPurchaseOrder,
   updatePurchaseOrder,
 } from './purchase-order.api';
+import { STALE_COUNTER_MS } from '../../shared/api/stale-time';
 
 // Hook cho "Đơn đặt hàng NCC" (docs/DECISIONS.md #298 giai đoạn 2).
 
@@ -53,6 +54,7 @@ export function usePurchaseOrderPendingCountsQuery(enabled = true) {
   return useQuery({
     queryKey: queryKey(tenantId, 'purchase-order', 'pending-counts'),
     queryFn: getPurchaseOrderPendingCounts,
+    staleTime: STALE_COUNTER_MS,
     enabled,
     refetchInterval: 60_000,
   });

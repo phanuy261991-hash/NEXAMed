@@ -22,6 +22,7 @@ import {
   rejectLeaveRequest,
   withdrawLeaveRequest,
 } from './leave-request.api';
+import { STALE_COUNTER_MS } from '../../shared/api/stale-time';
 
 /** Chấm số đơn chờ duyệt — cùng nhịp 30 giây với các chấm số khác ở Sidebar. */
 const PENDING_COUNT_REFETCH_MS = 30_000;
@@ -40,6 +41,7 @@ export function useLeaveRequestPendingCountQuery(enabled: boolean) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'leave-request', 'pending-count'),
+    staleTime: STALE_COUNTER_MS,
     queryFn: getLeaveRequestPendingCount,
     enabled,
     refetchInterval: PENDING_COUNT_REFETCH_MS,

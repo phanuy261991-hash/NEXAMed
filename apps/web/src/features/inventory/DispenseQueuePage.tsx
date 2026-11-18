@@ -10,6 +10,7 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { formatVnd } from '../../shared/format/currency';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { useWindowedRows } from '../../shared/hooks/useWindowedRows';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useDispenseQueueQuery, useStockIssuesQuery } from './inventory.queries';
 import { DispensePrescriptionDialog } from './DispensePrescriptionDialog';
@@ -44,6 +45,7 @@ function DispensedTodayPane() {
   // docs/DECISIONS.md #170) vào tab này (thiếu bệnh nhân/lượt khám, gây nhầm lẫn cho dược sĩ).
   const listQuery = useStockIssuesQuery({ from: today, to: today, issueType: 'RETAIL_SALE', q: debouncedQ.trim() || undefined, limit: 50 });
   const items = listQuery.data?.items ?? [];
+  const issuedWin = useWindowedRows(items.length, ROW_HEIGHT_PX);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2.5">
@@ -75,7 +77,7 @@ function DispensedTodayPane() {
 
       {listQuery.isSuccess && items.length > 0 && (
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div role="table" aria-label="Đơn đã phát hôm nay" className="scroll-hover h-full overflow-x-auto">
+          <div role="table" aria-label="Đơn đã phát hôm nay" aria-rowcount={items.length + 1} className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: ISSUED_TABLE_MIN_WIDTH_PX }}>
               <div role="row" style={{ gridTemplateColumns: ISSUED_GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-center">Số phiếu</div>
@@ -87,12 +89,18 @@ function DispensedTodayPane() {
                 <div role="columnheader" className="py-2.5 text-center">Thao tác</div>
               </div>
 
-              <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
-                {items.map((item) => (
+              <div ref={issuedWin.scrollRef} className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
+                <div style={issuedWin.containerStyle}>
+                {issuedWin.rows.map((vr) => {
+                  const item = items[vr.index]!;
+                  return (
                   <div
                     key={item.id}
+                    ref={issuedWin.measureRow}
+                    data-index={vr.index}
                     role="row"
-                    style={{ gridTemplateColumns: ISSUED_GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
+                    aria-rowindex={vr.index + 2}
+                    style={{ ...issuedWin.rowStyle(vr.start), gridTemplateColumns: ISSUED_GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
                     className={`grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50 ${item.status === 'VOIDED' ? 'opacity-60' : ''}`}
                   >
                     <div role="cell" className={`truncate text-center font-semibold ${item.status === 'VOIDED' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{item.issueNo}</div>
@@ -109,7 +117,9 @@ function DispensedTodayPane() {
                       <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setViewingIssueId(item.id)} />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
+                </div>
               </div>
             </div>
           </div>
@@ -141,6 +151,7 @@ export function DispenseQueuePage() {
 
   const listQuery = useDispenseQueueQuery({ q: debouncedQ.trim() || undefined, includeOlder });
   const items = listQuery.data?.items ?? [];
+  const queueWin = useWindowedRows(items.length, ROW_HEIGHT_PX);
 
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
@@ -195,7 +206,7 @@ export function DispenseQueuePage() {
 
       {listQuery.isSuccess && items.length > 0 && (
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div role="table" aria-label="Hàng đợi phát thuốc" className="scroll-hover h-full overflow-x-auto">
+          <div role="table" aria-label="Hàng đợi phát thuốc" aria-rowcount={items.length + 1} className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
               <div role="row" style={{ gridTemplateColumns: GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-center">Mã lượt khám</div>
@@ -206,12 +217,18 @@ export function DispenseQueuePage() {
                 <div role="columnheader" className="py-2.5 text-center">Thao tác</div>
               </div>
 
-              <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
-                {items.map((item) => (
+              <div ref={queueWin.scrollRef} className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
+                <div style={queueWin.containerStyle}>
+                {queueWin.rows.map((vr) => {
+                  const item = items[vr.index]!;
+                  return (
                   <div
                     key={item.prescriptionId}
+                    ref={queueWin.measureRow}
+                    data-index={vr.index}
                     role="row"
-                    style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
+                    aria-rowindex={vr.index + 2}
+                    style={{ ...queueWin.rowStyle(vr.start), gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
                     className="grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50"
                   >
                     <div role="cell" className="truncate text-center font-semibold text-slate-800">{item.encounterNo}</div>
@@ -229,7 +246,9 @@ export function DispenseQueuePage() {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
+                </div>
               </div>
             </div>
           </div>

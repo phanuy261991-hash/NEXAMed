@@ -25,7 +25,7 @@ import { useAppConfig } from '../../app/AppConfigProvider';
 import { useAuthStore } from '../auth/auth.store';
 import { DOCTOR_ONLY_ROLES } from '../auth/workflow-roles';
 import { queryKey } from '../../shared/api/query-keys';
-import { STALE_REFERENCE_MS } from '../../shared/api/stale-time';
+import { STALE_OPTIONS_MS, STALE_REFERENCE_MS } from '../../shared/api/stale-time';
 import {
   createExamStation,
   createFloor,
@@ -87,6 +87,7 @@ export function useClinicSettingsQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'settings'),
     queryFn: getClinicSettings,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -156,6 +157,7 @@ export function useDeferredPaymentEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'deferred-payment-enabled'),
     queryFn: getDeferredPaymentStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -169,6 +171,7 @@ export function useAllowStaffSelfScheduleEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'allow-staff-self-schedule-enabled'),
     queryFn: getAllowStaffSelfScheduleStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -182,6 +185,7 @@ export function useCashierShiftRequiredEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'cashier-shift-required-enabled'),
     queryFn: getCashierShiftRequiredStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -194,6 +198,7 @@ export function useWalletMixedPaymentEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'wallet-mixed-payment-enabled'),
     queryFn: getWalletMixedPaymentStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -207,6 +212,7 @@ export function useSidebarAutoCollapseEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled'),
     queryFn: getSidebarAutoCollapseStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -220,6 +226,7 @@ export function useSoloClinicWorkflowEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'solo-clinic-workflow-enabled'),
     queryFn: getSoloClinicWorkflowStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -234,6 +241,7 @@ export function usePharmacyStockTrackingEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'pharmacy-stock-tracking-enabled'),
     queryFn: getPharmacyStockTrackingStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -247,6 +255,7 @@ export function useAllowFreeTextPrescriptionEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'allow-free-text-prescription-enabled'),
     queryFn: getAllowFreeTextPrescriptionStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -259,6 +268,7 @@ export function usePrescriptionSplitBlockEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'prescription-split-block-enabled'),
     queryFn: getPrescriptionSplitBlockStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -272,6 +282,7 @@ export function useIcd10SuggestionEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'icd10-suggestion-enabled'),
     queryFn: getIcd10SuggestionStatus,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -395,6 +406,7 @@ export function useClinicProfileQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'profile'),
     queryFn: getClinicProfile,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 
@@ -448,7 +460,7 @@ export function useUploadClinicPrintLogoMutation() {
 /** Pane "Phòng khám" (Quản trị, docs/DECISIONS.md #054) — không phân trang, cùng lý do `useReferenceCatalogQuery`. */
 export function useRoomsQuery() {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'rooms'), queryFn: listRooms });
+  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'rooms'), queryFn: listRooms, staleTime: STALE_OPTIONS_MS });
 }
 
 export function useCreateRoomMutation() {
@@ -505,7 +517,7 @@ export function useMyRoomSessionQuery(enabled: boolean) {
 /** "Tầng" (docs/DECISIONS.md #055) — không phân trang, cùng lý do `useRoomsQuery`. */
 export function useFloorsQuery() {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'floors'), queryFn: listFloors });
+  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'floors'), queryFn: listFloors, staleTime: STALE_OPTIONS_MS });
 }
 
 export function useCreateFloorMutation() {
@@ -568,7 +580,7 @@ export function useUpdateExamStationMutation() {
 /** "Ca làm việc" (docs/DECISIONS.md #101) — không phân trang, cùng lý do `useRoomsQuery`. Bảng RIÊNG theo tenant. */
 export function useWorkShiftsQuery() {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'work-shifts'), queryFn: listWorkShifts });
+  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'work-shifts'), queryFn: listWorkShifts, staleTime: STALE_OPTIONS_MS });
 }
 
 export function useCreateWorkShiftMutation() {
@@ -592,13 +604,13 @@ export function useUpdateWorkShiftMutation() {
 /** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ, không phân trang. */
 export function useBusinessCodeTemplatesQuery() {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'business-code-templates'), queryFn: listBusinessCodeTemplates });
+  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'business-code-templates'), queryFn: listBusinessCodeTemplates, staleTime: STALE_REFERENCE_MS });
 }
 
 /** Bảng ánh xạ loại thuốc → loại đơn (#242, giai đoạn 2) — trang "Loại đơn thuốc". */
 export function usePrescriptionKindMappingQuery() {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'prescription-kind-mapping'), queryFn: getPrescriptionKindMapping });
+  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'prescription-kind-mapping'), queryFn: getPrescriptionKindMapping, staleTime: STALE_REFERENCE_MS });
 }
 
 export function useUpdatePrescriptionKindMappingMutation() {
@@ -704,6 +716,7 @@ export function useDoctorAvailabilityPolicyQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-policy'),
     queryFn: getDoctorAvailabilityPolicy,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 

@@ -21,6 +21,7 @@ import { useReportScope } from '../branch/useReportScope';
 import { toStockLedgerDisplayRows } from './stock-ledger-rows';
 import { useExportStockLedgerReportMutation, useStockLedgerReportQuery } from './inventory.queries';
 import { StockTransferShrinkageReport } from './StockTransferShrinkageReportPage';
+import { useWindowedRows } from '../../shared/hooks/useWindowedRows';
 
 function getVietnamTodayDateString(): string {
   const now = new Date(Date.now() + 7 * 60 * 60_000);
@@ -56,6 +57,7 @@ function StockLedgerTab() {
   }, [warehouses, warehouseId]);
   const rows = useMemo(() => toStockLedgerDisplayRows(reportQuery.data?.items ?? [], multiBranch && gather), [reportQuery.data, multiBranch, gather]);
   const items = rows;
+  const win = useWindowedRows(items.length, 52);
   const printSpec = useMemo(() => {
     if (!reportQuery.data) return null;
     const picked = reportQuery.data.warehouses.find((w) => w.id === warehouseId);
@@ -151,7 +153,7 @@ function StockLedgerTab() {
             <EmptyState icon={Archive} title="Không có biến động tồn kho nào" description="Đổi lại khoảng ngày hoặc bộ lọc Kho để xem dữ liệu khác." />
           ) : (
             <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-              <div role="table" aria-label="Báo cáo Nhập-Xuất-Tồn" className="scroll-hover h-full overflow-x-auto">
+              <div role="table" aria-label="Báo cáo Nhập-Xuất-Tồn" aria-rowcount={items.length + 1} className="scroll-hover h-full overflow-x-auto">
                 <div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
                   <div
                     role="row"
@@ -168,14 +170,12 @@ function StockLedgerTab() {
                     <div role="columnheader" className="py-2.5 text-center">Xuất</div>
                     <div role="columnheader" className="py-2.5 text-center">Cuối kỳ</div>
                   </div>
-                  <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
-                    {items.map((item) => (
-                      <div
-                        key={item.key}
-                        role="row"
-                        style={{ gridTemplateColumns: gridColumns, minHeight: 52 }}
-                        className="grid items-center border-b border-slate-100 px-4 text-sm"
-                      >
+                  <div ref={win.scrollRef} className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
+                    <div style={win.containerStyle}>
+                    {win.rows.map((vr) => {
+                      const item = items[vr.index]!;
+                      return (
+                      <div key={item.key} ref={win.measureRow} data-index={vr.index} role="row" aria-rowindex={vr.index + 2} style={{ ...win.rowStyle(vr.start), gridTemplateColumns: gridColumns, minHeight: 52 }} className="grid items-center border-b border-slate-100 px-4 text-sm">
                         <div role="cell" className="min-w-0 truncate text-center font-semibold text-slate-800" title={item.drugCode}>{item.drugCode}</div>
                         <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900">{item.drugName}</div>
                         <div role="cell" className="text-center font-medium text-slate-600">{item.unitCode ?? '—'}</div>
@@ -190,7 +190,9 @@ function StockLedgerTab() {
                         <div role="cell" className="text-center font-medium tabular-nums text-rose-700">{item.totalOut > 0 ? `-${item.totalOut.toLocaleString('vi-VN')}` : '—'}</div>
                         <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{item.closingQuantity.toLocaleString('vi-VN')}</div>
                       </div>
-                    ))}
+                      );
+                    })}
+                    </div>
                   </div>
                 </div>
               </div>

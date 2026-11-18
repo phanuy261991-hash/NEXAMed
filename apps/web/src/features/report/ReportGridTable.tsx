@@ -1,4 +1,13 @@
 import type { ReactNode } from 'react';
+import { useWindowedRows } from '../../shared/hooks/useWindowedRows';
+
+/**
+ * Bảng dài tự CUỘN ẢO (chỉ dựng các dòng đang nhìn thấy) khi vượt ngưỡng này, và phần dòng cuộn trong khung cao tối đa 65% màn hình nếu nơi gọi chưa giới hạn chiều cao.
+ * Đo 17/11/2026 (docs/DECISIONS.md #303): báo cáo "Chất lượng" 605 dòng dựng ~4.500 phần tử làm luồng chính bị chặn ~580 ms trên máy văn phòng cũ. Bảng ngắn giữ cách dựng cũ.
+ */
+const WINDOW_MIN_ROWS = 80;
+const WINDOW_DEFAULT_HEIGHT_CLASS = 'max-h-[65vh]';
+const ROW_ESTIMATE_PX = 44;
 
 /**
  * Bảng lưới của báo cáo điều hành (mockup đã duyệt): đầu bảng chữ HOA nhỏ nền trắng, dòng cách nhau bằng đường kẻ rất mảnh, dòng cộng nền xám nhạt. Đầu bảng và mọi dòng dùng CÙNG
@@ -47,6 +56,15 @@ export function ReportGridTable({
 }) {
   const template = columns.map((c) => c.width ?? 'minmax(0, 1fr)').join(' ');
   const cell = (c: ReportGridColumn) => ALIGN_CLASS[c.align ?? 'left'];
+  const windowed = rows.length > WINDOW_MIN_ROWS;
+  const win = useWindowedRows(windowed ? rows.length : 0, ROW_ESTIMATE_PX);
+  const rowClass = 'grid items-center gap-x-3 border-b border-slate-50 px-4 py-2.5 text-sm text-slate-800';
+  const cells = (row: ReactNode[]) =>
+    row.map((value, i) => (
+      <div key={i} role="cell" className={`min-w-0 ${cell(columns[i]!)}`}>
+        {value}
+      </div>
+    ));
 
   if (rows.length === 0 && emptyText) return <p className="px-4 py-6 text-center text-sm text-slate-600">{emptyText}</p>;
 
@@ -69,16 +87,25 @@ export function ReportGridTable({
             </div>
           ))}
         </div>
-        <div className={maxBodyHeightClass ? `scroll-hover overflow-y-auto ${maxBodyHeightClass}` : undefined}>
-          {rows.map((row, r) => (
-            <div key={r} role="row" style={{ gridTemplateColumns: template }} className="grid items-center gap-x-3 border-b border-slate-50 px-4 py-2.5 text-sm text-slate-800">
-              {row.map((value, i) => (
-                <div key={i} role="cell" className={`min-w-0 ${cell(columns[i]!)}`}>
-                  {value}
+        <div
+          ref={windowed ? win.scrollRef : undefined}
+          className={windowed ? `scroll-hover overflow-y-auto ${maxBodyHeightClass ?? WINDOW_DEFAULT_HEIGHT_CLASS}` : maxBodyHeightClass ? `scroll-hover overflow-y-auto ${maxBodyHeightClass}` : undefined}
+        >
+          {windowed ? (
+            <div style={win.containerStyle}>
+              {win.rows.map((vr) => (
+                <div key={vr.index} ref={win.measureRow} data-index={vr.index} role="row" aria-rowindex={vr.index + 2} style={{ ...win.rowStyle(vr.start), gridTemplateColumns: template }} className={rowClass}>
+                  {cells(rows[vr.index]!)}
                 </div>
               ))}
             </div>
-          ))}
+          ) : (
+            rows.map((row, r) => (
+              <div key={r} role="row" style={{ gridTemplateColumns: template }} className={rowClass}>
+                {cells(row)}
+              </div>
+            ))
+          )}
         </div>
         {footer && (
           <div role="row" style={{ gridTemplateColumns: template }} className="grid items-center gap-x-3 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900">

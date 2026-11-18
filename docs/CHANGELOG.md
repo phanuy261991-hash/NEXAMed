@@ -2,6 +2,13 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 18/11/2026 — Chuyển trang nhanh hơn: nén gzip, staleTime an toàn, cuộn ảo bảng nặng (`docs/DECISIONS.md` #303)
+
+- Đo thật bằng Chrome (45 trang, CPU chậm ×4): máy chủ không chậm; phần chậm là dựng giao diện ở máy khách với danh sách lớn và gọi lại dữ liệu mỗi lần vào trang.
+- Nginx bản cài bật gzip (JS 620 KB → ~146 KB, JSON API nén). Công tắc, cấu hình, bộ đếm Sidebar và danh mục ít đổi không còn bị gọi lại thừa mỗi lần vào trang (`staleTime` theo quy ước cũ, chỉ áp chỗ chắc chắn có làm mới cache).
+- Phát thuốc, Tồn kho, Sổ kho Nhập-Xuất-Tồn và mọi báo cáo dùng `ReportGridTable` chỉ dựng các dòng đang nhìn thấy: Phát thuốc từ 1.773 ms còn 101 ms trên máy chậm, DOM 8.821 → 400. Giao diện giữ nguyên.
+- Bộ đo mới `scripts/ui-audit/nav-perf-audit.cjs`, `windowed-tables-check.cjs`.
+
 ## 17/11/2026 (phần 5) — Trình cài đặt: "Dọn gói cũ", so sánh phiên bản theo SemVer (`docs/DECISIONS.md` #301)
 
 - Bước "Bản đang chạy" của trình cài đặt có mục **Dọn gói cũ**: xoá tệp nạp ảnh `.tar.gz` và gỡ ảnh Docker của các bản cũ để lấy lại ổ đĩa. Luôn giữ bản đang chạy, bản trước theo lần nâng cấp gần nhất (đúng với nút Quay lui) và bản mới trong gói; hộp xác nhận có ô tích "không quay lui được nữa"; bản sao lưu nâng cấp chỉ hiện dung lượng, không có nút xoá. Dọn một phần (ảnh đang dùng, Docker không trả lời) báo rõ và có "Dọn lại".

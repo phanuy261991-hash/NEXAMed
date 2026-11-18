@@ -8,3 +8,8 @@
 export const STALE_REFERENCE_MS = 5 * 60_000;
 /** Danh sách người/phòng ban có thể đổi do quản trị viên ở màn khác (không phải mọi chỗ sửa đều invalidate khoá này) — ngắn hơn. */
 export const STALE_OPTIONS_MS = 60_000;
+/**
+ * Bộ đếm (số chờ duyệt, số chưa xem...) ở Sidebar/TopBar vốn đã tự làm mới theo chu kỳ (`refetchInterval`): đặt thời gian "còn mới" ngắn để khi mở một trang cũng dùng bộ đếm đó thì
+ * KHÔNG gọi lại thừa lần nữa (đo 17/11/2026: trang Lịch làm việc bắn 4 yêu cầu trùng bộ đếm Sidebar). Chu kỳ vẫn chạy bình thường nên số không cũ quá chừng này + chu kỳ.
+ */
+export const STALE_COUNTER_MS = 15_000;

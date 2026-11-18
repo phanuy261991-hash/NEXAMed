@@ -9,6 +9,7 @@ import {
   returnScheduleSubmission,
   submitScheduleSubmission,
 } from './schedule-submission.api';
+import { STALE_COUNTER_MS } from '../../shared/api/stale-time';
 
 /** Chấm số chờ duyệt — cùng nhịp 30 giây với các chấm số khác ở Sidebar. */
 const PENDING_COUNT_REFETCH_MS = 30_000;
@@ -27,6 +28,7 @@ export function useScheduleSubmissionPendingCountQuery(enabled: boolean) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'work-schedule-submission', 'pending-count'),
+    staleTime: STALE_COUNTER_MS,
     queryFn: getScheduleSubmissionPendingCount,
     enabled,
     refetchInterval: PENDING_COUNT_REFETCH_MS,

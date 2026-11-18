@@ -80,6 +80,7 @@ import {
   voidStockIssue,
   voidStockReceipt,
 } from './inventory.api';
+import { STALE_COUNTER_MS } from '../../shared/api/stale-time';
 
 export function useStockReceiptsQuery(query: ListStockReceiptsQuery, enabled = true) {
   const { tenantId } = useAppConfig();
@@ -489,6 +490,7 @@ export function useStockTransferPendingCountsQuery(enabled = true) {
   return useQuery({
     queryKey: queryKey(tenantId, 'stock-transfer', 'pending-counts'),
     queryFn: getStockTransferPendingCounts,
+    staleTime: STALE_COUNTER_MS,
     enabled,
     refetchInterval: 60_000,
   });

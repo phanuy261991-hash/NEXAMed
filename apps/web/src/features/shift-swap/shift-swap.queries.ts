@@ -15,6 +15,7 @@ import {
   listShiftSwaps,
   markShiftSwapsSeen,
 } from './shift-swap.api';
+import { STALE_COUNTER_MS } from '../../shared/api/stale-time';
 
 /** Chấm số/yêu cầu chờ — cùng nhịp 30 giây với các chấm số khác ở Sidebar. */
 const COUNT_REFETCH_MS = 30_000;
@@ -33,6 +34,7 @@ export function useShiftSwapIncomingCountQuery(enabled: boolean) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'shift-swap', 'incoming-count'),
+    staleTime: STALE_COUNTER_MS,
     queryFn: getShiftSwapIncomingCount,
     enabled,
     refetchInterval: COUNT_REFETCH_MS,
@@ -44,6 +46,7 @@ export function useShiftSwapUnseenCountQuery(enabled: boolean) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'shift-swap', 'unseen-count'),
+    staleTime: STALE_COUNTER_MS,
     queryFn: getShiftSwapUnseenCount,
     enabled,
     refetchInterval: COUNT_REFETCH_MS,

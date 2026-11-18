@@ -3,6 +3,7 @@ import type { ApproveLabPartnerResultRequest, LabPartnerStatementQuery, ListLabP
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { commitLabPartnerPriceImport, downloadLabPartnerPriceTemplate, exportLabPartnerPrices, getLabPartnerPendingSummary, getLabPartnerStatement, listLabPartnerAwaiting, approveLabPartnerResult, getLabPartnerCounts, listLabPartnerDone, listLabPartnerPending, listLabPartnerSent, receiveLabPartnerResult, rejectLabPartnerItem, returnLabPartnerResult, sendLabPartnerSamples } from './lab-partner.api';
+import { STALE_COUNTER_MS } from '../../shared/api/stale-time';
 
 /** Hàng đợi gửi mẫu là màn "treo" ở quầy kỹ thuật — tự làm mới 30 giây để thấy mẫu vừa lấy, như hàng đợi Xét nghiệm. */
 const QUEUE_REFRESH_MS = 30_000;
@@ -84,7 +85,7 @@ export function useSendLabPartnerSamplesMutation() {
 /** Số đếm nhẹ cho chấm số ở menu: bác sĩ thấy ngay có kết quả đối tác chờ duyệt. Chỉ tải khi `enabled` (bật công tắc + có quyền xem). */
 export function useLabPartnerCountsQuery(enabled: boolean) {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'lab-partner', 'counts'), queryFn: getLabPartnerCounts, enabled, refetchInterval: 60_000 });
+  return useQuery({ queryKey: queryKey(tenantId, 'lab-partner', 'counts'), staleTime: STALE_COUNTER_MS, queryFn: getLabPartnerCounts, enabled, refetchInterval: 60_000 });
 }
 
 /** Kết quả đối tác chờ bác sĩ duyệt (khối ở màn khám và Tổng quan bác sĩ); tự làm mới 30 giây, bị làm mới khi nhận/duyệt/trả lại (khoá bắt đầu bằng `lab-partner`). */

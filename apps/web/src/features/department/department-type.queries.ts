@@ -3,10 +3,11 @@ import type { CreateDepartmentTypeRequest, UpdateDepartmentTypeRequest } from '@
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { createDepartmentType, listDepartmentTypes, updateDepartmentType } from './department-type.api';
+import { STALE_REFERENCE_MS } from '../../shared/api/stale-time';
 
 export function useDepartmentTypesQuery() {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'department-types'), queryFn: listDepartmentTypes });
+  return useQuery({ queryKey: queryKey(tenantId, 'department-types'), queryFn: listDepartmentTypes, staleTime: STALE_REFERENCE_MS });
 }
 
 function useInvalidateDepartmentTypes() {
