@@ -1,0 +1,15 @@
+{
+  "version": "0.9.7",
+  "releasedAt": "2026-11-18",
+  "features": [],
+  "improvements": [
+    "Chuyển trang nhanh hơn: dữ liệu nén khi tải về, các công tắc và danh mục ít đổi không bị tải lại mỗi lần vào trang, và mã của các trang trong menu được tải sẵn lúc máy rảnh hoặc ngay khi rê chuột vào mục menu.",
+    "Các danh sách dài (Phát thuốc, Tồn kho, Sổ kho Nhập-Xuất-Tồn và các báo cáo có nhiều dòng) chỉ dựng phần đang nhìn thấy nên mở và cuộn mượt hơn, nhất là trên máy cấu hình thấp.",
+    "Báo cáo doanh thu theo kỳ, doanh thu theo dịch vụ và Tổng quan toàn hệ thống mở nhanh hơn nhiều khi dữ liệu đã lớn.",
+    "Trình cài đặt: khung nhật ký ở bước Đang cài và Đang nâng cấp giãn đến sát chân trang và tự cuộn theo dòng mới.",
+    "Logo NEXAMed ở đầu menu (khi phòng khám chưa tải logo riêng) to bằng cỡ logo phòng khám."
+  ],
+  "fixes": [
+    "Sửa lỗi truy vấn cơ sở dữ liệu chậm dần theo số lượng hoá đơn khiến báo cáo doanh thu mất hơn một giây."
+  ]
+}
