@@ -1,7 +1,7 @@
 {
   "name": "@nexamed/shared",
   "private": true,
-  "version": "0.9.6",
+  "version": "0.9.7",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": ["dist"],
