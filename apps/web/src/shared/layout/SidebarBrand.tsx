@@ -19,7 +19,7 @@ export function SidebarBrand({ collapsed }: { collapsed: boolean }) {
       ) : clinicLogo ? (
         <img src={resolveApiUrl(clinicLogo)} alt="Logo phòng khám" onError={() => setFailedUrl(clinicLogo)} className="max-h-8 max-w-full object-contain" />
       ) : (
-        <img src="/brand/nexamed-logo-horizontal-white.svg" alt="NEXAMed" className="h-6 max-w-full object-contain" />
+        <img src="/brand/nexamed-logo-horizontal-white.svg" alt="NEXAMed" className="h-8 max-w-full object-contain" />
       )}
     </div>
   );
