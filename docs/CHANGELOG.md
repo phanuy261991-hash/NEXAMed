@@ -2,6 +2,10 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 18/11/2026 (phần 4) — Phát hành `0.9.7`
+
+- Tag `v0.9.7` (`f2d42cf8`), ghi chú `apps/api/release-notes/0.9.7.json`; gói giao khách dựng từ tag (bản dựng 425). Gồm các thay đổi hiệu năng #303/#304 (gzip, `staleTime`, cuộn ảo, tải trước chunk, ép kế hoạch truy vấn theo giá trị thật), khung nhật ký trình cài đặt giãn sát chân trang và logo dự phòng ở đầu menu cao 32px.
+
 ## 18/11/2026 (phần 3) — Tải trước chunk JS của trang khi rảnh/rê chuột menu (`docs/DECISIONS.md` #304, mục D)
 
 - Sidebar tải trước mã của từng trang: ngay khi rê chuột/focus/chạm vào mục menu, và dần từng trang lúc trình duyệt rảnh (mỗi lúc một trang, bỏ qua mạng 2G/tiết kiệm dữ liệu/tab ẩn). Lần đầu vào trang sau đó không còn phải tải thêm tệp JS: Chrome thật, CPU ×4, 167 tệp JS rải 43/45 trang → 0.
