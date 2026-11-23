@@ -2,6 +2,10 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 23/11/2026 — Script dựng dữ liệu mẫu để chụp ảnh giới thiệu (`scripts/demo-data/`)
+
+- `seed-demo-clinic.mjs`: dựng công ty "Phòng khám Đa khoa Hòa Hưng" bằng API (170 bệnh nhân, 5 bác sĩ, ca làm việc, hơn 100 lịch hẹn mỗi ngày với đủ trạng thái, danh sách tiếp nhận và hàng chờ khám của hôm nay theo giờ chạy). `seed-demo-pharmacy.mjs`: thêm ~60 thuốc, 12 vật tư, 4 nhà cung cấp và nhập kho nhiều lô (có lô sắp hết hạn, mặt hàng tồn thấp). Chạy lại được, chỉ gọi API; hướng dẫn ở `scripts/demo-data/README.md`. Tài khoản toàn quyền `giamdoc` (vai trò "Quản trị toàn quyền" + `clinic_admin`: "Hàng đợi khám" khoá theo TÊN vai trò, không theo quyền).
+
 ## 18/11/2026 (phần 4) — Phát hành `0.9.7`
 
 - Tag `v0.9.7` (`f2d42cf8`), ghi chú `apps/api/release-notes/0.9.7.json`; gói giao khách dựng từ tag (bản dựng 425). Gồm các thay đổi hiệu năng #303/#304 (gzip, `staleTime`, cuộn ảo, tải trước chunk, ép kế hoạch truy vấn theo giá trị thật), khung nhật ký trình cài đặt giãn sát chân trang và logo dự phòng ở đầu menu cao 32px.
