@@ -529,6 +529,22 @@ async function topUpWaiting(doctors, patients) {
   log(`Hàng chờ khám: bổ sung ${added} người (mỗi bác sĩ tối thiểu ${WAITING_PER_DOCTOR} người chờ).`);
 }
 
+// Mỗi bác sĩ đều có một người đang khám: bác sĩ nào chưa có thì bắt đầu khám người đã thu tiền, chờ lâu nhất.
+async function ensureOneDoing(doctors) {
+  const items = await getAll(ADMIN, `/reception/list?date=${TODAY}`);
+  for (const d of doctors) {
+    if (items.some((e) => e.doctorId === d.id && e.status === 'IN_CONSULTATION')) continue;
+    const next = items.filter((e) => e.doctorId === d.id && e.status === 'CHECKED_IN' && e.invoiceStatus === 'PAID').sort((a, b) => String(a.checkedInAt).localeCompare(String(b.checkedInAt)))[0];
+    if (!next) continue;
+    const u = DOCTOR_USER[d.displayName];
+    try {
+      const c = await get(u, `/encounters/${next.encounterId}/consultation`);
+      await call(u, 'POST', `/encounters/${next.encounterId}/start`, { version: (c.encounter ?? c).version });
+      log('Đã bắt đầu khám một người cho', d.displayName);
+    } catch (e) { log('  (không bắt đầu khám được)', e.message.slice(0, 140)); }
+  }
+}
+
 // ---------- chạy ----------
 log(`Dựng dữ liệu mẫu: hôm nay ${TODAY} ${toHHMM(NOW_MIN)} · ${DAYS} ngày lịch hẹn · ${TARGET_PATIENTS} bệnh nhân`);
 await ensureStaff();
@@ -545,6 +561,7 @@ if (WITH_RECEPTION) {
   await seedReception(doctors, patients);
   await normalizeDoing(doctors);
   await topUpWaiting(doctors, patients);
+  await ensureOneDoing(doctors);
 }
 await diversifyFutureDays(dates.slice(0, DAYS));
 log('Xong. Đăng nhập bằng tài khoản toàn quyền: giamdoc / ' + PASSWORD);
